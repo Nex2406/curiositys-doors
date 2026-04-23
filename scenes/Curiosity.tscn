@@ -1,0 +1,38 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Curiosity.gd" id="1_curiosity"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(32, 48)
+
+[sub_resource type="Gradient" id="Gradient_lantern"]
+offsets = PackedFloat32Array(0, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_lantern"]
+gradient = SubResource("Gradient_lantern")
+width = 256
+height = 256
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[node name="Curiosity" type="CharacterBody2D"]
+script = ExtResource("1_curiosity")
+
+[node name="Visual" type="ColorRect" parent="."]
+offset_left = -16.0
+offset_top = -24.0
+offset_right = 16.0
+offset_bottom = 24.0
+color = Color(0.2, 0.15, 0.35, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_body")
+
+[node name="Lantern" type="PointLight2D" parent="."]
+position = Vector2(12, -8)
+color = Color(1, 0.75, 0.35, 1)
+energy = 1.2
+texture = SubResource("GradientTexture2D_lantern")
+texture_scale = 2.0

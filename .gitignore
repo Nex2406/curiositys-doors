@@ -1,0 +1,33 @@
+# Godot 4+ specific
+.godot/
+.import/
+
+# Build output
+build/
+exports/
+
+# Translation exports
+*.translation
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# Logs
+*.log
+logs/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python / tooling caches occasionally left by scripts
+__pycache__/
+
+.claude/
