@@ -23,6 +23,9 @@ config_version=5
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
+window/handheld/orientation="sensor_landscape"
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [input]
 
