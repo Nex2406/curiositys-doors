@@ -1,7 +1,8 @@
 ; TODO: parallax layers, fog particles, drifting lights, door nodes
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/Curiosity.tscn" id="1_curiosity"]
+[ext_resource type="PackedScene" path="res://scenes/TouchControls.tscn" id="2_touch"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(3000, 40)
@@ -24,3 +25,5 @@ shape = SubResource("RectangleShape2D_floor")
 
 [node name="Curiosity" parent="." instance=ExtResource("1_curiosity")]
 position = Vector2(400, 300)
+
+[node name="TouchControls" parent="." instance=ExtResource("2_touch")]
