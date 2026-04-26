@@ -4,7 +4,7 @@
 [ext_resource type="Texture2D" path="res://assets/characters/hero/curiosity.png" id="2_curiosity_art"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
-size = Vector2(44, 176)
+size = Vector2(176, 704)
 
 [sub_resource type="Gradient" id="Gradient_lantern"]
 offsets = PackedFloat32Array(0, 1)
@@ -23,13 +23,13 @@ script = ExtResource("1_curiosity")
 
 [node name="Visual" type="Sprite2D" parent="."]
 texture = ExtResource("2_curiosity_art")
-scale = Vector2(0.16, 0.16)
+scale = Vector2(0.64, 0.64)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_body")
 
 [node name="Lantern" type="PointLight2D" parent="."]
-position = Vector2(36, 16)
+position = Vector2(144, 64)
 color = Color(1, 0.78, 0.42, 1)
 energy = 1.1
 texture = SubResource("GradientTexture2D_lantern")
