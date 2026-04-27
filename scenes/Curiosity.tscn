@@ -1,10 +1,80 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=28 format=3]
 
 [ext_resource type="Script" path="res://scripts/Curiosity.gd" id="1_curiosity"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/curiosity.png" id="2_curiosity_art"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/idle_01.png" id="2_idle_01"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/idle_02.png" id="3_idle_02"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/idle_03.png" id="4_idle_03"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/idle_04.png" id="5_idle_04"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/walk_01.png" id="6_walk_01"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/walk_02.png" id="7_walk_02"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/walk_03.png" id="8_walk_03"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/walk_04.png" id="9_walk_04"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/walk_05.png" id="10_walk_05"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/walk_06.png" id="11_walk_06"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_01.png" id="12_run_01"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_02.png" id="13_run_02"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_03.png" id="14_run_03"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_04.png" id="15_run_04"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_05.png" id="16_run_05"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_06.png" id="17_run_06"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/jump_start_01.png" id="18_jump_start_01"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/jump_start_02.png" id="19_jump_start_02"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/air_01.png" id="20_air_01"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/air_02.png" id="21_air_02"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/land_01.png" id="22_land_01"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/land_02.png" id="23_land_02"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_curiosity"]
+animations = [{
+"frames": [{"duration": 1.0, "texture": ExtResource("2_idle_01")},
+{"duration": 1.0, "texture": ExtResource("3_idle_02")},
+{"duration": 1.0, "texture": ExtResource("4_idle_03")},
+{"duration": 1.0, "texture": ExtResource("5_idle_04")}],
+"loop": true,
+"name": &"idle",
+"speed": 6.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("6_walk_01")},
+{"duration": 1.0, "texture": ExtResource("7_walk_02")},
+{"duration": 1.0, "texture": ExtResource("8_walk_03")},
+{"duration": 1.0, "texture": ExtResource("9_walk_04")},
+{"duration": 1.0, "texture": ExtResource("10_walk_05")},
+{"duration": 1.0, "texture": ExtResource("11_walk_06")}],
+"loop": true,
+"name": &"walk",
+"speed": 10.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("12_run_01")},
+{"duration": 1.0, "texture": ExtResource("13_run_02")},
+{"duration": 1.0, "texture": ExtResource("14_run_03")},
+{"duration": 1.0, "texture": ExtResource("15_run_04")},
+{"duration": 1.0, "texture": ExtResource("16_run_05")},
+{"duration": 1.0, "texture": ExtResource("17_run_06")}],
+"loop": true,
+"name": &"run",
+"speed": 14.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("18_jump_start_01")},
+{"duration": 1.0, "texture": ExtResource("19_jump_start_02")}],
+"loop": false,
+"name": &"jump_start",
+"speed": 12.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("20_air_01")},
+{"duration": 1.0, "texture": ExtResource("21_air_02")}],
+"loop": true,
+"name": &"air",
+"speed": 6.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("22_land_01")},
+{"duration": 1.0, "texture": ExtResource("23_land_02")}],
+"loop": false,
+"name": &"land",
+"speed": 12.0
+}]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
-size = Vector2(88, 352)
+size = Vector2(88, 432)
 
 [sub_resource type="Gradient" id="Gradient_lantern"]
 offsets = PackedFloat32Array(0, 1)
@@ -21,15 +91,17 @@ fill_to = Vector2(1, 0.5)
 [node name="Curiosity" type="CharacterBody2D"]
 script = ExtResource("1_curiosity")
 
-[node name="Visual" type="Sprite2D" parent="."]
-texture = ExtResource("2_curiosity_art")
-scale = Vector2(0.32, 0.32)
+[node name="Visual" type="AnimatedSprite2D" parent="."]
+scale = Vector2(3.2, 3.2)
+sprite_frames = SubResource("SpriteFrames_curiosity")
+animation = &"idle"
+autoplay = "idle"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_body")
 
 [node name="Lantern" type="PointLight2D" parent="."]
-position = Vector2(72, 32)
+position = Vector2(-128, 96)
 color = Color(1, 0.78, 0.42, 1)
 energy = 1.1
 texture = SubResource("GradientTexture2D_lantern")
