@@ -1,4 +1,4 @@
-[gd_scene load_steps=28 format=3]
+[gd_scene load_steps=29 format=3]
 
 [ext_resource type="Script" path="res://scripts/Curiosity.gd" id="1_curiosity"]
 [ext_resource type="Texture2D" path="res://assets/characters/hero/frames/idle_01.png" id="2_idle_01"]
@@ -17,6 +17,7 @@
 [ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_04.png" id="15_run_04"]
 [ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_05.png" id="16_run_05"]
 [ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_06.png" id="17_run_06"]
+[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_07.png" id="24_run_07"]
 [ext_resource type="Texture2D" path="res://assets/characters/hero/frames/jump_start_01.png" id="18_jump_start_01"]
 [ext_resource type="Texture2D" path="res://assets/characters/hero/frames/jump_start_02.png" id="19_jump_start_02"]
 [ext_resource type="Texture2D" path="res://assets/characters/hero/frames/air_01.png" id="20_air_01"]
@@ -49,7 +50,8 @@ animations = [{
 {"duration": 1.0, "texture": ExtResource("14_run_03")},
 {"duration": 1.0, "texture": ExtResource("15_run_04")},
 {"duration": 1.0, "texture": ExtResource("16_run_05")},
-{"duration": 1.0, "texture": ExtResource("17_run_06")}],
+{"duration": 1.0, "texture": ExtResource("17_run_06")},
+{"duration": 1.0, "texture": ExtResource("24_run_07")}],
 "loop": true,
 "name": &"run",
 "speed": 14.0
