@@ -1,7 +1,8 @@
-[gd_scene load_steps=60 format=3]
+[gd_scene load_steps=59 format=3]
 
 [ext_resource type="Script" path="res://scripts/Curiosity.gd" id="1_curiosity"]
 [ext_resource type="Texture2D" path="res://assets/effects/lantern_flame.png" id="55_lantern_flame"]
+[ext_resource type="Texture2D" path="res://assets/effects/lantern_halo.png" id="56_lantern_halo"]
 [ext_resource type="Texture2D" path="res://assets/characters/hero/frames/idle_01.png" id="2_idle_01"]
 [ext_resource type="Texture2D" path="res://assets/characters/hero/frames/idle_02.png" id="3_idle_02"]
 [ext_resource type="Texture2D" path="res://assets/characters/hero/frames/idle_03.png" id="4_idle_03"]
@@ -175,18 +176,6 @@ animations = [{
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
 size = Vector2(88, 432)
 
-[sub_resource type="Gradient" id="Gradient_lantern"]
-offsets = PackedFloat32Array(0, 1)
-colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_lantern"]
-gradient = SubResource("Gradient_lantern")
-width = 256
-height = 256
-fill = 1
-fill_from = Vector2(0.5, 0.5)
-fill_to = Vector2(1, 0.5)
-
 [node name="Curiosity" type="CharacterBody2D"]
 script = ExtResource("1_curiosity")
 
@@ -207,9 +196,9 @@ shape = SubResource("RectangleShape2D_body")
 [node name="Lantern" type="PointLight2D" parent="."]
 position = Vector2(-144, 106)
 color = Color(1, 0.7, 0.3, 1)
-energy = 2.2
-texture = SubResource("GradientTexture2D_lantern")
-texture_scale = 2.8
+energy = 4.5
+texture = ExtResource("56_lantern_halo")
+texture_scale = 7.0
 
 [node name="Camera" type="Camera2D" parent="."]
 position = Vector2(0, -160)
