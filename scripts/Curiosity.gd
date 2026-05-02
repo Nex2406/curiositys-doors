@@ -1,5 +1,9 @@
 extends CharacterBody2D
 
+# TODO: combat and lever animations (attack1, attack2, charged, dash, hurt,
+# approach, lever_pull, lever_hold, celebrate) are loaded in SpriteFrames
+# but not yet wired to states — wiring lands in future PRs once enemies
+# and lever puzzles exist.
 enum State { IDLE, WALK, RUN, JUMP_START, AIR, LAND }
 
 # Drifting-traveler tuning: gravity is well below normal-platformer (~980)
