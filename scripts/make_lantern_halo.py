@@ -20,9 +20,9 @@ import numpy as np
 SIZE = 256
 OUT = "assets/effects/lantern_halo.png"
 
-CORE = np.array([255, 200, 120], dtype=np.float32)
-MID = np.array([255, 130, 50], dtype=np.float32)
-EDGE = np.array([180, 70, 20], dtype=np.float32)
+CORE = np.array([255, 220, 160], dtype=np.float32)
+MID = np.array([255, 170, 90], dtype=np.float32)
+EDGE = np.array([200, 110, 50], dtype=np.float32)
 
 ALPHA_CURVE = 2.4
 COLOR_BLEND_CURVE = 1.6
