@@ -199,11 +199,11 @@ autoplay = "idle"
 shape = SubResource("RectangleShape2D_body")
 
 [node name="Lantern" type="PointLight2D" parent="."]
-position = Vector2(-128, 96)
-color = Color(1, 0.78, 0.42, 1)
-energy = 1.1
+position = Vector2(-144, 106)
+color = Color(1, 0.7, 0.3, 1)
+energy = 2.2
 texture = SubResource("GradientTexture2D_lantern")
-texture_scale = 1.6
+texture_scale = 2.8
 
 [node name="Camera" type="Camera2D" parent="."]
 position = Vector2(0, -160)
