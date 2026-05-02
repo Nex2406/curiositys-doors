@@ -20,6 +20,10 @@ const MOVE_EPSILON: float = 8.0
 
 @onready var visual: AnimatedSprite2D = $Visual
 @onready var lantern: PointLight2D = $Lantern
+@onready var flame: Sprite2D = $LanternFlame
+
+const FLAME_FLICKER_AMPLITUDE: float = 0.05
+const FLAME_FLICKER_PERIOD: float = 0.4
 
 # Source art faces LEFT. Default unflipped = facing left.
 var _state: State = State.IDLE
@@ -27,14 +31,25 @@ var _facing_right: bool = false
 var _lantern_offset_x: float
 var _lantern_tween: Tween
 var _was_airborne: bool = false
+var _flame_time: float = 0.0
+var _flame_base_alpha: float = 1.0
 
 
 func _ready() -> void:
 	_lantern_offset_x = abs(lantern.position.x)
 	visual.flip_h = _facing_right
-	lantern.position.x = _lantern_offset_x if _facing_right else -_lantern_offset_x
+	var anchor_x: float = _lantern_offset_x if _facing_right else -_lantern_offset_x
+	lantern.position.x = anchor_x
+	flame.position.x = anchor_x
+	_flame_base_alpha = flame.modulate.a
 	visual.animation_finished.connect(_on_animation_finished)
 	visual.play(&"idle")
+
+
+func _process(delta: float) -> void:
+	_flame_time += delta
+	var flicker: float = sin(_flame_time * TAU / FLAME_FLICKER_PERIOD) * FLAME_FLICKER_AMPLITUDE
+	flame.modulate.a = clampf(_flame_base_alpha + flicker, 0.0, 1.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -121,6 +136,8 @@ func _apply_facing() -> void:
 	var target_x: float = _lantern_offset_x if _facing_right else -_lantern_offset_x
 	if _lantern_tween and _lantern_tween.is_running():
 		_lantern_tween.kill()
-	_lantern_tween = create_tween()
+	_lantern_tween = create_tween().set_parallel(true)
 	_lantern_tween.tween_property(lantern, "position:x", target_x, lantern_sway_time) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_lantern_tween.tween_property(flame, "position:x", target_x, lantern_sway_time) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
