@@ -19,9 +19,9 @@ import numpy as np
 SIZE = 64
 OUT = "assets/effects/lantern_flame.png"
 
-CORE = np.array([255, 230, 180], dtype=np.float32)
-MID = np.array([255, 175, 100], dtype=np.float32)
-EDGE = np.array([200, 110, 50], dtype=np.float32)
+CORE = np.array([255, 244, 200], dtype=np.float32)
+MID = np.array([255, 218, 83], dtype=np.float32)
+EDGE = np.array([232, 165, 44], dtype=np.float32)
 
 
 def smoothstep(a: np.ndarray) -> np.ndarray:
