@@ -1,0 +1,81 @@
+; Replaces Main.tscn as game entry. Old scene archived as _legacy_Main.tscn.
+; Painted backdrop is portrait (1122x1402) — fit-to-height keeps every door
+; visible; the cosmic pillarbox fills the 16:9 letterbox with a near-black
+; purple so the painting reads as a vista, not a clipped image.
+[gd_scene load_steps=10 format=3 uid="uid://b8h2u8b8b8h2u"]
+
+[ext_resource type="PackedScene" path="res://scenes/Curiosity.tscn" id="1_curiosity"]
+[ext_resource type="PackedScene" path="res://scenes/TouchControls.tscn" id="2_touch"]
+[ext_resource type="Texture2D" path="res://assets/scenes/hub/hub_background.png" id="3_hub_bg"]
+[ext_resource type="Script" path="res://scripts/Door.gd" id="4_door"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
+size = Vector2(3000, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door1"]
+size = Vector2(88, 519)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door2"]
+size = Vector2(64, 612)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door3"]
+size = Vector2(72, 360)
+
+[node name="Hub" type="Node2D"]
+
+[node name="BackgroundFill" type="ColorRect" parent="."]
+offset_left = -2000.0
+offset_top = -400.0
+offset_right = 3280.0
+offset_bottom = 1120.0
+color = Color(0.075, 0.045, 0.115, 1)
+
+[node name="Background" type="Sprite2D" parent="."]
+position = Vector2(640, 360)
+scale = Vector2(0.5135, 0.5135)
+texture = ExtResource("3_hub_bg")
+
+[node name="CanvasModulate" type="CanvasModulate" parent="."]
+color = Color(0.85, 0.85, 0.95, 1)
+
+[node name="Floor" type="StaticBody2D" parent="."]
+position = Vector2(640, 688)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Floor"]
+shape = SubResource("RectangleShape2D_floor")
+
+[node name="Curiosity" parent="." instance=ExtResource("1_curiosity")]
+position = Vector2(740, 560)
+scale = Vector2(0.5, 0.5)
+
+[node name="Door1" type="Area2D" parent="."]
+position = Vector2(452, 408)
+script = ExtResource("4_door")
+target_realm = "realm_1"
+door_id = "Door1"
+prompt_offset = Vector2(0, -210)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Door1"]
+shape = SubResource("RectangleShape2D_door1")
+
+[node name="Door2" type="Area2D" parent="."]
+position = Vector2(414, 362)
+script = ExtResource("4_door")
+target_realm = "realm_2"
+door_id = "Door2"
+prompt_offset = Vector2(0, -270)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Door2"]
+shape = SubResource("RectangleShape2D_door2")
+
+[node name="Door3" type="Area2D" parent="."]
+position = Vector2(408, 488)
+script = ExtResource("4_door")
+target_realm = "realm_3"
+door_id = "Door3"
+prompt_offset = Vector2(0, -125)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Door3"]
+shape = SubResource("RectangleShape2D_door3")
+
+[node name="TouchControls" parent="." instance=ExtResource("2_touch")]
