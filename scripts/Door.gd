@@ -10,7 +10,7 @@ signal near_door(door)
 @export var door_id: String = ""
 @export_group("Prompt")
 @export var prompt_offset: Vector2 = Vector2(0, -120)
-@export var prompt_text: String = "↑ Enter"
+@export var prompt_text: String = "[Y] Enter"
 
 const _PROMPT_SIZE: Vector2 = Vector2(140, 30)
 const _PROMPT_COLOR: Color = Color(1.0, 0.93, 0.66, 0.95)
@@ -70,5 +70,5 @@ func _show_prompt(on: bool) -> void:
 func _process(_delta: float) -> void:
 	if not _player_inside:
 		return
-	if Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("ui_up"):
+	if Input.is_action_just_pressed("interact"):
 		print("[Door] Entering ", target_realm, " via ", door_id)

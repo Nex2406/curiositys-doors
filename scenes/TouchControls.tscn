@@ -53,3 +53,20 @@ action = &"jump"
 position = Vector2(70, 70)
 color = Color(0.961, 0.722, 0.439, 0.95)
 polygon = PackedVector2Array(0, -18, -16, 12, 16, 12)
+
+[node name="InteractButton" type="TouchScreenButton" parent="."]
+texture_normal = SubResource("GradientTexture2D_glow")
+shape = SubResource("CircleShape2D_button")
+shape_visible = false
+action = &"interact"
+
+[node name="InteractLabel" type="Label" parent="InteractButton"]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 140.0
+offset_bottom = 140.0
+theme_override_colors/font_color = Color(0.961, 0.722, 0.439, 0.95)
+theme_override_font_sizes/font_size = 64
+text = "Y"
+horizontal_alignment = 1
+vertical_alignment = 1
