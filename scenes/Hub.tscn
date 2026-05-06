@@ -4,7 +4,7 @@
 ; the original concept art is archived at assets/_reference/hub_concept.png
 ; for inspiration only. Parallax, particles, lore, and real door art are
 ; future waves.
-[gd_scene load_steps=18 format=3 uid="uid://b8h2u8b8b8h2u"]
+[gd_scene load_steps=19 format=3 uid="uid://b8h2u8b8b8h2u"]
 
 [ext_resource type="PackedScene" path="res://scenes/Curiosity.tscn" id="1_curiosity"]
 [ext_resource type="PackedScene" path="res://scenes/TouchControls.tscn" id="2_touch"]
@@ -12,6 +12,7 @@
 [ext_resource type="Texture2D" path="res://assets/scenes/hub/stone_floor.png" id="4_stone_floor"]
 [ext_resource type="Texture2D" path="res://assets/scenes/hub/door_arch.png" id="5_door_arch"]
 [ext_resource type="Texture2D" path="res://assets/effects/lantern_halo.png" id="6_halo"]
+[ext_resource type="Script" path="res://scripts/Hub.gd" id="7_hub"]
 
 [sub_resource type="Gradient" id="Gradient_sky"]
 offsets = PackedFloat32Array(0, 0.5, 1)
@@ -59,6 +60,7 @@ _data = {
 }
 
 [node name="Hub" type="Node2D"]
+script = ExtResource("7_hub")
 
 [node name="Sky" type="Sprite2D" parent="."]
 position = Vector2(640, 360)
