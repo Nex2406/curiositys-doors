@@ -1,0 +1,181 @@
+; Hub — Wave 1 of 5 (skeleton). Procedural cosmic gradient sky,
+; tiled stone floor, three placeholder arched doors floating mid-air
+; with soft purple glows and a gentle vertical bob. No painted backdrop;
+; the original concept art is archived at assets/_reference/hub_concept.png
+; for inspiration only. Parallax, particles, lore, and real door art are
+; future waves.
+[gd_scene load_steps=18 format=3 uid="uid://b8h2u8b8b8h2u"]
+
+[ext_resource type="PackedScene" path="res://scenes/Curiosity.tscn" id="1_curiosity"]
+[ext_resource type="PackedScene" path="res://scenes/TouchControls.tscn" id="2_touch"]
+[ext_resource type="Script" path="res://scripts/Door.gd" id="3_door"]
+[ext_resource type="Texture2D" path="res://assets/scenes/hub/stone_floor.png" id="4_stone_floor"]
+[ext_resource type="Texture2D" path="res://assets/scenes/hub/door_arch.png" id="5_door_arch"]
+[ext_resource type="Texture2D" path="res://assets/effects/lantern_halo.png" id="6_halo"]
+
+[sub_resource type="Gradient" id="Gradient_sky"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(0.039, 0.024, 0.071, 1, 0.102, 0.059, 0.18, 1, 0.027, 0.012, 0.063, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_sky"]
+gradient = SubResource("Gradient_sky")
+width = 4
+height = 1080
+fill_from = Vector2(0, 0)
+fill_to = Vector2(0, 1)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
+size = Vector2(4000, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door1"]
+size = Vector2(120, 430)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door2"]
+size = Vector2(120, 470)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door3"]
+size = Vector2(120, 420)
+
+[sub_resource type="Animation" id="Animation_door_bob"]
+resource_name = "bob"
+length = 3.5
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Visual:position:y")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.875, 1.75, 2.625, 3.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [0.0, -4.0, 0.0, 4.0, 0.0]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_door_bob"]
+_data = {
+"bob": SubResource("Animation_door_bob")
+}
+
+[node name="Hub" type="Node2D"]
+
+[node name="Sky" type="Sprite2D" parent="."]
+position = Vector2(640, 360)
+scale = Vector2(1000, 1)
+texture = SubResource("GradientTexture2D_sky")
+
+[node name="CanvasModulate" type="CanvasModulate" parent="."]
+color = Color(0.7, 0.7, 0.85, 1)
+
+[node name="FloorVisual" type="TextureRect" parent="."]
+offset_left = -2000.0
+offset_top = 620.0
+offset_right = 2000.0
+offset_bottom = 720.0
+texture = ExtResource("4_stone_floor")
+stretch_mode = 1
+
+[node name="Floor" type="StaticBody2D" parent="."]
+position = Vector2(640, 640)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Floor"]
+shape = SubResource("RectangleShape2D_floor")
+
+[node name="Doors" type="Node2D" parent="."]
+
+[node name="Door1" type="Node2D" parent="Doors"]
+position = Vector2(320, 280)
+
+[node name="Visual" type="Node2D" parent="Doors/Door1"]
+
+[node name="Sprite" type="Sprite2D" parent="Doors/Door1/Visual"]
+texture = ExtResource("5_door_arch")
+
+[node name="Glow" type="PointLight2D" parent="Doors/Door1/Visual"]
+color = Color(0.7216, 0.5804, 0.8392, 1)
+energy = 0.8
+texture = ExtResource("6_halo")
+texture_scale = 1.5
+
+[node name="DoorArea" type="Area2D" parent="Doors/Door1"]
+script = ExtResource("3_door")
+target_realm = "realm_1"
+door_id = "Door1"
+prompt_offset = Vector2(0, -110)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Doors/Door1/DoorArea"]
+position = Vector2(0, 125)
+shape = SubResource("RectangleShape2D_door1")
+
+[node name="Bob" type="AnimationPlayer" parent="Doors/Door1"]
+libraries = {
+"": SubResource("AnimationLibrary_door_bob")
+}
+autoplay = "bob"
+
+[node name="Door2" type="Node2D" parent="Doors"]
+position = Vector2(640, 240)
+
+[node name="Visual" type="Node2D" parent="Doors/Door2"]
+
+[node name="Sprite" type="Sprite2D" parent="Doors/Door2/Visual"]
+texture = ExtResource("5_door_arch")
+
+[node name="Glow" type="PointLight2D" parent="Doors/Door2/Visual"]
+color = Color(0.7216, 0.5804, 0.8392, 1)
+energy = 0.8
+texture = ExtResource("6_halo")
+texture_scale = 1.5
+
+[node name="DoorArea" type="Area2D" parent="Doors/Door2"]
+script = ExtResource("3_door")
+target_realm = "realm_2"
+door_id = "Door2"
+prompt_offset = Vector2(0, -110)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Doors/Door2/DoorArea"]
+position = Vector2(0, 145)
+shape = SubResource("RectangleShape2D_door2")
+
+[node name="Bob" type="AnimationPlayer" parent="Doors/Door2"]
+libraries = {
+"": SubResource("AnimationLibrary_door_bob")
+}
+autoplay = "bob"
+
+[node name="Door3" type="Node2D" parent="Doors"]
+position = Vector2(960, 290)
+
+[node name="Visual" type="Node2D" parent="Doors/Door3"]
+
+[node name="Sprite" type="Sprite2D" parent="Doors/Door3/Visual"]
+texture = ExtResource("5_door_arch")
+
+[node name="Glow" type="PointLight2D" parent="Doors/Door3/Visual"]
+color = Color(0.7216, 0.5804, 0.8392, 1)
+energy = 0.8
+texture = ExtResource("6_halo")
+texture_scale = 1.5
+
+[node name="DoorArea" type="Area2D" parent="Doors/Door3"]
+script = ExtResource("3_door")
+target_realm = "realm_3"
+door_id = "Door3"
+prompt_offset = Vector2(0, -110)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Doors/Door3/DoorArea"]
+position = Vector2(0, 120)
+shape = SubResource("RectangleShape2D_door3")
+
+[node name="Bob" type="AnimationPlayer" parent="Doors/Door3"]
+libraries = {
+"": SubResource("AnimationLibrary_door_bob")
+}
+autoplay = "bob"
+
+[node name="Curiosity" parent="." instance=ExtResource("1_curiosity")]
+position = Vector2(640, 580)
+scale = Vector2(0.5, 0.5)
+
+[node name="TouchControls" parent="." instance=ExtResource("2_touch")]
