@@ -4,7 +4,7 @@
 ; the original concept art is archived at assets/_reference/hub_concept.png
 ; for inspiration only. Parallax, particles, lore, and real door art are
 ; future waves.
-[gd_scene load_steps=19 format=3 uid="uid://b8h2u8b8b8h2u"]
+[gd_scene load_steps=24 format=3 uid="uid://b8h2u8b8b8h2u"]
 
 [ext_resource type="PackedScene" path="res://scenes/Curiosity.tscn" id="1_curiosity"]
 [ext_resource type="PackedScene" path="res://scenes/TouchControls.tscn" id="2_touch"]
@@ -13,6 +13,7 @@
 [ext_resource type="Texture2D" path="res://assets/scenes/hub/door_arch.png" id="5_door_arch"]
 [ext_resource type="Texture2D" path="res://assets/effects/lantern_halo.png" id="6_halo"]
 [ext_resource type="Script" path="res://scripts/Hub.gd" id="7_hub"]
+[ext_resource type="Texture2D" path="res://assets/effects/firefly.png" id="8_firefly"]
 
 [sub_resource type="Gradient" id="Gradient_sky"]
 offsets = PackedFloat32Array(0, 0.5, 1)
@@ -58,6 +59,35 @@ tracks/0/keys = {
 _data = {
 "bob": SubResource("Animation_door_bob")
 }
+
+[sub_resource type="Gradient" id="Gradient_firefly_alpha"]
+offsets = PackedFloat32Array(0, 0.2, 0.7, 1)
+colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_firefly_alpha"]
+gradient = SubResource("Gradient_firefly_alpha")
+
+[sub_resource type="Curve" id="Curve_firefly_scale"]
+_data = [Vector2(0, 0.55), 0.0, 0.0, 0, 0, Vector2(0.35, 1.0), 0.0, 0.0, 0, 0, Vector2(0.7, 1.0), 0.0, 0.0, 0, 0, Vector2(1, 0.55), 0.0, 0.0, 0, 0]
+point_count = 4
+
+[sub_resource type="CurveTexture" id="CurveTexture_firefly_scale"]
+curve = SubResource("Curve_firefly_scale")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_firefly_hub"]
+emission_shape = 3
+emission_box_extents = Vector3(640, 360, 1)
+direction = Vector3(0, -1, 0)
+spread = 30.0
+initial_velocity_min = 8.0
+initial_velocity_max = 18.0
+gravity = Vector3(0, -2, 0)
+angular_velocity_min = -30.0
+angular_velocity_max = 30.0
+scale_min = 0.4
+scale_max = 1.0
+scale_curve = SubResource("CurveTexture_firefly_scale")
+color_ramp = SubResource("GradientTexture1D_firefly_alpha")
 
 [node name="Hub" type="Node2D"]
 script = ExtResource("7_hub")
@@ -175,6 +205,14 @@ libraries = {
 "": SubResource("AnimationLibrary_door_bob")
 }
 autoplay = "bob"
+
+[node name="Fireflies" type="GPUParticles2D" parent="."]
+position = Vector2(640, 360)
+amount = 40
+lifetime = 8.0
+preprocess = 4.0
+texture = ExtResource("8_firefly")
+process_material = SubResource("ParticleProcessMaterial_firefly_hub")
 
 [node name="Curiosity" parent="." instance=ExtResource("1_curiosity")]
 position = Vector2(640, 580)
