@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dl0f2mqvme6y4"
-path="res://.godot/imported/hub_background.png-9b2d097b4ab190ffb034fe1bf44b0bdc.ctex"
+uid="uid://c7d7lfxl62boj"
+path="res://.godot/imported/hub_concept.png-04095026633c15b2ee84fe361a58964d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/scenes/hub/hub_background.png"
-dest_files=["res://.godot/imported/hub_background.png-9b2d097b4ab190ffb034fe1bf44b0bdc.ctex"]
+source_file="res://assets/_reference/hub_concept.png"
+dest_files=["res://.godot/imported/hub_concept.png-04095026633c15b2ee84fe361a58964d.ctex"]
 
 [params]
 
