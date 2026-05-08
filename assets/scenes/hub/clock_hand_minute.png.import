@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cmlq6w5ijojb"
-path="res://.godot/imported/door_void.png-4680c6506fcb466fdb0b4d5c42b91048.ctex"
+uid="uid://b6ww4rmend6jg"
+path="res://.godot/imported/clock_hand_minute.png-fb62d7c97dc3af79b729965974ec6890.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/scenes/hub/door_void.png"
-dest_files=["res://.godot/imported/door_void.png-4680c6506fcb466fdb0b4d5c42b91048.ctex"]
+source_file="res://assets/scenes/hub/clock_hand_minute.png"
+dest_files=["res://.godot/imported/clock_hand_minute.png-fb62d7c97dc3af79b729965974ec6890.ctex"]
 
 [params]
 

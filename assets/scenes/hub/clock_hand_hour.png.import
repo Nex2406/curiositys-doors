@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cnvhpg1acrp2g"
-path="res://.godot/imported/skyline.png-1f38fb4be3b0ba24d2d67856cba618bd.ctex"
+uid="uid://cf8xunc7ngkpj"
+path="res://.godot/imported/clock_hand_hour.png-bf0c1da10cfcb12f4624b997fbbdcb2b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/scenes/hub/skyline.png"
-dest_files=["res://.godot/imported/skyline.png-1f38fb4be3b0ba24d2d67856cba618bd.ctex"]
+source_file="res://assets/scenes/hub/clock_hand_hour.png"
+dest_files=["res://.godot/imported/clock_hand_hour.png-bf0c1da10cfcb12f4624b997fbbdcb2b.ctex"]
 
 [params]
 
