@@ -1,17 +1,18 @@
-; Hub — Wave 2 atmospheric upgrade. Adds:
-; - ParallaxBackground with two layers: a deep cosmic nebula far layer
-;   (scroll 0.05) and a silhouette skyline mid layer (scroll 0.2). Both
-;   tile via motion_mirroring so the camera can roam the full Hub width
-;   without seams.
-; - A semi-transparent fog band across the horizon line, softening the
-;   sky-floor seam so the floor doesn't read as cut-out.
-; - A slow-rotating void Sprite2D inside each door's arch interior. One
-;   shared AnimationPlayer animation drives all three voids at one
-;   rotation per 60s (relative track path "Visual/Void:rotation").
-; Wave 1 skeleton (procedural sky gradient, three placeholder doors,
-; firefly particles) remains; the gradient sky is removed in favor of
-; the parallax nebula since the nebula carries its own vertical fade.
-[gd_scene load_steps=30 format=3 uid="uid://b8h2u8b8b8h2u"]
+; Hub — cleanup pass on Wave 2.
+;   - Parallax skyline removed; the silhouette towers read as a
+;     landscape and clashed with the cosmic Hub vibe. Only the nebula
+;     far layer remains in the ParallaxBackground.
+;   - A giant ornate clock joins the upper-right of the scene as the
+;     new focal anchor. Hands sweep at sped-up but proportional rates
+;     (minute 1 rev / 60s, hour 1 rev / 12min) via a single
+;     AnimationPlayer with one 720s looping animation.
+;   - Each door now uses a richer arch texture with a baked-in radial
+;     void interior; the per-door spinning Void Sprite2D and its
+;     VoidSpin AnimationPlayer are no longer needed and are removed.
+;   - Fog band, fireflies, door bob animation, door collision /
+;     interaction wiring, and Curiosity / TouchControls instances are
+;     unchanged.
+[gd_scene load_steps=29 format=3 uid="uid://b8h2u8b8b8h2u"]
 
 [ext_resource type="PackedScene" path="res://scenes/Curiosity.tscn" id="1_curiosity"]
 [ext_resource type="PackedScene" path="res://scenes/TouchControls.tscn" id="2_touch"]
@@ -22,8 +23,9 @@
 [ext_resource type="Script" path="res://scripts/Hub.gd" id="7_hub"]
 [ext_resource type="Texture2D" path="res://assets/effects/firefly.png" id="8_firefly"]
 [ext_resource type="Texture2D" path="res://assets/scenes/hub/nebula.png" id="9_nebula"]
-[ext_resource type="Texture2D" path="res://assets/scenes/hub/skyline.png" id="10_skyline"]
-[ext_resource type="Texture2D" path="res://assets/scenes/hub/door_void.png" id="11_door_void"]
+[ext_resource type="Texture2D" path="res://assets/scenes/hub/clock_face.png" id="10_clock_face"]
+[ext_resource type="Texture2D" path="res://assets/scenes/hub/clock_hand_hour.png" id="11_clock_hour"]
+[ext_resource type="Texture2D" path="res://assets/scenes/hub/clock_hand_minute.png" id="12_clock_minute"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(4000, 40)
@@ -59,27 +61,39 @@ _data = {
 "bob": SubResource("Animation_door_bob")
 }
 
-[sub_resource type="Animation" id="Animation_void_spin"]
-resource_name = "spin"
-length = 60.0
+[sub_resource type="Animation" id="Animation_clock_hands"]
+resource_name = "tick"
+length = 720.0
 loop_mode = 1
-step = 0.5
+step = 1.0
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("Visual/Void:rotation")
+tracks/0/path = NodePath("ClockHands/Hour:rotation")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 60),
+"times": PackedFloat32Array(0, 720),
 "transitions": PackedFloat32Array(1, 1),
 "update": 0,
 "values": [0.0, 6.283185307179586]
 }
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ClockHands/Minute:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 720),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [0.0, 75.39822368615503]
+}
 
-[sub_resource type="AnimationLibrary" id="AnimationLibrary_void_spin"]
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_clock_hands"]
 _data = {
-"spin": SubResource("Animation_void_spin")
+"tick": SubResource("Animation_clock_hands")
 }
 
 [sub_resource type="Gradient" id="Gradient_fog"]
@@ -135,16 +149,37 @@ motion_mirroring = Vector2(1920, 0)
 position = Vector2(960, 360)
 texture = ExtResource("9_nebula")
 
-[node name="SkylineLayer" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.2, 1)
-motion_mirroring = Vector2(1920, 0)
-
-[node name="Skyline" type="Sprite2D" parent="ParallaxBackground/SkylineLayer"]
-position = Vector2(960, 470)
-texture = ExtResource("10_skyline")
-
 [node name="CanvasModulate" type="CanvasModulate" parent="."]
 color = Color(0.7, 0.7, 0.85, 1)
+
+[node name="Clock" type="Node2D" parent="."]
+position = Vector2(1100, 240)
+scale = Vector2(0.7, 0.7)
+
+[node name="Glow" type="PointLight2D" parent="Clock"]
+color = Color(0.7216, 0.5804, 0.8392, 1)
+energy = 0.4
+texture = ExtResource("6_halo")
+texture_scale = 7.0
+
+[node name="Face" type="Sprite2D" parent="Clock"]
+texture = ExtResource("10_clock_face")
+
+[node name="ClockHands" type="Node2D" parent="Clock"]
+
+[node name="Hour" type="Sprite2D" parent="Clock/ClockHands"]
+offset = Vector2(0, -86)
+texture = ExtResource("11_clock_hour")
+
+[node name="Minute" type="Sprite2D" parent="Clock/ClockHands"]
+offset = Vector2(0, -116)
+texture = ExtResource("12_clock_minute")
+
+[node name="ClockAnim" type="AnimationPlayer" parent="Clock"]
+libraries = {
+"": SubResource("AnimationLibrary_clock_hands")
+}
+autoplay = "tick"
 
 [node name="FloorVisual" type="TextureRect" parent="."]
 offset_left = -2000.0
@@ -175,9 +210,6 @@ position = Vector2(320, 280)
 [node name="Sprite" type="Sprite2D" parent="Doors/Door1/Visual"]
 texture = ExtResource("5_door_arch")
 
-[node name="Void" type="Sprite2D" parent="Doors/Door1/Visual"]
-texture = ExtResource("11_door_void")
-
 [node name="Glow" type="PointLight2D" parent="Doors/Door1/Visual"]
 color = Color(0.7216, 0.5804, 0.8392, 1)
 energy = 0.8
@@ -200,12 +232,6 @@ libraries = {
 }
 autoplay = "bob"
 
-[node name="VoidSpin" type="AnimationPlayer" parent="Doors/Door1"]
-libraries = {
-"": SubResource("AnimationLibrary_void_spin")
-}
-autoplay = "spin"
-
 [node name="Door2" type="Node2D" parent="Doors"]
 position = Vector2(640, 240)
 
@@ -213,9 +239,6 @@ position = Vector2(640, 240)
 
 [node name="Sprite" type="Sprite2D" parent="Doors/Door2/Visual"]
 texture = ExtResource("5_door_arch")
-
-[node name="Void" type="Sprite2D" parent="Doors/Door2/Visual"]
-texture = ExtResource("11_door_void")
 
 [node name="Glow" type="PointLight2D" parent="Doors/Door2/Visual"]
 color = Color(0.7216, 0.5804, 0.8392, 1)
@@ -239,12 +262,6 @@ libraries = {
 }
 autoplay = "bob"
 
-[node name="VoidSpin" type="AnimationPlayer" parent="Doors/Door2"]
-libraries = {
-"": SubResource("AnimationLibrary_void_spin")
-}
-autoplay = "spin"
-
 [node name="Door3" type="Node2D" parent="Doors"]
 position = Vector2(960, 290)
 
@@ -252,9 +269,6 @@ position = Vector2(960, 290)
 
 [node name="Sprite" type="Sprite2D" parent="Doors/Door3/Visual"]
 texture = ExtResource("5_door_arch")
-
-[node name="Void" type="Sprite2D" parent="Doors/Door3/Visual"]
-texture = ExtResource("11_door_void")
 
 [node name="Glow" type="PointLight2D" parent="Doors/Door3/Visual"]
 color = Color(0.7216, 0.5804, 0.8392, 1)
@@ -277,12 +291,6 @@ libraries = {
 "": SubResource("AnimationLibrary_door_bob")
 }
 autoplay = "bob"
-
-[node name="VoidSpin" type="AnimationPlayer" parent="Doors/Door3"]
-libraries = {
-"": SubResource("AnimationLibrary_void_spin")
-}
-autoplay = "spin"
 
 [node name="Fireflies" type="GPUParticles2D" parent="."]
 position = Vector2(640, 360)
