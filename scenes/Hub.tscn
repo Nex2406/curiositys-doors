@@ -1,18 +1,16 @@
 ; Hub — cleanup pass on Wave 2.
-;   - Parallax skyline removed; the silhouette towers read as a
-;     landscape and clashed with the cosmic Hub vibe. Only the nebula
-;     far layer remains in the ParallaxBackground.
-;   - A giant ornate clock joins the upper-right of the scene as the
-;     new focal anchor. Hands sweep at sped-up but proportional rates
-;     (minute 1 rev / 60s, hour 1 rev / 12min) via a single
-;     AnimationPlayer with one 720s looping animation.
-;   - Each door now uses a richer arch texture with a baked-in radial
-;     void interior; the per-door spinning Void Sprite2D and its
-;     VoidSpin AnimationPlayer are no longer needed and are removed.
+;   - ParallaxBackground keeps only a nebula far layer; the silhouette
+;     skyline was tried and pulled — it read as a landscape and clashed
+;     with the cosmic Hub vibe.
+;   - The giant clock from a previous pass was tried and pulled too;
+;     it didn't land tonally.
+;   - Each door uses a richer arch texture with a baked-in radial void
+;     interior, an inner rim glow, and a small carved keystone at the
+;     apex. No per-door spinning overlay; the gradient is in the art.
 ;   - Fog band, fireflies, door bob animation, door collision /
 ;     interaction wiring, and Curiosity / TouchControls instances are
 ;     unchanged.
-[gd_scene load_steps=29 format=3 uid="uid://b8h2u8b8b8h2u"]
+[gd_scene load_steps=24 format=3 uid="uid://b8h2u8b8b8h2u"]
 
 [ext_resource type="PackedScene" path="res://scenes/Curiosity.tscn" id="1_curiosity"]
 [ext_resource type="PackedScene" path="res://scenes/TouchControls.tscn" id="2_touch"]
@@ -23,9 +21,6 @@
 [ext_resource type="Script" path="res://scripts/Hub.gd" id="7_hub"]
 [ext_resource type="Texture2D" path="res://assets/effects/firefly.png" id="8_firefly"]
 [ext_resource type="Texture2D" path="res://assets/scenes/hub/nebula.png" id="9_nebula"]
-[ext_resource type="Texture2D" path="res://assets/scenes/hub/clock_face.png" id="10_clock_face"]
-[ext_resource type="Texture2D" path="res://assets/scenes/hub/clock_hand_hour.png" id="11_clock_hour"]
-[ext_resource type="Texture2D" path="res://assets/scenes/hub/clock_hand_minute.png" id="12_clock_minute"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(4000, 40)
@@ -59,41 +54,6 @@ tracks/0/keys = {
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_door_bob"]
 _data = {
 "bob": SubResource("Animation_door_bob")
-}
-
-[sub_resource type="Animation" id="Animation_clock_hands"]
-resource_name = "tick"
-length = 720.0
-loop_mode = 1
-step = 1.0
-tracks/0/type = "value"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("ClockHands/Hour:rotation")
-tracks/0/interp = 1
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"times": PackedFloat32Array(0, 720),
-"transitions": PackedFloat32Array(1, 1),
-"update": 0,
-"values": [0.0, 6.283185307179586]
-}
-tracks/1/type = "value"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("ClockHands/Minute:rotation")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"times": PackedFloat32Array(0, 720),
-"transitions": PackedFloat32Array(1, 1),
-"update": 0,
-"values": [0.0, 75.39822368615503]
-}
-
-[sub_resource type="AnimationLibrary" id="AnimationLibrary_clock_hands"]
-_data = {
-"tick": SubResource("Animation_clock_hands")
 }
 
 [sub_resource type="Gradient" id="Gradient_fog"]
@@ -151,35 +111,6 @@ texture = ExtResource("9_nebula")
 
 [node name="CanvasModulate" type="CanvasModulate" parent="."]
 color = Color(0.7, 0.7, 0.85, 1)
-
-[node name="Clock" type="Node2D" parent="."]
-position = Vector2(1100, 240)
-scale = Vector2(0.7, 0.7)
-
-[node name="Glow" type="PointLight2D" parent="Clock"]
-color = Color(0.7216, 0.5804, 0.8392, 1)
-energy = 0.4
-texture = ExtResource("6_halo")
-texture_scale = 7.0
-
-[node name="Face" type="Sprite2D" parent="Clock"]
-texture = ExtResource("10_clock_face")
-
-[node name="ClockHands" type="Node2D" parent="Clock"]
-
-[node name="Hour" type="Sprite2D" parent="Clock/ClockHands"]
-offset = Vector2(0, -86)
-texture = ExtResource("11_clock_hour")
-
-[node name="Minute" type="Sprite2D" parent="Clock/ClockHands"]
-offset = Vector2(0, -116)
-texture = ExtResource("12_clock_minute")
-
-[node name="ClockAnim" type="AnimationPlayer" parent="Clock"]
-libraries = {
-"": SubResource("AnimationLibrary_clock_hands")
-}
-autoplay = "tick"
 
 [node name="FloorVisual" type="TextureRect" parent="."]
 offset_left = -2000.0
