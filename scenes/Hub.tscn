@@ -1,10 +1,17 @@
-; Hub — Wave 1 of 5 (skeleton). Procedural cosmic gradient sky,
-; tiled stone floor, three placeholder arched doors floating mid-air
-; with soft purple glows and a gentle vertical bob. No painted backdrop;
-; the original concept art is archived at assets/_reference/hub_concept.png
-; for inspiration only. Parallax, particles, lore, and real door art are
-; future waves.
-[gd_scene load_steps=24 format=3 uid="uid://b8h2u8b8b8h2u"]
+; Hub — Wave 2 atmospheric upgrade. Adds:
+; - ParallaxBackground with two layers: a deep cosmic nebula far layer
+;   (scroll 0.05) and a silhouette skyline mid layer (scroll 0.2). Both
+;   tile via motion_mirroring so the camera can roam the full Hub width
+;   without seams.
+; - A semi-transparent fog band across the horizon line, softening the
+;   sky-floor seam so the floor doesn't read as cut-out.
+; - A slow-rotating void Sprite2D inside each door's arch interior. One
+;   shared AnimationPlayer animation drives all three voids at one
+;   rotation per 60s (relative track path "Visual/Void:rotation").
+; Wave 1 skeleton (procedural sky gradient, three placeholder doors,
+; firefly particles) remains; the gradient sky is removed in favor of
+; the parallax nebula since the nebula carries its own vertical fade.
+[gd_scene load_steps=30 format=3 uid="uid://b8h2u8b8b8h2u"]
 
 [ext_resource type="PackedScene" path="res://scenes/Curiosity.tscn" id="1_curiosity"]
 [ext_resource type="PackedScene" path="res://scenes/TouchControls.tscn" id="2_touch"]
@@ -14,17 +21,9 @@
 [ext_resource type="Texture2D" path="res://assets/effects/lantern_halo.png" id="6_halo"]
 [ext_resource type="Script" path="res://scripts/Hub.gd" id="7_hub"]
 [ext_resource type="Texture2D" path="res://assets/effects/firefly.png" id="8_firefly"]
-
-[sub_resource type="Gradient" id="Gradient_sky"]
-offsets = PackedFloat32Array(0, 0.5, 1)
-colors = PackedColorArray(0.039, 0.024, 0.071, 1, 0.102, 0.059, 0.18, 1, 0.027, 0.012, 0.063, 1)
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_sky"]
-gradient = SubResource("Gradient_sky")
-width = 4
-height = 1080
-fill_from = Vector2(0, 0)
-fill_to = Vector2(0, 1)
+[ext_resource type="Texture2D" path="res://assets/scenes/hub/nebula.png" id="9_nebula"]
+[ext_resource type="Texture2D" path="res://assets/scenes/hub/skyline.png" id="10_skyline"]
+[ext_resource type="Texture2D" path="res://assets/scenes/hub/door_void.png" id="11_door_void"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(4000, 40)
@@ -60,6 +59,40 @@ _data = {
 "bob": SubResource("Animation_door_bob")
 }
 
+[sub_resource type="Animation" id="Animation_void_spin"]
+resource_name = "spin"
+length = 60.0
+loop_mode = 1
+step = 0.5
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Visual/Void:rotation")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 60),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [0.0, 6.283185307179586]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_void_spin"]
+_data = {
+"spin": SubResource("Animation_void_spin")
+}
+
+[sub_resource type="Gradient" id="Gradient_fog"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(0.353, 0.227, 0.478, 0, 0.353, 0.227, 0.478, 0.3, 0.353, 0.227, 0.478, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_fog"]
+gradient = SubResource("Gradient_fog")
+width = 4
+height = 100
+fill_from = Vector2(0, 0)
+fill_to = Vector2(0, 1)
+
 [sub_resource type="Gradient" id="Gradient_firefly_alpha"]
 offsets = PackedFloat32Array(0, 0.2, 0.7, 1)
 colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0)
@@ -92,10 +125,23 @@ color_ramp = SubResource("GradientTexture1D_firefly_alpha")
 [node name="Hub" type="Node2D"]
 script = ExtResource("7_hub")
 
-[node name="Sky" type="Sprite2D" parent="."]
-position = Vector2(640, 360)
-scale = Vector2(1000, 1)
-texture = SubResource("GradientTexture2D_sky")
+[node name="ParallaxBackground" type="ParallaxBackground" parent="."]
+
+[node name="NebulaLayer" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.05, 1)
+motion_mirroring = Vector2(1920, 0)
+
+[node name="Nebula" type="Sprite2D" parent="ParallaxBackground/NebulaLayer"]
+position = Vector2(960, 360)
+texture = ExtResource("9_nebula")
+
+[node name="SkylineLayer" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.2, 1)
+motion_mirroring = Vector2(1920, 0)
+
+[node name="Skyline" type="Sprite2D" parent="ParallaxBackground/SkylineLayer"]
+position = Vector2(960, 470)
+texture = ExtResource("10_skyline")
 
 [node name="CanvasModulate" type="CanvasModulate" parent="."]
 color = Color(0.7, 0.7, 0.85, 1)
@@ -114,6 +160,11 @@ position = Vector2(640, 640)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Floor"]
 shape = SubResource("RectangleShape2D_floor")
 
+[node name="FogBand" type="Sprite2D" parent="."]
+position = Vector2(640, 630)
+scale = Vector2(4000, 1)
+texture = SubResource("GradientTexture2D_fog")
+
 [node name="Doors" type="Node2D" parent="."]
 
 [node name="Door1" type="Node2D" parent="Doors"]
@@ -123,6 +174,9 @@ position = Vector2(320, 280)
 
 [node name="Sprite" type="Sprite2D" parent="Doors/Door1/Visual"]
 texture = ExtResource("5_door_arch")
+
+[node name="Void" type="Sprite2D" parent="Doors/Door1/Visual"]
+texture = ExtResource("11_door_void")
 
 [node name="Glow" type="PointLight2D" parent="Doors/Door1/Visual"]
 color = Color(0.7216, 0.5804, 0.8392, 1)
@@ -146,6 +200,12 @@ libraries = {
 }
 autoplay = "bob"
 
+[node name="VoidSpin" type="AnimationPlayer" parent="Doors/Door1"]
+libraries = {
+"": SubResource("AnimationLibrary_void_spin")
+}
+autoplay = "spin"
+
 [node name="Door2" type="Node2D" parent="Doors"]
 position = Vector2(640, 240)
 
@@ -153,6 +213,9 @@ position = Vector2(640, 240)
 
 [node name="Sprite" type="Sprite2D" parent="Doors/Door2/Visual"]
 texture = ExtResource("5_door_arch")
+
+[node name="Void" type="Sprite2D" parent="Doors/Door2/Visual"]
+texture = ExtResource("11_door_void")
 
 [node name="Glow" type="PointLight2D" parent="Doors/Door2/Visual"]
 color = Color(0.7216, 0.5804, 0.8392, 1)
@@ -176,6 +239,12 @@ libraries = {
 }
 autoplay = "bob"
 
+[node name="VoidSpin" type="AnimationPlayer" parent="Doors/Door2"]
+libraries = {
+"": SubResource("AnimationLibrary_void_spin")
+}
+autoplay = "spin"
+
 [node name="Door3" type="Node2D" parent="Doors"]
 position = Vector2(960, 290)
 
@@ -183,6 +252,9 @@ position = Vector2(960, 290)
 
 [node name="Sprite" type="Sprite2D" parent="Doors/Door3/Visual"]
 texture = ExtResource("5_door_arch")
+
+[node name="Void" type="Sprite2D" parent="Doors/Door3/Visual"]
+texture = ExtResource("11_door_void")
 
 [node name="Glow" type="PointLight2D" parent="Doors/Door3/Visual"]
 color = Color(0.7216, 0.5804, 0.8392, 1)
@@ -205,6 +277,12 @@ libraries = {
 "": SubResource("AnimationLibrary_door_bob")
 }
 autoplay = "bob"
+
+[node name="VoidSpin" type="AnimationPlayer" parent="Doors/Door3"]
+libraries = {
+"": SubResource("AnimationLibrary_void_spin")
+}
+autoplay = "spin"
 
 [node name="Fireflies" type="GPUParticles2D" parent="."]
 position = Vector2(640, 360)
