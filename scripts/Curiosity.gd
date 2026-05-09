@@ -21,27 +21,45 @@ const MOVE_EPSILON: float = 8.0
 @onready var visual: AnimatedSprite2D = $Visual
 @onready var lantern: PointLight2D = $Lantern
 @onready var flame: Sprite2D = $LanternFlame
+@onready var eye_left: Sprite2D = $EyeLeft
+@onready var eye_right: Sprite2D = $EyeRight
 
 const FLAME_FLICKER_AMPLITUDE: float = 0.05
 const FLAME_FLICKER_PERIOD: float = 0.4
+# Eye orbs breathe at a slower, calmer rhythm than the lantern flame.
+# Left/right run π/3 out of phase so the pair feels alive but not jittery.
+const EYE_FLICKER_AMPLITUDE: float = 0.05
+const EYE_FLICKER_PERIOD: float = 1.2
+const EYE_PHASE_OFFSET: float = PI / 3.0
 
 # Source art faces LEFT. Default unflipped = facing left.
 var _state: State = State.IDLE
 var _facing_right: bool = false
 var _lantern_offset_x: float
+var _eye_left_offset_x: float
+var _eye_right_offset_x: float
 var _lantern_tween: Tween
 var _was_airborne: bool = false
 var _flame_time: float = 0.0
 var _flame_base_alpha: float = 1.0
+var _eye_time: float = 0.0
+var _eye_left_base_alpha: float = 1.0
+var _eye_right_base_alpha: float = 1.0
 
 
 func _ready() -> void:
 	_lantern_offset_x = abs(lantern.position.x)
+	_eye_left_offset_x = abs(eye_left.position.x)
+	_eye_right_offset_x = abs(eye_right.position.x)
 	visual.flip_h = _facing_right
-	var anchor_x: float = _lantern_offset_x if _facing_right else -_lantern_offset_x
-	lantern.position.x = anchor_x
-	flame.position.x = anchor_x
+	var sign_x: float = 1.0 if _facing_right else -1.0
+	lantern.position.x = sign_x * _lantern_offset_x
+	flame.position.x = sign_x * _lantern_offset_x
+	eye_left.position.x = sign_x * _eye_left_offset_x
+	eye_right.position.x = sign_x * _eye_right_offset_x
 	_flame_base_alpha = flame.modulate.a
+	_eye_left_base_alpha = eye_left.modulate.a
+	_eye_right_base_alpha = eye_right.modulate.a
 	visual.animation_finished.connect(_on_animation_finished)
 	visual.play(&"idle")
 
@@ -50,6 +68,12 @@ func _process(delta: float) -> void:
 	_flame_time += delta
 	var flicker: float = sin(_flame_time * TAU / FLAME_FLICKER_PERIOD) * FLAME_FLICKER_AMPLITUDE
 	flame.modulate.a = clampf(_flame_base_alpha + flicker, 0.0, 1.0)
+	_eye_time += delta
+	var eye_phase: float = _eye_time * TAU / EYE_FLICKER_PERIOD
+	var l_flicker: float = sin(eye_phase) * EYE_FLICKER_AMPLITUDE
+	var r_flicker: float = sin(eye_phase + EYE_PHASE_OFFSET) * EYE_FLICKER_AMPLITUDE
+	eye_left.modulate.a = clampf(_eye_left_base_alpha + l_flicker, 0.0, 1.0)
+	eye_right.modulate.a = clampf(_eye_right_base_alpha + r_flicker, 0.0, 1.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -129,15 +153,23 @@ func _on_animation_finished() -> void:
 
 
 func _apply_facing() -> void:
-	# Source art faces LEFT, lantern is in front of the body (screen-left).
-	# Press LEFT  -> faces left  -> flip_h = false, lantern at -offset (left of body)
-	# Press RIGHT -> faces right -> flip_h = true,  lantern at +offset (right of body)
+	# Source art faces LEFT, lantern + eye orbs sit on the screen-left side
+	# of the body by default. Pressing RIGHT mirrors the visual AND flips the
+	# x-offset of every sibling sprite that needs to follow the head/cloak —
+	# the lantern body, its flame, and both eye orbs.
 	visual.flip_h = _facing_right
-	var target_x: float = _lantern_offset_x if _facing_right else -_lantern_offset_x
+	var sign_x: float = 1.0 if _facing_right else -1.0
+	var lantern_target_x: float = sign_x * _lantern_offset_x
+	var eye_left_target_x: float = sign_x * _eye_left_offset_x
+	var eye_right_target_x: float = sign_x * _eye_right_offset_x
 	if _lantern_tween and _lantern_tween.is_running():
 		_lantern_tween.kill()
 	_lantern_tween = create_tween().set_parallel(true)
-	_lantern_tween.tween_property(lantern, "position:x", target_x, lantern_sway_time) \
+	_lantern_tween.tween_property(lantern, "position:x", lantern_target_x, lantern_sway_time) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	_lantern_tween.tween_property(flame, "position:x", target_x, lantern_sway_time) \
+	_lantern_tween.tween_property(flame, "position:x", lantern_target_x, lantern_sway_time) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_lantern_tween.tween_property(eye_left, "position:x", eye_left_target_x, lantern_sway_time) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_lantern_tween.tween_property(eye_right, "position:x", eye_right_target_x, lantern_sway_time) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
