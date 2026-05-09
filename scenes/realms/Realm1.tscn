@@ -1,0 +1,151 @@
+; Realm 1 — caves. Hand-authored scene; level layout and TileSet are
+; built at runtime in scripts/Realm1.gd. Parallax layers stack from
+; deepest (layer 7, flat fog backdrop) to closest (layer 0, full painted
+; cave detail). Note: the source asset pack numbers files such that 0 is
+; the most-detailed/foreground layer and 7 is the flat backdrop tint —
+; we order the layer tree by visual depth, not file index.
+[gd_scene load_steps=22 format=3 uid="uid://crealm1caves001"]
+
+[ext_resource type="PackedScene" path="res://scenes/Curiosity.tscn" id="1_curiosity"]
+[ext_resource type="PackedScene" path="res://scenes/TouchControls.tscn" id="2_touch"]
+[ext_resource type="Script" path="res://scripts/Realm1.gd" id="3_realm1"]
+[ext_resource type="Script" path="res://scripts/Door.gd" id="4_door"]
+[ext_resource type="Texture2D" path="res://assets/realms/realm1_caves/parallax/0.png" id="5_p0"]
+[ext_resource type="Texture2D" path="res://assets/realms/realm1_caves/parallax/1.png" id="6_p1"]
+[ext_resource type="Texture2D" path="res://assets/realms/realm1_caves/parallax/2.png" id="7_p2"]
+[ext_resource type="Texture2D" path="res://assets/realms/realm1_caves/parallax/3.png" id="8_p3"]
+[ext_resource type="Texture2D" path="res://assets/realms/realm1_caves/parallax/4.png" id="9_p4"]
+[ext_resource type="Texture2D" path="res://assets/realms/realm1_caves/parallax/5.png" id="10_p5"]
+[ext_resource type="Texture2D" path="res://assets/realms/realm1_caves/parallax/6.png" id="11_p6"]
+[ext_resource type="Texture2D" path="res://assets/realms/realm1_caves/parallax/7.png" id="12_p7"]
+[ext_resource type="Texture2D" path="res://assets/scenes/hub/door_arch.png" id="13_door_arch"]
+[ext_resource type="Texture2D" path="res://assets/effects/lantern_halo.png" id="14_halo"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_exitdoor"]
+size = Vector2(120, 430)
+
+[node name="Realm1" type="Node2D"]
+script = ExtResource("3_realm1")
+
+[node name="ParallaxBackground" type="ParallaxBackground" parent="."]
+
+[node name="L7" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.05, 0)
+motion_mirroring = Vector2(1280, 0)
+
+[node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L7"]
+texture_filter = 1
+centered = false
+texture = ExtResource("12_p7")
+scale = Vector2(3.334, 3.334)
+
+[node name="L6" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.1, 0)
+motion_mirroring = Vector2(1280, 0)
+
+[node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L6"]
+texture_filter = 1
+centered = false
+texture = ExtResource("11_p6")
+scale = Vector2(3.334, 3.334)
+
+[node name="L5" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.2, 0)
+motion_mirroring = Vector2(1280, 0)
+
+[node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L5"]
+texture_filter = 1
+centered = false
+texture = ExtResource("10_p5")
+scale = Vector2(3.334, 3.334)
+
+[node name="L4" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.35, 0)
+motion_mirroring = Vector2(1280, 0)
+
+[node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L4"]
+texture_filter = 1
+centered = false
+texture = ExtResource("9_p4")
+scale = Vector2(3.334, 3.334)
+
+[node name="L3" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.5, 0)
+motion_mirroring = Vector2(1280, 0)
+
+[node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L3"]
+texture_filter = 1
+centered = false
+texture = ExtResource("8_p3")
+scale = Vector2(3.334, 3.334)
+
+[node name="L2" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.65, 0)
+motion_mirroring = Vector2(1280, 0)
+
+[node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L2"]
+texture_filter = 1
+centered = false
+texture = ExtResource("7_p2")
+scale = Vector2(3.334, 3.334)
+
+[node name="L1" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.8, 0)
+motion_mirroring = Vector2(1280, 0)
+
+[node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L1"]
+texture_filter = 1
+centered = false
+texture = ExtResource("6_p1")
+scale = Vector2(3.334, 3.334)
+
+[node name="L0" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.95, 0)
+motion_mirroring = Vector2(1280, 0)
+
+[node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L0"]
+texture_filter = 1
+centered = false
+texture = ExtResource("5_p0")
+scale = Vector2(3.334, 3.334)
+
+[node name="CanvasModulate" type="CanvasModulate" parent="."]
+color = Color(0.6, 0.6, 0.7, 1)
+
+[node name="World" type="Node2D" parent="."]
+scale = Vector2(2, 2)
+
+[node name="Solids" type="TileMapLayer" parent="World"]
+
+[node name="Decor" type="TileMapLayer" parent="World"]
+
+[node name="Curiosity" parent="." instance=ExtResource("1_curiosity")]
+position = Vector2(128, 468)
+scale = Vector2(0.5, 0.5)
+
+[node name="ExitDoor" type="Node2D" parent="."]
+position = Vector2(5888, 356)
+
+[node name="Visual" type="Node2D" parent="ExitDoor"]
+
+[node name="Sprite" type="Sprite2D" parent="ExitDoor/Visual"]
+texture = ExtResource("13_door_arch")
+
+[node name="Glow" type="PointLight2D" parent="ExitDoor/Visual"]
+color = Color(0.95, 0.78, 0.45, 1)
+energy = 1.1
+texture = ExtResource("14_halo")
+texture_scale = 1.6
+
+[node name="DoorArea" type="Area2D" parent="ExitDoor"]
+script = ExtResource("4_door")
+target_realm = "hub"
+door_id = "Realm1Exit"
+prompt_offset = Vector2(0, -110)
+prompt_text = "[Y] Return"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ExitDoor/DoorArea"]
+position = Vector2(0, 125)
+shape = SubResource("RectangleShape2D_exitdoor")
+
+[node name="TouchControls" parent="." instance=ExtResource("2_touch")]

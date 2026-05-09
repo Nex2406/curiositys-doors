@@ -30,4 +30,8 @@ logs/
 # Python / tooling caches occasionally left by scripts
 __pycache__/
 
+# Inspection / sampling debug outputs from scripts/inspect_*.py & sample_*.py
+scripts/_*.json
+scripts/_*.png
+
 .claude/

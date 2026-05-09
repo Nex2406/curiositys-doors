@@ -1,10 +1,12 @@
 extends Area2D
 
-# Reusable Hub door. Detects when Curiosity overlaps, shows a floating
+# Reusable door. Detects when Curiosity overlaps, shows a floating
 # "[Y] Enter" prompt above the painted door, and exposes trigger() for
-# Hub.gd to call when the central "interact" dispatch fires. Real scene
-# transitions land in a future PR; for now trigger() flashes the glow
-# and swaps the prompt so the player can SEE that Y registered.
+# Hub.gd (or a realm controller) to call when the central "interact"
+# dispatch fires. trigger() flashes the glow + swaps the prompt as
+# immediate feedback, then routes through the Transition autoload to
+# fade-and-change scene. Doors whose target_realm has no resolved scene
+# (the not-yet-built realms) just print and stay open for retry.
 
 signal near_door(door)
 signal left_door(door)
@@ -22,12 +24,14 @@ const _GLOW_FLASH_ENERGY: float = 2.6
 const _GLOW_FLASH_TIME: float = 0.45
 const _PROMPT_FLASH_TEXT: String = "..."
 const _PROMPT_FLASH_TIME: float = 0.6
+const _TRIGGER_TO_FADE_DELAY: float = 0.3
 
 var _player_inside: bool = false
 var _prompt: Label
 var _glow: PointLight2D
 var _glow_base_energy: float = 0.8
 var _flash_tween: Tween
+var _triggered: bool = false
 
 
 func _ready() -> void:
@@ -97,8 +101,29 @@ func trigger() -> void:
 	# Hub.gd calls this once per "interact" press while the player is in range.
 	# Print survives for editor/devtools observers; the visible flash is what
 	# the live-site player actually sees.
+	if _triggered:
+		return
 	print("[Door] Entering ", target_realm, " via ", door_id)
 	_flash_feedback()
+	var path: String = _resolve_scene_path(target_realm)
+	if path == "":
+		print("[Door] Realm not yet built: ", target_realm)
+		return
+	_triggered = true
+	# Realm-bound trips remember which door was used so the hub can respawn
+	# Curiosity at the same door on return. Hub-bound trips leave it intact.
+	if target_realm.begins_with("realm_"):
+		Transition.last_door_id = door_id
+	# Hold the flash briefly so the player sees the Y register before fade.
+	await get_tree().create_timer(_TRIGGER_TO_FADE_DELAY).timeout
+	await Transition.transition_to(path)
+
+
+static func _resolve_scene_path(target: String) -> String:
+	match target:
+		"realm_1": return "res://scenes/realms/Realm1.tscn"
+		"hub": return "res://scenes/Hub.tscn"
+		_: return ""
 
 
 func _flash_feedback() -> void:
