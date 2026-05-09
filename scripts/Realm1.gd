@@ -1,75 +1,118 @@
 extends Node2D
 
-# Realm 1 — caves. A linear left-to-right platforming level built on top of
-# mainlev_build.png (32x32 atlas, 32 cols x 32 rows). The TileSet is built
-# at runtime: every non-empty 32x32 cell in the source becomes an atlas
-# tile, but only a curated subset of coordinates carry collision shapes
-# (the brick floor / wood platforms — see SOLID_TILES). Decorative tiles
-# like ceiling stalactites end up on a separate non-colliding TileMapLayer.
+# Realm 1 — caves. Linear left-to-right platforming. Geometry sits ON TOP
+# of an 8-layer parallax cave backdrop that fills the viewport at every
+# camera position (deepest layer is fully opaque, every layer mirrors
+# horizontally).
 #
-# Why runtime rather than a pre-baked .tres: it keeps the tile palette
-# discoverable (any new coord we want to use can be added to a constant
-# rather than re-exported), and it avoids hand-authoring a 472-tile
-# resource we'd never visually edit anyway. The cost is a ~50ms _ready()
-# scan; for one level on scene-change that's invisible.
+# Tile palette (audited via scripts/inspect_tileset.py density pass —
+# every coord below is a 100% / >95% opaque cell on mainlev_build.png):
+#
+#   GROUND   (solid floor, dark rocky cave variants)
+#     (7,23)  (8,23)  (9,23)  (7,24)  (8,24)
+#   BRICK    (solid wall, brick texture)
+#     (26,16) (27,16) (30,16)
+#   WOOD     (solid wooden plank platform — used in 3-tile-wide runs)
+#     (23,1)  left-end with bevel
+#     (25,1)  middle with X-brace
+#     (28,1)  right-end with bevel
+#   CEIL     (solid ceiling, stalactite hangs)
+#     (13,14) (15,14)
+#   DECOR    (no collision)
+#     (20,24) (20,25)  red glowing gem cluster
+#     (7,3)            stalactite cluster
+#
+# The TileSet is built at runtime: every non-empty 32x32 cell on the
+# source sheet becomes an atlas tile, but only the curated SOLID_TILES
+# coords above carry collision polygons. Decorative tiles end up on a
+# separate non-colliding TileMapLayer.
 
 const SOURCE_TEXTURE: Texture2D = preload("res://assets/realms/realm1_caves/mainlev_build.png")
 const ATLAS_TILE_SIZE: Vector2i = Vector2i(32, 32)
 
-# Atlas coords picked from the source sheet (see scripts/sample_tiles.py for
-# the visual sample sheet that informed these picks).
-const T_BRICK_A: Vector2i = Vector2i(26, 12)   # primary brick floor / wall
-const T_BRICK_B: Vector2i = Vector2i(26, 14)   # brick variant (reduces tiling)
-const T_BRICK_C: Vector2i = Vector2i(26, 16)   # brick variant (sub-floor fill)
-const T_WOOD_L:  Vector2i = Vector2i(28, 1)    # wooden plank, left half
-const T_WOOD_R:  Vector2i = Vector2i(29, 1)    # wooden plank, right half
-const T_CEIL_A:  Vector2i = Vector2i(11, 11)   # stalactite ceiling decor
-const T_CEIL_B:  Vector2i = Vector2i(12, 11)   # stalactite ceiling decor variant
+# Atlas coords — see header comment for source.
+const T_GROUND_A: Vector2i = Vector2i(7, 23)
+const T_GROUND_B: Vector2i = Vector2i(8, 23)
+const T_GROUND_C: Vector2i = Vector2i(9, 23)
+const T_GROUND_D: Vector2i = Vector2i(7, 24)
+const T_GROUND_E: Vector2i = Vector2i(8, 24)
+const T_BRICK_A:  Vector2i = Vector2i(26, 16)
+const T_BRICK_B:  Vector2i = Vector2i(27, 16)
+const T_BRICK_C:  Vector2i = Vector2i(30, 16)
+const T_WOOD_L:   Vector2i = Vector2i(23, 1)   # plank left-end (left overhang bevel)
+const T_WOOD_M:   Vector2i = Vector2i(25, 1)   # plank middle with X-brace
+const T_WOOD_R:   Vector2i = Vector2i(28, 1)   # plank right-end (right overhang bevel)
+const T_CEIL_A:   Vector2i = Vector2i(13, 14)
+const T_CEIL_B:   Vector2i = Vector2i(15, 14)
+const T_DECOR_GEM_A: Vector2i = Vector2i(20, 24)
+const T_DECOR_GEM_B: Vector2i = Vector2i(20, 25)
+const T_DECOR_STAL:  Vector2i = Vector2i(7, 3)
 
-const SOLID_TILES: Array[Vector2i] = [T_BRICK_A, T_BRICK_B, T_BRICK_C, T_WOOD_L, T_WOOD_R]
+const GROUND_VARIANTS: Array[Vector2i] = [T_GROUND_A, T_GROUND_B, T_GROUND_C, T_GROUND_D, T_GROUND_E]
+const BRICK_VARIANTS: Array[Vector2i] = [T_BRICK_A, T_BRICK_B, T_BRICK_C]
+const SOLID_TILES: Array[Vector2i] = [
+	T_GROUND_A, T_GROUND_B, T_GROUND_C, T_GROUND_D, T_GROUND_E,
+	T_BRICK_A, T_BRICK_B, T_BRICK_C,
+	T_WOOD_L, T_WOOD_M, T_WOOD_R,
+	T_CEIL_A, T_CEIL_B,
+]
 
-# Level dimensions. With TileMapLayers parented to a Node2D scaled (2, 2)
-# the visual cell is 64x64. 96 tiles wide -> 6144 world pixels.
-const LEVEL_WIDTH_TILES: int = 96
-const LEVEL_HEIGHT_TILES: int = 14
-const FLOOR_Y: int = 9                 # tile row of the playable floor surface
-const SUBFLOOR_DEPTH: int = 4          # how many rows under FLOOR_Y to fill
-
-# Visual tile size after the parent scale-2 transform.
+# World scale: parent Node2D scales TileMapLayers 2x so visual cells
+# read as 64x64. Level extents are kept in tile coords below.
 const VISUAL_TILE: int = 64
 
-# Floor gaps (tile_x_start inclusive, tile_x_end exclusive). Curiosity must
-# jump these. Widths are in source-tile units; multiply by VISUAL_TILE for
-# pixel width. Default jump arc clears ~3 tiles comfortably; gap 3 is the
-# stretch goal that needs a bridge platform.
+# Level dimensions. 96 tiles wide x 64 = 6144 world px, just past the
+# requested ~6000. Floor sits at tile_y = 9 so its top edge lands at
+# world y = 576 (matches the spec's "floor y around 550-720").
+const LEVEL_WIDTH_TILES: int = 96
+const FLOOR_Y: int = 9
+const SUBFLOOR_DEPTH: int = 3   # rows below the floor surface (out-of-view fill)
+
+# Reachability note: jump_velocity=-240, gravity=350 → ~82px peak. From
+# the floor (y=9) Curiosity can land on tile_y=8; from y=8 she reaches
+# y=7; etc. So multi-tier platforms must be staircased one tile at a
+# time.
+
+# Floor gaps Curiosity must jump. [tile_x_start_inclusive, tile_x_end_exclusive].
 const FLOOR_GAPS: Array = [
-	[14, 17],   # 3-tile gap, easy
-	[28, 32],   # 4-tile gap, medium
-	[46, 51],   # 5-tile gap, requires the platform at x=48
-	[66, 70],   # 4-tile gap
-	[80, 83],   # 3-tile gap, ends in a high-step
+	[15, 18],   # 3-tile gap, easy
+	[33, 37],   # 4-tile gap, medium
+	[50, 55],   # 5-tile gap, bridged by a platform at y=8
+	[72, 75],   # 3-tile gap, easy
 ]
 
-# Aerial wooden platforms: [x_left, x_right, y]. Two-tile wide (left + right
-# halves of the plank art). Y is in tile coords with 0 = top.
+# Floating platforms — wooden planks. [tile_x_left, tile_x_right_inclusive, tile_y].
+# 10 platforms total; chain at x=25-30 climbs y=8 → 7 → 6 ; chain at
+# x=63-66 ascends y=7 → 6.
 const PLATFORMS: Array = [
-	[18, 19, 7],
-	[22, 23, 6],
-	[36, 37, 7],
-	[48, 49, 7],   # bridges the wide gap
-	[55, 56, 5],   # high jump up
-	[60, 61, 7],
-	[74, 75, 7],
-	[88, 89, 6],
+	[10, 12, 8],
+	[22, 24, 8],
+	[25, 27, 7],
+	[28, 30, 6],
+	[40, 42, 8],
+	[51, 53, 8],   # bridges floor gap 3
+	[60, 62, 8],
+	[63, 65, 7],
+	[78, 80, 8],
+	[82, 84, 7],   # chained from the y=8 platform — 2-tile gap clears under jump
 ]
 
-# Walls (vertical brick segments) for visual cap at the level bookends and
-# a couple of mid-level chokes. [x, y_start, y_end_exclusive].
+# Bookend brick walls — purely visual, frame the level.
+# [tile_x, tile_y_start_inclusive, tile_y_end_exclusive].
 const WALLS: Array = [
-	[0, 0, FLOOR_Y],            # left bookend
-	[LEVEL_WIDTH_TILES - 1, 0, FLOOR_Y],   # right bookend
-	[42, FLOOR_Y - 4, FLOOR_Y],    # mid-level pillar
+	[0, 5, 9],
+	[LEVEL_WIDTH_TILES - 1, 5, 9],
 ]
+
+# Solid ceiling tiles — overhead at tile_y=0 across the level.
+const CEILING_RUNS: Array = [
+	[0, LEVEL_WIDTH_TILES],   # one run, full level width
+]
+
+# Decorative ceiling stalactites at tile_y=1, sparse.
+const DECOR_STAL_X: Array = [4, 11, 19, 26, 35, 44, 53, 61, 70, 78, 87]
+# Decorative red gem clusters on the ground at tile_y=8 — anchor moments.
+const DECOR_GEM_X: Array = [7, 38, 67]
 
 const SPAWN_TILE: Vector2i = Vector2i(2, FLOOR_Y - 1)
 const EXIT_DOOR_TILE: Vector2i = Vector2i(LEVEL_WIDTH_TILES - 4, FLOOR_Y - 1)
@@ -80,9 +123,9 @@ const EXIT_DOOR_TILE: Vector2i = Vector2i(LEVEL_WIDTH_TILES - 4, FLOOR_Y - 1)
 
 
 func _ready() -> void:
-	var tile_set: TileSet = _build_tileset()
-	_solids.tile_set = tile_set
-	_decor.tile_set = tile_set
+	var ts: TileSet = _build_tileset()
+	_solids.tile_set = ts
+	_decor.tile_set = ts
 	_paint_solids()
 	_paint_decor()
 	_position_curiosity()
@@ -150,32 +193,49 @@ func _attach_full_collision(src: TileSetAtlasSource, coord: Vector2i, phys_layer
 
 
 func _paint_solids() -> void:
-	# Floor strip + sub-floor fill, with gaps cut out
+	# Floor strip + sub-floor fill, with gaps cut out.
 	for x in range(LEVEL_WIDTH_TILES):
 		if _x_in_gap(x):
 			continue
-		var top_coord: Vector2i = T_BRICK_A if (x % 6) < 4 else T_BRICK_B
+		var top_coord: Vector2i = GROUND_VARIANTS[x % GROUND_VARIANTS.size()]
 		_solids.set_cell(Vector2i(x, FLOOR_Y), 0, top_coord)
+		# Sub-floor fill — keeps the cave from looking like a floating ribbon.
 		for d in range(1, SUBFLOOR_DEPTH + 1):
-			_solids.set_cell(Vector2i(x, FLOOR_Y + d), 0, T_BRICK_C)
+			var sub_coord: Vector2i = GROUND_VARIANTS[(x + d) % GROUND_VARIANTS.size()]
+			_solids.set_cell(Vector2i(x, FLOOR_Y + d), 0, sub_coord)
 
+	# Floating wooden platforms — left-end / middle (with X-brace) / right-end.
 	for p in PLATFORMS:
-		_solids.set_cell(Vector2i(p[0], p[2]), 0, T_WOOD_L)
-		_solids.set_cell(Vector2i(p[1], p[2]), 0, T_WOOD_R)
+		var px_left: int = int(p[0])
+		var px_right: int = int(p[1])
+		var py: int = int(p[2])
+		_solids.set_cell(Vector2i(px_left, py), 0, T_WOOD_L)
+		for mx in range(px_left + 1, px_right):
+			_solids.set_cell(Vector2i(mx, py), 0, T_WOOD_M)
+		_solids.set_cell(Vector2i(px_right, py), 0, T_WOOD_R)
 
+	# Bookend brick walls.
 	for w in WALLS:
-		var wx: int = w[0]
-		for wy in range(w[1], w[2]):
-			var brick: Vector2i = T_BRICK_A if (wy % 2) == 0 else T_BRICK_B
+		var wx: int = int(w[0])
+		for wy in range(int(w[1]), int(w[2])):
+			var brick: Vector2i = BRICK_VARIANTS[wy % BRICK_VARIANTS.size()]
 			_solids.set_cell(Vector2i(wx, wy), 0, brick)
+
+	# Solid ceiling at tile_y = 0 across the level — frames the play area
+	# overhead and blocks any future high-jump glitches from leaving frame.
+	for run in CEILING_RUNS:
+		for cx in range(int(run[0]), int(run[1])):
+			var ceil_coord: Vector2i = T_CEIL_A if (cx % 2) == 0 else T_CEIL_B
+			_solids.set_cell(Vector2i(cx, 0), 0, ceil_coord)
 
 
 func _paint_decor() -> void:
-	# Stalactite ceiling specks every few tiles, alternating variants. No
-	# collision — Decor's TileMapLayer just doesn't read the physics layer.
-	for x in range(2, LEVEL_WIDTH_TILES - 2, 4):
-		var coord: Vector2i = T_CEIL_A if ((x / 4) % 2) == 0 else T_CEIL_B
-		_decor.set_cell(Vector2i(x, 1), 0, coord)
+	for x in DECOR_STAL_X:
+		_decor.set_cell(Vector2i(int(x), 1), 0, T_DECOR_STAL)
+	for x in DECOR_GEM_X:
+		# Anchor gems just below the floor surface line for a glow accent.
+		_decor.set_cell(Vector2i(int(x), FLOOR_Y - 1), 0, T_DECOR_GEM_A)
+		_decor.set_cell(Vector2i(int(x), FLOOR_Y), 0, T_DECOR_GEM_B)
 
 
 func _x_in_gap(x: int) -> bool:
@@ -187,9 +247,9 @@ func _x_in_gap(x: int) -> bool:
 
 func _position_curiosity() -> void:
 	var floor_top_world: float = float(FLOOR_Y) * float(VISUAL_TILE)
-	# Curiosity's collision rect (88x432 at 0.5 scale) -> half-height 108.
+	# Curiosity collision rect = 88x432 at scene scale 0.5 → half-height 108.
 	_curiosity.position = Vector2(
-		float(SPAWN_TILE.x) * float(VISUAL_TILE),
+		float(SPAWN_TILE.x) * float(VISUAL_TILE) + float(VISUAL_TILE) * 0.5,
 		floor_top_world - 108.0
 	)
 
@@ -198,12 +258,12 @@ func _position_exit_door() -> void:
 	var door: Node2D = get_node_or_null("ExitDoor") as Node2D
 	if door == null:
 		return
-	# Match Hub's visual relationship: door root sits ~340 above the floor
-	# top so the arch reads as towering and the interaction collider
-	# (relative y +125) lands just above Curiosity's body center.
+	# Door root sits ~340 above the floor — matches Hub's relative geometry,
+	# so the arch reads as towering and the interaction collider (rel y +125)
+	# lands just above Curiosity's body center.
 	var floor_top: float = float(FLOOR_Y) * float(VISUAL_TILE)
 	door.position = Vector2(
-		float(EXIT_DOOR_TILE.x) * float(VISUAL_TILE),
+		float(EXIT_DOOR_TILE.x) * float(VISUAL_TILE) + float(VISUAL_TILE) * 0.5,
 		floor_top - 340.0
 	)
 
@@ -214,5 +274,6 @@ func _setup_camera_limits() -> void:
 		return
 	cam.limit_left = 0
 	cam.limit_right = LEVEL_WIDTH_TILES * VISUAL_TILE
-	cam.limit_top = -400
-	cam.limit_bottom = (FLOOR_Y + SUBFLOOR_DEPTH + 1) * VISUAL_TILE
+	cam.limit_top = 0
+	cam.limit_bottom = 720
+	cam.position_smoothing_enabled = true
