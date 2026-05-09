@@ -12,12 +12,33 @@ extends Node2D
 # the overlap signal is broken. If it prints with a door but nothing
 # visibly changes, trigger()'s feedback is the bug.
 
+const _CURIOSITY_FLOOR_Y: float = 580.0
+
 var _current_door: Node = null
 
 
 func _ready() -> void:
+	# If returning from a realm, snap Curiosity to the entry door before reveal.
+	if Transition.last_door_id != "":
+		_respawn_at_door(Transition.last_door_id)
+		Transition.last_door_id = ""
 	for door in get_tree().get_nodes_in_group("doors"):
 		_connect_door(door)
+
+
+func _respawn_at_door(door_id: String) -> void:
+	var doors_root: Node = get_node_or_null("Doors")
+	if doors_root == null:
+		return
+	var door_root: Node = doors_root.get_node_or_null(door_id)
+	if door_root == null or not (door_root is Node2D):
+		return
+	var curiosity: Node2D = get_node_or_null("Curiosity") as Node2D
+	if curiosity == null:
+		return
+	# Park her one step to the side of the door so she isn't standing in it.
+	var anchor_x: float = (door_root as Node2D).position.x + 90.0
+	curiosity.position = Vector2(anchor_x, _CURIOSITY_FLOOR_Y)
 
 
 func _connect_door(door: Node) -> void:
