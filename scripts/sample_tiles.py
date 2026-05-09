@@ -1,43 +1,34 @@
-"""Print thumbnails of specific tile coords side-by-side so I can pick
-floor/wall/platform/ladder/brick atlases by eye."""
+"""Print high-zoom thumbnails of specific tile coords so we can verify
+exact pixel placement — used to choose between visually similar candidate
+coordinates."""
 
 import os
-from PIL import Image
+from PIL import Image, ImageDraw
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "assets", "realms", "realm1_caves", "mainlev_build.png")
 OUT = os.path.join(ROOT, "scripts", "_tile_samples.png")
 TILE = 32
-SCALE = 4
-GAP = 8
+SCALE = 8
+GAP = 12
 
-# Sample sweep: a row from each major region
+# Wood platform candidates and the curated palette in use
 COORDS = [
-    # cave wall body rows (3-7) — looking for full solid blocks
-    (1, 3), (2, 3), (3, 3), (4, 3), (5, 3), (6, 3), (7, 3), (8, 3),
-    (1, 6), (2, 6), (3, 6), (4, 6), (5, 6), (6, 6), (7, 6),
-    (1, 7), (2, 7), (4, 7), (5, 7), (8, 7),
-    # row 9-12 (deeper cave blocks)
-    (4, 9), (5, 9), (6, 9), (7, 9), (8, 9), (9, 9),
-    (6, 11), (7, 11), (8, 11), (9, 11), (10, 11), (11, 11), (12, 11), (13, 11),
-    (6, 12), (7, 12), (8, 12), (9, 12), (10, 12),
-    # row 14-15 (full blocks — likely floor pieces)
-    (4, 14), (5, 14), (6, 14), (7, 14), (4, 15), (5, 15), (6, 15), (7, 15),
-    # right column structural — bricks, ladders, walls
-    (26, 8), (26, 9), (26, 10), (26, 11), (26, 12), (26, 13), (26, 14),
-    (29, 0), (29, 1), (28, 0), (28, 1),  # wooden plank platforms
+    # Sweep cols 22-31 across rows 0-2 looking for the plank platform pieces
+    (22, 0), (23, 0), (24, 0), (25, 0), (26, 0), (27, 0), (28, 0), (29, 0), (30, 0), (31, 0),
+    (22, 1), (23, 1), (24, 1), (25, 1), (26, 1), (27, 1), (28, 1), (29, 1), (30, 1), (31, 1),
+    (22, 2), (23, 2), (24, 2), (25, 2), (26, 2), (27, 2), (28, 2), (29, 2), (30, 2), (31, 2),
 ]
 
 
 def main() -> None:
     img = Image.open(SRC).convert("RGBA")
     cell_w = TILE * SCALE
-    per_row = 12
+    per_row = 6
     rows = (len(COORDS) + per_row - 1) // per_row
     out_w = per_row * (cell_w + GAP) + GAP
-    out_h = rows * (cell_w + GAP + 16) + GAP
+    out_h = rows * (cell_w + GAP + 22) + GAP
     out = Image.new("RGBA", (out_w, out_h), (40, 40, 50, 255))
-    from PIL import ImageDraw, ImageFont
     draw = ImageDraw.Draw(out)
     for i, (tx, ty) in enumerate(COORDS):
         cell = img.crop((tx * TILE, ty * TILE, (tx + 1) * TILE, (ty + 1) * TILE))
@@ -45,11 +36,14 @@ def main() -> None:
         col = i % per_row
         row = i // per_row
         x = GAP + col * (cell_w + GAP)
-        y = GAP + row * (cell_w + GAP + 16)
+        y = GAP + row * (cell_w + GAP + 22)
         out.paste(cell, (x, y), cell)
-        draw.text((x, y + cell_w), f"{tx},{ty}", fill=(220, 220, 220, 255))
+        # Draw a horizontal red line at the cell's top edge to gauge where
+        # full-cell collision would sit
+        draw.rectangle([x, y, x + cell_w - 1, y + cell_w - 1], outline=(255, 60, 60, 200))
+        draw.text((x + 4, y + cell_w + 2), f"{tx},{ty}", fill=(220, 220, 220, 255))
     out.save(OUT)
-    print(f"Wrote {OUT} ({len(COORDS)} samples)")
+    print(f"Wrote {OUT} ({len(COORDS)} samples at {SCALE}x)")
 
 
 if __name__ == "__main__":

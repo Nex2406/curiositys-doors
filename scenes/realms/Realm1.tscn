@@ -1,10 +1,30 @@
-; Realm 1 — caves. Hand-authored scene; level layout and TileSet are
-; built at runtime in scripts/Realm1.gd. Parallax layers stack from
-; deepest (layer 7, flat fog backdrop) to closest (layer 0, full painted
-; cave detail). Note: the source asset pack numbers files such that 0 is
-; the most-detailed/foreground layer and 7 is the flat backdrop tint —
-; we order the layer tree by visual depth, not file index.
-[gd_scene load_steps=22 format=3 uid="uid://crealm1caves001"]
+; Realm 1 — caves. The cave painting fills the viewport at every camera
+; position; the tile geometry lives ON TOP of it as the actual playable
+; level (Curiosity walks/jumps on tiles, with the parallax visible behind
+; her at all times).
+;
+; PARALLAX
+;   8 layers stacked deepest-first. Each Sprite2D is scaled 3.334x so the
+;   384x216 source fills the 1280x720 viewport, with motion_mirroring set
+;   to (1280, 0) so the layer tiles horizontally across the level. The
+;   deepest layer (7.png) is fully opaque so no transparent gap exposes
+;   the project background colour. motion_scale.y = 1 — vertical follows
+;   camera, which combined with limit_top=0 / limit_bottom=720 keeps the
+;   parallax exactly aligned to viewport top/bottom.
+;
+;   Note: the asset pack numbers files such that 0.png is the most-detailed
+;   foreground layer and 7.png is the flat backdrop tint. We stack the
+;   layer tree by visual depth (7 deepest, 0 closest) — the opposite of
+;   the file index.
+;
+; TILE PALETTE  (audited via scripts/inspect_tileset.py density pass)
+;   GROUND  : (7,23) (8,23) (9,23) (7,24) (8,24)        — solid rocky floor
+;   BRICK   : (26,16) (27,16) (30,16)                   — solid brick wall
+;   WOOD    : (23,1) (25,1) (28,1)                      — plank L / M w/ X-brace / R
+;   CEIL    : (13,14) (15,14)                           — solid ceiling w/ stalactite
+;   DECOR   : (20,24) (20,25) (7,3)                     — non-collidable accents
+;   See scripts/Realm1.gd for the full SOLID_TILES list and level layout.
+[gd_scene load_steps=22 format=3 uid="uid://crealm1caves002"]
 
 [ext_resource type="PackedScene" path="res://scenes/Curiosity.tscn" id="1_curiosity"]
 [ext_resource type="PackedScene" path="res://scenes/TouchControls.tscn" id="2_touch"]
@@ -30,7 +50,7 @@ script = ExtResource("3_realm1")
 [node name="ParallaxBackground" type="ParallaxBackground" parent="."]
 
 [node name="L7" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.05, 0)
+motion_scale = Vector2(0.05, 1)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L7"]
@@ -40,7 +60,7 @@ texture = ExtResource("12_p7")
 scale = Vector2(3.334, 3.334)
 
 [node name="L6" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.1, 0)
+motion_scale = Vector2(0.1, 1)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L6"]
@@ -50,7 +70,7 @@ texture = ExtResource("11_p6")
 scale = Vector2(3.334, 3.334)
 
 [node name="L5" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.2, 0)
+motion_scale = Vector2(0.2, 1)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L5"]
@@ -60,7 +80,7 @@ texture = ExtResource("10_p5")
 scale = Vector2(3.334, 3.334)
 
 [node name="L4" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.35, 0)
+motion_scale = Vector2(0.35, 1)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L4"]
@@ -70,7 +90,7 @@ texture = ExtResource("9_p4")
 scale = Vector2(3.334, 3.334)
 
 [node name="L3" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.5, 0)
+motion_scale = Vector2(0.5, 1)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L3"]
@@ -80,7 +100,7 @@ texture = ExtResource("8_p3")
 scale = Vector2(3.334, 3.334)
 
 [node name="L2" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.65, 0)
+motion_scale = Vector2(0.65, 1)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L2"]
@@ -90,7 +110,7 @@ texture = ExtResource("7_p2")
 scale = Vector2(3.334, 3.334)
 
 [node name="L1" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.8, 0)
+motion_scale = Vector2(0.8, 1)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L1"]
@@ -100,7 +120,7 @@ texture = ExtResource("6_p1")
 scale = Vector2(3.334, 3.334)
 
 [node name="L0" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.95, 0)
+motion_scale = Vector2(0.95, 1)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L0"]
@@ -120,11 +140,11 @@ scale = Vector2(2, 2)
 [node name="Decor" type="TileMapLayer" parent="World"]
 
 [node name="Curiosity" parent="." instance=ExtResource("1_curiosity")]
-position = Vector2(128, 468)
+position = Vector2(160, 468)
 scale = Vector2(0.5, 0.5)
 
 [node name="ExitDoor" type="Node2D" parent="."]
-position = Vector2(5888, 356)
+position = Vector2(5920, 236)
 
 [node name="Visual" type="Node2D" parent="ExitDoor"]
 
