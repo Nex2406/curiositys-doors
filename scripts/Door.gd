@@ -1,10 +1,12 @@
 extends Area2D
 
-# Reusable Hub door. Detects when Curiosity overlaps, shows a floating
+# Reusable door. Detects when Curiosity overlaps, shows a floating
 # "[Y] Enter" prompt above the painted door, and exposes trigger() for
-# Hub.gd to call when the central "interact" dispatch fires. Real scene
-# transitions land in a future PR; for now trigger() flashes the glow
-# and swaps the prompt so the player can SEE that Y registered.
+# Hub.gd (or a realm controller) to call when the central "interact"
+# dispatch fires. trigger() flashes the glow + swaps the prompt as
+# immediate feedback, then routes through the Transition autoload to
+# fade-and-change scene. Doors whose target_realm has no resolved scene
+# (the not-yet-built realms) just print and stay open for retry.
 
 signal near_door(door)
 signal left_door(door)
