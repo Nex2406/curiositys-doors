@@ -23,6 +23,8 @@ const MOVE_EPSILON: float = 8.0
 @onready var flame: Sprite2D = $LanternFlame
 @onready var eye_left: Sprite2D = $EyeLeft
 @onready var eye_right: Sprite2D = $EyeRight
+@onready var eye_light_left: PointLight2D = $EyeLightLeft
+@onready var eye_light_right: PointLight2D = $EyeLightRight
 
 const FLAME_FLICKER_AMPLITUDE: float = 0.05
 const FLAME_FLICKER_PERIOD: float = 0.4
@@ -57,6 +59,8 @@ func _ready() -> void:
 	flame.position.x = sign_x * _lantern_offset_x
 	eye_left.position.x = sign_x * _eye_left_offset_x
 	eye_right.position.x = sign_x * _eye_right_offset_x
+	eye_light_left.position.x = sign_x * _eye_left_offset_x
+	eye_light_right.position.x = sign_x * _eye_right_offset_x
 	_flame_base_alpha = flame.modulate.a
 	_eye_left_base_alpha = eye_left.modulate.a
 	_eye_right_base_alpha = eye_right.modulate.a
@@ -172,4 +176,8 @@ func _apply_facing() -> void:
 	_lantern_tween.tween_property(eye_left, "position:x", eye_left_target_x, lantern_sway_time) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_lantern_tween.tween_property(eye_right, "position:x", eye_right_target_x, lantern_sway_time) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_lantern_tween.tween_property(eye_light_left, "position:x", eye_left_target_x, lantern_sway_time) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_lantern_tween.tween_property(eye_light_right, "position:x", eye_right_target_x, lantern_sway_time) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
