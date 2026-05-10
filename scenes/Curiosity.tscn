@@ -215,27 +215,53 @@ position = Vector2(-160, 115)
 scale = Vector2(1.5, 1.5)
 texture = ExtResource("55_lantern_flame")
 
-; Eye orbs sit BEHIND Visual in tree order so the painted hood's
-; transparent eye-socket holes (alpha=0 at source pixels (29,26) /
-; (37,26)) reveal the cream-white glow underneath. Source-art faces
-; LEFT, head center is offset (-25, -38) source-pixels from frame
-; centre, eye spacing 8 source-pixels — at AnimatedSprite2D scale 3.2x
-; this lands the orbs at world offsets (-112, -122) / (-86, -122).
-[node name="EyeLeft" type="Sprite2D" parent="."]
-position = Vector2(-112, -122)
-scale = Vector2(0.8, 0.8)
-texture = ExtResource("58_eye_orb")
-
-[node name="EyeRight" type="Sprite2D" parent="."]
-position = Vector2(-86, -122)
-scale = Vector2(0.8, 0.8)
-texture = ExtResource("58_eye_orb")
-
 [node name="Visual" type="AnimatedSprite2D" parent="."]
 scale = Vector2(3.2, 3.2)
 sprite_frames = SubResource("SpriteFrames_curiosity")
 animation = &"idle"
 autoplay = "idle"
+
+; Eye orbs draw ON TOP of Visual (z_index=1) — the painted hood's eye
+; sockets are only transparent on idle_01; idle_02..04 + walk + air all
+; have opaque pixels at the eye positions, so the previous "behind"
+; placement was hidden ~75% of every animation cycle. Drawing on top
+; with overbright modulate makes the glow read at every frame.
+;
+; Centroids picked by scripts/inspect_eyes.py cluster-detection over
+; idle_01.png — left-eye hole centroid (29.17, 27.00), right-eye hole
+; centroid (38.62, 25.67) at the painted-art's 128-px frame. Mapped
+; through Visual's 3.2x scale → world offsets (-111, -118) / (-81, -123).
+[node name="EyeLeft" type="Sprite2D" parent="."]
+position = Vector2(-111, -118)
+scale = Vector2(1.8, 1.8)
+modulate = Color(1.5, 1.5, 1.4, 1)
+z_index = 1
+texture = ExtResource("58_eye_orb")
+
+[node name="EyeRight" type="Sprite2D" parent="."]
+position = Vector2(-81, -123)
+scale = Vector2(1.8, 1.8)
+modulate = Color(1.5, 1.5, 1.4, 1)
+z_index = 1
+texture = ExtResource("58_eye_orb")
+
+; Tiny PointLight2D per eye adds an emissive halo through the
+; CanvasModulate dimming so the eyes feel like a light source rather
+; than a sticker. Energy / texture_scale tuned low so the lantern still
+; dominates the frame.
+[node name="EyeLightLeft" type="PointLight2D" parent="."]
+position = Vector2(-111, -118)
+color = Color(1, 0.97, 0.88, 1)
+energy = 0.6
+texture = ExtResource("58_eye_orb")
+texture_scale = 0.4
+
+[node name="EyeLightRight" type="PointLight2D" parent="."]
+position = Vector2(-81, -123)
+color = Color(1, 0.97, 0.88, 1)
+energy = 0.6
+texture = ExtResource("58_eye_orb")
+texture_scale = 0.4
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_body")
