@@ -4,102 +4,147 @@ Every system that runs the game, present or planned. Update this when systems la
 
 ---
 
-## Existing Systems
+## Current Implemented Loop
 
-### Curiosity (CharacterBody2D)
-- File: `scripts/Curiosity.gd`, `scenes/Curiosity.tscn`
-- Side-scrolling movement: left/right with `move_left` / `move_right` input actions
-- Gravity from project settings
-- Single jump on `jump` input action
-- Currently a `ColorRect` placeholder — sprite art TBD
+The end-to-end thing a player can actually do on the live build, in order:
 
-### Lantern (PointLight2D)
-- Child of Curiosity
-- `GradientTexture2D` radial placeholder — replace with hand-painted falloff when art lands
-- Warm accent color (`#f5b870`); energy currently static
-- Planned: organic flicker via noise-driven energy modulation
-
-### Web Export Pipeline
-- Godot 4.6 Forward+ → HTML5 export preset "Web"
-- GitHub Actions workflow `.github/workflows/*.yml` builds and publishes to GitHub Pages on every push to `main`
-- `.nojekyll` written to allow underscored asset paths
+1. Game launches into `scenes/Hub.tscn` (the project main scene). Curiosity spawns centre-floor; three painted door arches hum at fixed positions; parallax nebula + fog band + drifting fireflies fill the backdrop.
+2. Curiosity walks / runs / jumps with WASD or arrow keys; Space, Up, or W for jump; Shift to sprint. Lantern + flame follow her with a sway tween, flame alpha breathes on a sin loop.
+3. Walking into a door's overlap zone fades a `[Y] Enter` prompt in above it.
+4. Pressing Y on Door 1 routes through the `Transition` autoload — fade to black, change scene to `res://scenes/realms/Realm1.tscn`, fade back in.
+5. Realm 1 is a 6144-px cave: 8-layer parallax backdrop, runtime-built TileMap floor with 4 jump gaps + 10 staircased platforms + bookend walls, exit door at the far right.
+6. Pressing Y on Realm 1's exit door routes back to Hub. `Transition.last_door_id` carries the entry door id across, and `Hub.gd` snaps Curiosity 90 px beside the matching door on `_ready` before connecting interaction signals.
+7. Pressing Y on Door 2 or Door 3 in the Hub flashes the entry pulse but logs `[Door] Realm not yet built` — no transition.
 
 ---
 
-## Planned Systems
+## Implemented Systems
+
+### Curiosity (CharacterBody2D)
+- Files: `scripts/Curiosity.gd`, `scenes/Curiosity.tscn`
+- Hand-painted `AnimatedSprite2D` (the prior `ColorRect` placeholder is gone). `idle`, `walk`, `run`, `jump_start`, `air`, `land` are wired to a state machine.
+- Tuning: `walk_speed=200`, `run_speed=320`, `gravity=350`, `jump_velocity=-240` — drifting-traveler feel (low gravity ≈ longer air time at roughly the same reachable height as a normal platformer).
+- Sprint = held Shift. Facing flip mirrors lantern + flame x-offset via a sway tween (`lantern_sway_time=0.2s`).
+- Combat / dash / lever / celebrate frames are present in `SpriteFrames` but unwired — see Stubs.
+
+### Lantern (PointLight2D + LanternFlame Sprite2D)
+- Child of Curiosity. Hand-painted `lantern_halo.png` falloff (the `GradientTexture2D` placeholder is gone).
+- Warm key colour, energy 3.8.
+- `LanternFlame` Sprite2D breathes on a sin loop — period 0.4s, amplitude 0.05. Replace with a noise-driven flicker when next polished.
+
+### Hub (scenes/Hub.tscn, scripts/Hub.gd)
+- Project main scene. Three door arches at hand-authored positions, stone floor strip, parallax nebula, fog band, GPUParticles2D fireflies, `CanvasModulate` dim.
+- Single-source interact dispatch: `Hub.gd` polls `interact` once per frame and routes to the active door's `trigger()`. Each `Door` joins the `doors` group on `_ready` and reports near/left via `Area2D` body signals.
+- On `_ready`, reads `Transition.last_door_id` and snaps Curiosity 90 px beside the matching door before clearing the state.
+
+### Door (Area2D, scripts/Door.gd)
+- Reusable. Body-overlap fades in a `[Y] Enter` Label above the painted arch.
+- `trigger()` flashes the glow + swaps the prompt text, then routes through `Transition` based on `target_realm`:
+  - `realm_1` → `res://scenes/realms/Realm1.tscn`
+  - `hub` → `res://scenes/Hub.tscn`
+  - anything else → log `[Door] Realm not yet built: <target>`, stay open for retry.
+- Realm-bound trips set `Transition.last_door_id`; Hub-bound trips leave it intact so the entry-door spawn works on return.
+
+### Scene Transition (autoload `Transition`, scripts/SceneTransition.gd)
+- Single high-layer (`CanvasLayer.layer = 128`) black `ColorRect` overlay, full-rect, mouse-ignored.
+- Async API: `fade_to_black(duration=0.6)`, `fade_from_black(duration=0.6)`, `transition_to(scene_path)` (fade → `change_scene_to_file` → frame yield → fade).
+- `last_door_id` field carries spawn-placement state across scene changes.
+
+### Realm 1 (scenes/realms/Realm1.tscn, scripts/Realm1.gd)
+- First playable realm. Linear left-to-right cave traversal — no enemies, no puzzle yet.
+- 8-layer `ParallaxBackground` (deepest = opaque flat fog tint so no viewport gap; shallower layers add detail). `motion_mirroring=(1280,0)` per layer for horizontal tiling; `motion_scale=(X,1)` so vertical follows camera.
+- `TileSet` built at runtime from `mainlev_build.png` — every non-empty 32×32 cell is registered as an atlas tile, but only the curated `SOLID_TILES` palette (rocky-ground variants, brick walls, wood plank L/M/R, ceiling stalactites) carries collision polygons. Decorative tiles ride a separate non-colliding `TileMapLayer`.
+- Level: floor at `tile_y=9` (world y=576) with 4 jump gaps; 10 wood platforms staircased across 5 height tiers; bookend brick walls; ceiling row across the top.
+- Camera limits 0..6144 horizontal, 0..720 vertical so the camera never drifts past the parallax extent.
+- Exit door at the far right uses the shared `Door.gd` with `target_realm="hub"`.
+
+### Mobile Touch Controls (scenes/TouchControls.tscn)
+- Instanced into both Hub and Realm 1. Hidden by default on desktop.
+
+### Web Export Pipeline
+- Godot 4.6 Forward+ → HTML5 export preset "Web".
+- `.github/workflows/deploy.yml` runs `--headless --import` (twice on cold cache) + `--export-release "Web"`, writes `.nojekyll`, publishes to Pages on every push to `main`.
+
+---
+
+## Known Stubs / Out of Scope (not built yet)
+
+- **Doors 2 + 3** — entry pulse fires but they log `Realm not yet built` and don't transition. Will wire when those realms exist.
+- **Combat / dash / lever / celebrate animations** — frames live in `Curiosity.tscn`'s `SpriteFrames` (`attack1`, `attack2`, `charged`, `dash`, `hurt`, `approach`, `lever_pull`, `lever_hold`, `celebrate`) but no state, input, or system consumes them.
+- **Realms 2 + 3** — drafted in `docs/REALMS.md` (Forgotten Names, Quiet Hunger, Folded Hour) but not built. Realm 1 in code is a technical traversal cave, not yet a themed/narrative realm.
+- **Save system** — no persistence. Hub starts fresh each session.
+- **Puzzle framework** — no `Puzzle` base class; Realm 1 is pure traversal.
+- **Dialogue / lore overlay** — no text presenter; story beats live only in `docs/STORY.md`.
+- **Enemies / hazards** — none. Realm 1 is no-stakes.
+- **Ambient audio** — no buses, no beds, no SFX. Silent build.
+- **Shaders** — no cloak distortion, eye-blink, fog, or painterly post. `CanvasModulate` dim is the only environmental shader.
+- **Settings / pause overlay** — none.
+- **`move_down` input action** — registered (S + Down arrow) but unconsumed.
+- **Lantern noise flicker** — current sin-wave alpha breath. The organic noise-driven energy modulation per the design bible isn't wired yet.
+
+---
+
+## Next Safe Feature Candidates
+
+Small, additive, low-risk PRs that don't touch existing gameplay:
+
+1. **Audio bus scaffold + Hub ambient bed** — Master / Music / Ambient / SFX buses + one looping low-volume Hub drone. Touches no existing systems.
+2. **Lantern noise flicker** — swap the sin-wave alpha breath for `FastNoiseLite`-driven energy modulation on the lantern `PointLight2D`. One function in `Curiosity.gd`.
+3. **Pause overlay** — minimal Esc-to-pause `Control` with "resume" + "return to hub". One scene + one autoload toggle, no gameplay edits.
+4. **Save scaffolding (no consumer yet)** — JSON `doors_opened` set under `user://`, written on door transition. Read path can land later; this just lays the file format.
+5. **Realm 1 ambient bed** — distant drip + low cave drone. Establishes the per-realm audio pattern future realms inherit.
+6. **Hub firefly density tune** — particle count / lifetime / scale-curve pass. Pure visual.
+7. **Door prompt typography** — swap the default Label font for a soft serif once one is in `assets/`.
+
+Each is one issue, one branch, one PR.
+
+---
+
+## Planned Systems (multi-PR work, not yet started)
 
 These are the rails the game is being built on. Each becomes its own issue (or chain of issues) when scheduled.
 
-### Parallax Background Layers
-- Three layers minimum: far, mid, near
-- ParallaxBackground + ParallaxLayer nodes
-- Each layer: a hand-painted texture, scrolling at its own rate, with seam-tolerant tiling
-- Per-realm: distinct asset set, distinct color palette, distinct fog density
+### Particle Systems (extensions)
+- Embers near lantern + braziers, gravity-affected
+- Per-realm overrides (quantity, colour, drift speed) — Hub fireflies + Realm 1 lack the override abstraction
 
-### Particle Systems
-- **Drifting motes:** GPUParticles2D, soft circular sprites, slow vertical drift with subtle horizontal sway
-- **Atmospheric fog:** scrolling shader-driven band or large transparent particle quads
-- **Embers:** warm particles near the lantern and braziers, occasional, gravity-affected
-- **Per-realm overrides:** quantity, color, drift speed shaped by realm theme
-
-### Dynamic Lighting
-- `CanvasModulate` set near-black for the base world
-- Lantern PointLight2D as the primary key light with organic flicker (noise-modulated energy in a tight band)
-- Secondary lights as environmental rarities — a distant window, a brazier, glowing flora
-- Shadow casters on foreground silhouettes; painterly hand-authored falloff textures preferred over technical raycasting
+### Dynamic Lighting (extensions)
+- Lantern noise flicker (see Next Safe Candidates)
+- Secondary environmental lights — distant windows, braziers, glowing flora
+- Painterly hand-authored shadow falloff textures vs raycasting
 
 ### Shaders
-- **Cloak shader:** vertex distortion or layered animated mask to simulate fabric sway, lagging behind body motion
-- **Eye-blink pattern shader:** UV-driven mask that opens / holds / closes the cloak's eyes on a slow irregular cadence
-- **Fog shader:** noise-driven offset on a tinted band, drifting horizontally
-- **Painterly post-process (optional, late):** subtle grain + warm/cool split-tone
+- **Cloak shader** — vertex distortion / animated mask for fabric sway lagging body motion
+- **Eye-blink pattern shader** — UV-driven mask opening / holding / closing the cloak's eyes
+- **Fog shader** — noise-driven offset on a tinted band, drifting horizontally
+- **Painterly post-process** — subtle grain + warm/cool split-tone (late polish)
 
 ### Ambient Audio
-- Per-realm ambient bed (looping, low headroom)
-- Diegetic accent layer (distant bells, wind, footsteps on different surfaces)
-- Lantern flicker has a soft sonic correlate
-- AudioStreamPlayer2D for positional cues; AudioStreamPlayer for global beds
+- Per-realm beds (looping, low headroom)
+- Diegetic accents (distant bells, wind, footstep surface variation)
+- Lantern flicker → soft sonic correlate
+- `AudioStreamPlayer2D` for positional, `AudioStreamPlayer` for global beds
 - Bus structure: Master → Music → Ambient → SFX, with fade-in/out helpers per realm
 
-### Scene Transition System
-- A central `Transitions` autoload, single API: `Transitions.go_to(scene_path)`
-- Fade-out on a Control overlay (slow black-to-clear, ~1.5s)
-- Optional lantern dim on entry, lantern wake on arrival
-- Preserves player position relative to door geometry on hub return
-
-### Door Interaction System
-- `Door` scene with collision area + interactable prompt zone
-- On `interact` input within range: trigger transition to target realm scene
-- Doors stay open after first traversal (a returned-from realm reads differently)
-- Door state persisted through the save system
-
 ### Puzzle Framework
-- Abstract `Puzzle` base class: `is_solved()`, `on_solve()`, `on_reset()`
+- Abstract `Puzzle` base: `is_solved()`, `on_solve()`, `on_reset()`
 - Each realm subclasses with its own state model
-- Puzzle solve event hooks the lore reveal + door-back-to-hub unlock
+- Puzzle solve hooks lore reveal + door-back-to-hub unlock
 
 ### Dialogue / Lore Overlay
-- A reverent text presenter — slow fade-in, generous holds, slow fade-out
-- Soft serif or hand-lettered font (no system sans-serif)
+- Reverent text presenter — slow fade-in, generous holds, slow fade-out
+- Soft serif / hand-lettered font (no system sans-serif)
 - Single line at a time; no boxes, no portraits, no ticking crawl
-- Triggerable by zone, puzzle event, or lantern proximity to a lore object
+- Triggerable by zone, puzzle event, or lantern proximity
 
 ### Save System
-- JSON-serialized save file under user:// — minimal: doors opened, realms completed, lantern state, lore fragments collected
+- Versioned JSON under `user://` — doors opened, realms completed, lantern state, lore fragments
 - Auto-save on door transition; no save UI initially
-- Robust to schema additions (versioned save format)
+- Robust to schema additions
 
-### Mobile Touch Controls
-- Virtual joystick or tap-zones for left/right
-- Tap-anywhere-on-right-half for jump
-- Toggleable; auto-detect on touch-capable browsers
-- Hidden by default on desktop
+### Hub Layout (extensions)
+- New doors fade in as realms become available
+- Door state persisted through the save system
 
-### Hub Layout System
-- The hub itself is a scene with door slots
-- New doors appear (fade-in) as realms become available
-- Door positioning is hand-authored, not procedural
-
-### Settings / Pause
-- Minimal pause overlay — fade the world, expose only "resume" and "return to hub"
-- Settings later: volume sliders, controls remap (mobile / desktop)
+### Settings / Pause (beyond the minimal overlay above)
+- Volume sliders, controls remap (mobile / desktop)

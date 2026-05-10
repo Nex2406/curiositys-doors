@@ -88,6 +88,7 @@ Scope tags (`feat(hero):`, `fix(ci):`) are welcome when they clarify.
 For the full painterly bible, see `docs/ART_DIRECTION.md`. For tone-words allow/deny lists, see `docs/VIBE.md`.
 
 ## Current Skeleton Status
-- Placeholder `ColorRect` stands in for Curiosity's painted sprite
-- `GradientTexture2D` radial placeholder for the lantern light — replace with a hand-drawn falloff when art lands
-- No parallax, no fog, no doors, no realms yet — these are the next feature branches
+- Hub + Realm 1 are playable; Door 1 routes Hub ↔ Realm 1 via the `Transition` autoload. Doors 2 + 3 are stubs.
+- Curiosity is a hand-painted `AnimatedSprite2D` with idle/walk/run/jump/air/land wired; combat + lever frames load but are unwired.
+- Parallax + fog + drifting motes + `CanvasModulate` dim are in. Painted lantern halo replaced the gradient placeholder.
+- See `docs/MECHANICS.md` for the full implemented-vs-planned breakdown.
