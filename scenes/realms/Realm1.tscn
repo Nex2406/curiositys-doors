@@ -17,14 +17,13 @@
 ;   layer tree by visual depth (7 deepest, 0 closest) — the opposite of
 ;   the file index.
 ;
-; TILE PALETTE  (single-theme brown cave; see scripts/Realm1.gd header
-; for the audit table and full SOLID_TILES list)
-;   GROUND_TOP  : (3,20) (4,20) (8,20) (11,20) (12,20)   — peak-up rocky rim
-;   GROUND_FILL : (7,23) (8,23) (9,23) (7,24) (8,24)     — solid sub-floor
-;   PLATFORM    : (7,23) (8,23) (9,23)                   — rocky floating chunks
-;   CEIL        : (7,29) (8,29)                          — peak-down stalactite tips
-;   DECOR       : (7,3)                                  — sparse decor stalactites
-;   Brick walls + red-gem fire pit dropped (palette clashed with brown cave).
+; TILE PALETTE  (ONE tile coord per role; see scripts/Realm1.gd for the
+; layout + reachability notes)
+;   T_GROUND_TOP  : (4,20)                              — peak-up rocky rim
+;   T_GROUND_FILL : (7,23)                              — solid brown sub-floor
+;   T_PLATFORM_L  : (24,1)  T_PLATFORM_M : (25,1)
+;   T_PLATFORM_R  : (28,1)                              — wood-plank platforms
+;   No ceiling, no decor — parallax cave painting provides the overhead.
 [gd_scene load_steps=22 format=3 uid="uid://crealm1caves002"]
 
 [ext_resource type="PackedScene" path="res://scenes/Curiosity.tscn" id="1_curiosity"]
