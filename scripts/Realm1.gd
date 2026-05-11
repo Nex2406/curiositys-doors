@@ -16,8 +16,8 @@ extends Node2D
 #     (23,1)  left-end with bevel
 #     (25,1)  middle with X-brace
 #     (28,1)  right-end with bevel
-#   CEIL     (solid ceiling, stalactite hangs)
-#     (13,14) (15,14)
+#   CEIL     (solid ceiling — brown rocky blocks matching the floor)
+#     (7,26)  (9,26)
 #   DECOR    (no collision)
 #     (20,24) (20,25)  red glowing gem cluster
 #     (7,3)            stalactite cluster
@@ -42,8 +42,8 @@ const T_BRICK_C:  Vector2i = Vector2i(30, 16)
 const T_WOOD_L:   Vector2i = Vector2i(23, 1)   # plank left-end (left overhang bevel)
 const T_WOOD_M:   Vector2i = Vector2i(25, 1)   # plank middle with X-brace
 const T_WOOD_R:   Vector2i = Vector2i(28, 1)   # plank right-end (right overhang bevel)
-const T_CEIL_A:   Vector2i = Vector2i(13, 14)
-const T_CEIL_B:   Vector2i = Vector2i(15, 14)
+const T_CEIL_A:   Vector2i = Vector2i(7, 26)
+const T_CEIL_B:   Vector2i = Vector2i(9, 26)
 const T_DECOR_GEM_A: Vector2i = Vector2i(20, 24)
 const T_DECOR_GEM_B: Vector2i = Vector2i(20, 25)
 const T_DECOR_STAL:  Vector2i = Vector2i(7, 3)
@@ -142,6 +142,11 @@ func _build_tileset() -> TileSet:
 	var src: TileSetAtlasSource = TileSetAtlasSource.new()
 	src.texture = SOURCE_TEXTURE
 	src.texture_region_size = ATLAS_TILE_SIZE
+	# Source must be attached BEFORE create_tile so the TileSet's physics
+	# layers propagate to per-tile data; otherwise add_collision_polygon
+	# errors with physics.size()=0 and every tile ends up non-colliding
+	# (which is what made Curiosity fall through the floor).
+	ts.add_source(src, 0)
 
 	var img: Image = SOURCE_TEXTURE.get_image()
 	if img == null:
@@ -158,7 +163,6 @@ func _build_tileset() -> TileSet:
 			if SOLID_TILES.has(coord):
 				_attach_full_collision(src, coord, phys_layer_id)
 
-	ts.add_source(src, 0)
 	return ts
 
 
