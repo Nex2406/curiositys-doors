@@ -17,13 +17,14 @@
 ;   layer tree by visual depth (7 deepest, 0 closest) — the opposite of
 ;   the file index.
 ;
-; TILE PALETTE  (audited via scripts/inspect_tileset.py density pass)
-;   GROUND  : (7,23) (8,23) (9,23) (7,24) (8,24)        — solid rocky floor
-;   BRICK   : (26,16) (27,16) (30,16)                   — solid brick wall
-;   WOOD    : (23,1) (25,1) (28,1)                      — plank L / M w/ X-brace / R
-;   CEIL    : (13,14) (15,14)                           — solid ceiling w/ stalactite
-;   DECOR   : (20,24) (20,25) (7,3)                     — non-collidable accents
-;   See scripts/Realm1.gd for the full SOLID_TILES list and level layout.
+; TILE PALETTE  (single-theme brown cave; see scripts/Realm1.gd header
+; for the audit table and full SOLID_TILES list)
+;   GROUND_TOP  : (3,20) (4,20) (8,20) (11,20) (12,20)   — peak-up rocky rim
+;   GROUND_FILL : (7,23) (8,23) (9,23) (7,24) (8,24)     — solid sub-floor
+;   PLATFORM    : (7,23) (8,23) (9,23)                   — rocky floating chunks
+;   CEIL        : (7,29) (8,29)                          — peak-down stalactite tips
+;   DECOR       : (7,3)                                  — sparse decor stalactites
+;   Brick walls + red-gem fire pit dropped (palette clashed with brown cave).
 [gd_scene load_steps=22 format=3 uid="uid://crealm1caves002"]
 
 [ext_resource type="PackedScene" path="res://scenes/Curiosity.tscn" id="1_curiosity"]
