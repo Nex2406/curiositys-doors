@@ -7,6 +7,41 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 
 ---
 
+## 2026-05-11 — Realm 1 full geometry rebuild (classic platformer)
+
+**Shipped**
+- Complete rebuild of Realm 1 level geometry against the same `mainlev_build.png`.
+  The collision + palette fix earlier in the day kept the level playable but the
+  layout was still chaotic. This rebuild restructures it as a classic 2D platformer:
+    - **One** ground-top tile `(4, 20)` across all 80 floor cells. No more 5-variant
+      mixing within row 9.
+    - **One** ground-interior tile `(7, 23)` filling rows 10-13 (SUBFLOOR_DEPTH=4)
+      for 4 rows of visible floor thickness.
+    - **One** 3-tile platform palette — `(24, 1) / (25, 1) / (28, 1)` wood-plank L /
+      M / R with the X-brace metal joint in the middle. Used uniformly across 10
+      floating platforms.
+    - 4 floor gaps, 4 tiles each, evenly distributed (cols 16-19, 36-39, 56-59,
+      76-79). Five floor sections of 16 cols between.
+    - 10 platforms total: y=8 bridges over each gap + y=8 step-ups + one y=7
+      chain-up challenge (out of direct floor reach, requires plat 3 as
+      intermediate) + a y=8/7/6 ascending victory path before the exit door.
+    - Ceiling row at y=0 and decor stalactites at y=1 removed entirely — the
+      parallax cave painting provides the overhead naturally.
+- Verified locally via headless capture tour (spawn + col 25 + col 45 + col 65 +
+  col 87): `on_floor=true` at floor positions, layout reads as the intended
+  ground/gap/platforms pattern, wood planks distinct from rocky floor.
+
+**What didn't work / dead ends**
+- Considered using brick `(26, 16)` for ground top (user-authorized fallback for
+  "clean horizontal top"). Rejected: bricks are orange-red and 100% solid across
+  large areas, breaks the cave tone. Stuck with peak-up rocky `(4, 20)` even
+  though it's 50% density and leaves a small transparent strip between the rim
+  and the sub-floor — the dark cave parallax behind makes the strip read as
+  shadow rather than a seam.
+- Tried using brown rocky chunks `(7,23)(8,23)(9,23)` for floating platforms.
+  Rejected: same material as ground interior, platforms didn't read as distinct
+  layer. Wood planks give the contrast.
+
 ## 2026-05-11 — Realm 1 fall-through + full tile rework
 
 **Shipped**
