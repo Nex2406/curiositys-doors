@@ -1,30 +1,28 @@
-; Realm 1 — caves. The cave painting fills the viewport at every camera
-; position; the tile geometry lives ON TOP of it as the actual playable
-; level (Curiosity walks/jumps on tiles, with the parallax visible behind
-; her at all times).
+; Realm 1 — "The Crimson Hollow".
+;
+; Geometry is built in scripts/Realm1.gd. This scene wires up the
+; structural pieces only: parallax, lighting, tile layers, the hero
+; instance, the exit door, and touch controls.
 ;
 ; PARALLAX
-;   8 layers stacked deepest-first. Each Sprite2D is scaled 3.334x so the
-;   384x216 source fills the 1280x720 viewport, with motion_mirroring set
-;   to (1280, 0) so the layer tiles horizontally across the level. The
-;   deepest layer (7.png) is fully opaque so no transparent gap exposes
-;   the project background colour. motion_scale.y = 1 — vertical follows
-;   camera, which combined with limit_top=0 / limit_bottom=720 keeps the
-;   parallax exactly aligned to viewport top/bottom.
+;   Eight layers of the cave painting. Each Sprite2D is scaled 3.334x so
+;   the 384x216 source fills the 1280x720 viewport. motion_mirroring.x
+;   tiles each layer horizontally across the level.
 ;
-;   Note: the asset pack numbers files such that 0.png is the most-detailed
-;   foreground layer and 7.png is the flat backdrop tint. We stack the
-;   layer tree by visual depth (7 deepest, 0 closest) — the opposite of
-;   the file index.
+;   motion_scale.y = 0 on every layer — the parallax is viewport-locked
+;   vertically. This is the key fix for the new 1920-tall world: with a
+;   camera that traverses y=360..1560 (top-of-shaft to bottom-of-pit),
+;   the parallax stays glued to the viewport instead of falling off the
+;   bottom of the artwork. No grey gap at any camera position.
 ;
-; TILE PALETTE  (ONE tile coord per role; see scripts/Realm1.gd for the
-; layout + reachability notes)
-;   T_GROUND_TOP  : (4,20)                              — peak-up rocky rim
-;   T_GROUND_FILL : (7,23)                              — solid brown sub-floor
-;   T_PLATFORM_L  : (24,1)  T_PLATFORM_M : (25,1)
-;   T_PLATFORM_R  : (28,1)                              — wood-plank platforms
-;   No ceiling, no decor — parallax cave painting provides the overhead.
-[gd_scene load_steps=22 format=3 uid="uid://crealm1caves002"]
+;   Asset numbering: 0.png is the closest detail layer, 7.png is the flat
+;   backdrop tint. The tree is stacked by visual depth (L7 deepest first).
+;
+; TILE LAYERS
+;   * Solids       — colliding ground, walls, crystal blocks/surrounds
+;   * Stalactites  — decorative-only, NO collision
+
+[gd_scene load_steps=22 format=3 uid="uid://crealm1caves003"]
 
 [ext_resource type="PackedScene" path="res://scenes/Curiosity.tscn" id="1_curiosity"]
 [ext_resource type="PackedScene" path="res://scenes/TouchControls.tscn" id="2_touch"]
@@ -50,7 +48,7 @@ script = ExtResource("3_realm1")
 [node name="ParallaxBackground" type="ParallaxBackground" parent="."]
 
 [node name="L7" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.05, 1)
+motion_scale = Vector2(0.05, 0)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L7"]
@@ -60,7 +58,7 @@ texture = ExtResource("12_p7")
 scale = Vector2(3.334, 3.334)
 
 [node name="L6" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.1, 1)
+motion_scale = Vector2(0.1, 0)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L6"]
@@ -70,7 +68,7 @@ texture = ExtResource("11_p6")
 scale = Vector2(3.334, 3.334)
 
 [node name="L5" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.2, 1)
+motion_scale = Vector2(0.2, 0)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L5"]
@@ -80,7 +78,7 @@ texture = ExtResource("10_p5")
 scale = Vector2(3.334, 3.334)
 
 [node name="L4" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.35, 1)
+motion_scale = Vector2(0.35, 0)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L4"]
@@ -90,7 +88,7 @@ texture = ExtResource("9_p4")
 scale = Vector2(3.334, 3.334)
 
 [node name="L3" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.5, 1)
+motion_scale = Vector2(0.5, 0)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L3"]
@@ -100,7 +98,7 @@ texture = ExtResource("8_p3")
 scale = Vector2(3.334, 3.334)
 
 [node name="L2" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.65, 1)
+motion_scale = Vector2(0.65, 0)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L2"]
@@ -110,7 +108,7 @@ texture = ExtResource("7_p2")
 scale = Vector2(3.334, 3.334)
 
 [node name="L1" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.8, 1)
+motion_scale = Vector2(0.8, 0)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L1"]
@@ -120,7 +118,7 @@ texture = ExtResource("6_p1")
 scale = Vector2(3.334, 3.334)
 
 [node name="L0" type="ParallaxLayer" parent="ParallaxBackground"]
-motion_scale = Vector2(0.95, 1)
+motion_scale = Vector2(0.95, 0)
 motion_mirroring = Vector2(1280, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/L0"]
@@ -137,14 +135,14 @@ scale = Vector2(2, 2)
 
 [node name="Solids" type="TileMapLayer" parent="World"]
 
-[node name="Decor" type="TileMapLayer" parent="World"]
+[node name="Stalactites" type="TileMapLayer" parent="World"]
 
 [node name="Curiosity" parent="." instance=ExtResource("1_curiosity")]
-position = Vector2(160, 468)
+position = Vector2(160, 1300)
 scale = Vector2(0.5, 0.5)
 
 [node name="ExitDoor" type="Node2D" parent="."]
-position = Vector2(5920, 236)
+position = Vector2(7520, 544)
 
 [node name="Visual" type="Node2D" parent="ExitDoor"]
 
@@ -165,7 +163,6 @@ prompt_offset = Vector2(0, -110)
 prompt_text = "[Y] Return"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ExitDoor/DoorArea"]
-position = Vector2(0, 125)
 shape = SubResource("RectangleShape2D_exitdoor")
 
 [node name="TouchControls" parent="." instance=ExtResource("2_touch")]
