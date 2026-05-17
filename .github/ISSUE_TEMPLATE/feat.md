@@ -25,5 +25,10 @@ labels: ["feat"]
 - [ ] Adheres to docs/ART_DIRECTION.md and docs/VIBE.md
 - [ ] CLAUDE.md / docs/ updated if conventions changed
 
+## Kill criteria
+<!-- Revert if X by Y. One bullet. Forces the "what would make me
+     pull this back" question UP FRONT, not after merge. -->
+- [ ] Revert if:
+
 ## Visual / audio references (optional)
 <!-- Mood-board fragments, color refs, sound refs, or a short prose description. -->

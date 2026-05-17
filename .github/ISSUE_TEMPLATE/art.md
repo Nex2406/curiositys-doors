@@ -26,9 +26,14 @@ labels: ["art"]
 ## Integration target
 <!-- Which scene/node will receive this asset? Path to the .tscn or node, e.g. scenes/Hub.tscn → ParallaxBackground/Far. -->
 
-## Acceptance
+## Acceptance criteria
 - [ ] Matches docs/ART_DIRECTION.md (palette, line treatment, texture, scale)
 - [ ] Imports cleanly via `godot --headless --import`
 - [ ] Wired into the target scene
 - [ ] Web export still passes
 - [ ] Looks like a painting in the running game, not a placeholder
+
+## Kill criteria
+<!-- Revert if X by Y. One bullet. Forces the "what would make me
+     pull this back" question UP FRONT, not after merge. -->
+- [ ] Revert if:
