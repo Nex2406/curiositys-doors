@@ -39,8 +39,9 @@ labels: ["realm"]
 - [ ] No regression in feel or performance
 - [ ] Adheres to docs/ART_DIRECTION.md and docs/VIBE.md
 - [ ] Realm entry registered in `Door.gd::_resolve_scene_path`
-- [ ] docs/STATE.md "Live loop" and "What is wired" updated
 - [ ] docs/REALMS.md entry promoted from drafted → in-build or shipped
+- [ ] docs/STATE.md updated this session
+- [ ] docs/SESSIONS.md entry appended this session
 
 ## Kill criteria
 <!-- Revert if X by Y. One bullet. Forces the "what would make me

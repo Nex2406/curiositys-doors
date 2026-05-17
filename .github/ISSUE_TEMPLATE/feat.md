@@ -24,6 +24,8 @@ labels: ["feat"]
 - [ ] No regression in feel or performance
 - [ ] Adheres to docs/ART_DIRECTION.md and docs/VIBE.md
 - [ ] CLAUDE.md / docs/ updated if conventions changed
+- [ ] docs/STATE.md updated this session
+- [ ] docs/SESSIONS.md entry appended this session
 
 ## Kill criteria
 <!-- Revert if X by Y. One bullet. Forces the "what would make me

@@ -23,3 +23,5 @@ labels: ["story"]
 - [ ] Verbs of stillness preferred (holds, lingers, listens, recognizes)
 - [ ] Reads aloud cleanly at a slow cadence
 - [ ] Integrates into the relevant scene without a UI box
+- [ ] docs/STATE.md updated this session
+- [ ] docs/SESSIONS.md entry appended this session

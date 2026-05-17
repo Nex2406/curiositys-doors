@@ -32,6 +32,8 @@ labels: ["art"]
 - [ ] Wired into the target scene
 - [ ] Web export still passes
 - [ ] Looks like a painting in the running game, not a placeholder
+- [ ] docs/STATE.md updated this session
+- [ ] docs/SESSIONS.md entry appended this session
 
 ## Kill criteria
 <!-- Revert if X by Y. One bullet. Forces the "what would make me

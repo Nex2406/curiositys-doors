@@ -23,3 +23,5 @@ labels: ["research"]
 - [ ] Question answered with a concrete recommendation
 - [ ] Tradeoffs listed (what we give up by choosing this path)
 - [ ] Linked follow-up issues filed (feat / art / story) if the answer unlocks build work
+- [ ] docs/STATE.md updated this session
+- [ ] docs/SESSIONS.md entry appended this session

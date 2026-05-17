@@ -76,3 +76,16 @@ Use this template for every new realm. Fill it in before writing any scene code.
 - A realm of small things (scale shifts, intimacy)
 
 These are not committed. Open an issue to promote one to drafted.
+
+---
+
+## See also
+
+- [`CLAUDE.md`](../CLAUDE.md) — repo-wide engineering guide; Quality Gate; Session Start Protocol
+- [`docs/STATE.md`](STATE.md) — single living snapshot of what's wired right now; updated every session
+- [`docs/SESSIONS.md`](SESSIONS.md) — append-only build log: shipped / didn't / next 3 per session
+- [`docs/VISION.md`](VISION.md) — north star: hero, hub, realms, the three bars (visual / technical / narrative)
+- [`docs/MECHANICS.md`](MECHANICS.md) — engineering reference: implemented vs planned systems
+- [`docs/ART_DIRECTION.md`](ART_DIRECTION.md) — painterly bible: palette hexes, lighting model, scale rules
+- [`docs/STORY.md`](STORY.md) — narrative scaffolding: plot beats, tonal constraints, voice rules
+- [`docs/VIBE.md`](VIBE.md) — tone allow/deny lists; sanity check before naming or writing
