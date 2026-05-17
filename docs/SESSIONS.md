@@ -7,6 +7,53 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 
 ---
 
+## 2026-05-17 — Realm 1 lore moment + LoreMoment scene
+
+**Shipped**
+- New reusable `LoreMoment` overlay (`scenes/UI/LoreMoment.tscn` +
+  `scripts/LoreMoment.gd`) — single-line lore display: slow fade-in /
+  hold / fade-out, soft serif via `SystemFont` fallback chain (Georgia →
+  Times New Roman → DejaVu Serif → Liberation Serif → serif), centered,
+  no box, no portrait, no ticking crawl. Self-frees after the fade-out.
+  Awaitable from any caller: `await lore.play_line(text)`.
+- `Door.gd` extended with an `exit_lore_line` `@export_multiline` field.
+  When non-empty, `trigger()` spawns a LoreMoment under the current
+  scene, awaits its full ~5s cycle, then continues into the existing
+  `Transition.transition_to(path)` fade. Empty value = no behavior
+  change, so existing doors stay exactly as they were.
+- Realm 1's `ExitDoor/DoorArea` now sets:
+  `exit_lore_line = "The dark grew careful where her lantern had been."`
+  — lantern-anchored imagery from the book, "grew careful" implies the
+  cave reacted without narrating that it did. Past tense gives
+  after-presence.
+- `docs/STATE.md` updated: LoreMoment moved to "What is wired,"
+  dialogue-overlay removed from "unwired," Live loop reflects the lore
+  step before the fade.
+- Closes #66.
+
+**What didn't work / dead ends**
+- No bundled `.ttf` serif font available — relied on `SystemFont` with a
+  Georgia → Times → DejaVu Serif → Liberation Serif → serif fallback
+  chain. On the live web build this should resolve to a real serif on
+  Windows / macOS / Android browsers; Linux without DejaVu falls back to
+  Godot's default sans. Bundling a free-license painterly serif is the
+  obvious polish follow-up but didn't make this PR.
+- Couldn't run `godot --headless --import` locally (Godot not on PATH on
+  the working machine). Relied on careful code review + post-merge CI as
+  the Quality Gate.
+
+**Next 3 safe candidates**
+1. Realm 1 jade-piece pickups — scattered collectible nodes, counter
+   tracked in a global singleton, hub-side "forge the key" moment on
+   return. Foundation for the Realm 1 → Door 2 unlock loop.
+2. Polish pass on platform rocks — peak-top platform tile so they read
+   as floating ledges, not chunks of detached floor.
+3. Hand-painted lantern falloff — replace the `GradientTexture2D`
+   placeholder with a painterly radial falloff. Pure art swap, no
+   gameplay change.
+
+---
+
 ## 2026-05-17 — Tighten the agentic loop
 
 **Shipped**

@@ -90,6 +90,18 @@ Systems that exist in code and are wired into the loop above.
 - Virtual joystick-style controls for touch browsers. Hidden by default on
   desktop, surfaced on touch-capable web.
 
+### LoreMoment overlay (single-line, awaitable)
+- Files: `scripts/LoreMoment.gd`, `scenes/UI/LoreMoment.tscn`.
+- Reusable single-line lore display: CanvasLayer at layer=100, centered
+  Label, soft serif via `SystemFont` fallback chain, no box, no portrait,
+  no ticking crawl.
+- Lifecycle: fade-in (1.0s, sine ease-out) → hold (3.0s) → fade-out (1.0s,
+  sine ease-in) → `queue_free`. Awaitable: `await lore.play_line(text)`.
+- Wired via `Door.exit_lore_line` (`@export_multiline String`). If set,
+  `Door.trigger()` plays the line between its flash-feedback hold and the
+  `Transition.transition_to()` fade. Empty value = no behavior change.
+- Realm 1's exit door uses it to land one beat before returning to Hub.
+
 ### Web Export Pipeline
 - Godot 4.6 Forward+ → HTML5 export preset "Web".
 - GitHub Actions workflow in `.github/workflows/*.yml` builds and publishes
@@ -120,17 +132,14 @@ intentional stubs.
 The following are described in this file's **Planned** section and elsewhere
 but **have no Godot implementation yet**:
 - Save / load
-- Dialogue / lore textbox overlay (will be needed for Curiosity-spoken text)
+- Multi-line dialogue overlay with positional triggers (the single-line
+  lore case is shipped — see "LoreMoment overlay" in Implemented)
 - Puzzle framework (abstract `Puzzle` base class)
 - Hub layout system (currently hand-authored doors only)
 - Settings / pause overlay
 - Per-realm ambient audio bus structure
 - Hand-painted lantern falloff (still gradient placeholder)
 - Cloak shader / eye-blink shader / fog shader
-
-### Lore moment on Realm 1 exit
-Queued spec — a short single-line Curiosity textbox before the exit fade.
-Needs the dialogue overlay before it can ship.
 
 ---
 
@@ -160,11 +169,16 @@ Rails the game is being built on. Each becomes its own issue when scheduled.
 - Lantern flicker has a soft sonic correlate.
 - Bus structure: Master → Music → Ambient → SFX with fade helpers per realm.
 
-### Dialogue / Lore Overlay
-- Reverent text presenter — slow fade-in, generous holds, slow fade-out.
-- Soft serif or hand-lettered font (no system sans-serif).
-- Single line at a time; no boxes, no portraits, no ticking crawl.
-- Triggerable by zone, puzzle event, or lantern proximity to a lore object.
+### Dialogue / Lore Overlay (extensions beyond LoreMoment)
+- LoreMoment ships the single-line variant for door-exit beats. The
+  larger system still planned:
+  - Multi-line passages with paced reveal between lines.
+  - In-realm triggers (proximity zones, puzzle-solve events, lantern-on-
+    lore-object detection) rather than only door-bound playback.
+  - Optional Curiosity-voice register vs. environmental-narration
+    register — same overlay, different cadence/font weight.
+  - Bundled painterly serif `.ttf` to replace the `SystemFont` fallback
+    chain.
 - **Curiosity speaks through this system** — see `docs/VOICE.md` for tone.
 
 ### Puzzle Framework
@@ -200,19 +214,18 @@ Rails the game is being built on. Each becomes its own issue when scheduled.
 Small, scoped, low-risk next steps. Pick from here when starting a session;
 none of these require designing a new system from scratch.
 
-1. **Realm 1 lore moment (queued spec)** — one short Curiosity-voice line
-   on Realm 1 exit before the fade. Local to the realm, no global dialogue
-   framework needed yet.
-2. **Realm 1 jade-piece pickups** — scattered collectible nodes, counter
+1. **Realm 1 jade-piece pickups** — scattered collectible nodes, counter
    tracked in a global singleton, hub-side "forge the key" moment on
    return. Foundation for the Realm 1 → Door 2 unlock loop.
-3. **Polish pass on platform rocks** — `T_PLATFORM_L/M/R` currently reuse
+2. **Polish pass on platform rocks** — `T_PLATFORM_L/M/R` currently reuse
    the solid sub-floor block. A peak-top platform tile (e.g. row-22 rocky-
    band coords) would read more as a floating ledge than a chunk of
    detached floor.
-4. **Audit the parallax cave painting against the brown-cave foreground** —
+3. **Audit the parallax cave painting against the brown-cave foreground** —
    the deepest layer is still a cool blue-grey while the tiles are warm
    brown. The tonal split shows when there's an exposed gap.
-5. **Hand-painted lantern falloff** — replace the `GradientTexture2D`
+4. **Hand-painted lantern falloff** — replace the `GradientTexture2D`
    placeholder with a painterly radial falloff. Pure art swap, no
    gameplay change.
+5. **Painterly serif `.ttf` for LoreMoment** — bundle a free-license
+   serif so the lore overlay stops depending on host-system fonts.

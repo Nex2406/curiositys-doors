@@ -161,6 +161,7 @@ target_realm = "hub"
 door_id = "Realm1Exit"
 prompt_offset = Vector2(0, -110)
 prompt_text = "[Y] Return"
+exit_lore_line = "The dark grew careful where her lantern had been."
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ExitDoor/DoorArea"]
 shape = SubResource("RectangleShape2D_exitdoor")
