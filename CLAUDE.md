@@ -18,12 +18,13 @@ Every PR must:
 - (d) reference an issue (`Closes #N`) — no orphan PRs except the meta-workflow PR itself
 
 ## Session Start Protocol
-At the start of every session, before touching code, do these in order:
-1. Read `CLAUDE.md` (this file)
-2. Read every file in `docs/` — VISION, ART_DIRECTION, REALMS, MECHANICS, STORY, VIBE
-3. Run `gh issue list --state open` to see what's queued
-4. Run `gh pr list` to see what's already in flight
-Only then propose or accept work.
+Before touching code:
+1. Read `CLAUDE.md` (this file) + `docs/STATE.md`
+2. Read the open issue you're picking up (`gh issue view N`)
+3. Read ONLY the one design doc the issue touches (VISION / ART_DIRECTION / MECHANICS / REALMS / STORY / VIBE)
+4. Run `gh issue list --state open` + `gh pr list`
+
+Skim, don't read, anything else. `docs/STATE.md` is the truth.
 
 ## Tech
 - **Engine:** Godot 4.6 (GDScript, Forward+ renderer)
@@ -87,7 +88,12 @@ Scope tags (`feat(hero):`, `fix(ci):`) are welcome when they clarify.
 
 For the full painterly bible, see `docs/ART_DIRECTION.md`. For tone-words allow/deny lists, see `docs/VIBE.md`.
 
-## Current Skeleton Status
-- Placeholder `ColorRect` stands in for Curiosity's painted sprite
-- `GradientTexture2D` radial placeholder for the lantern light — replace with a hand-drawn falloff when art lands
-- No parallax, no fog, no doors, no realms yet — these are the next feature branches
+## Chat protocol — how the brain evolves
+
+The design lives in `INTENT.md`, `docs/realms/*`, and `docs/SKETCHBOOK.md`. It grows by chat, not by checklist.
+
+- **At session start**, ask: *"Anything you've been thinking about the game since we last spoke?"* Capture the answer before code — `docs/SKETCHBOOK.md` if rough, a realm spec if specific.
+- **Mid-session**, if Advika says something idea-shaped (a new realm, a new puzzle, a new character), pause, write it to `docs/SKETCHBOOK.md` with today's date, continue.
+- **At session end**, ask: *"Anything new today we should write down before we close?"* Capture it.
+
+No interrogation. One open question at the right moments. The brain grows by listening, not by quizzing.

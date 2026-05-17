@@ -7,6 +7,51 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 
 ---
 
+## 2026-05-17 — Tighten the agentic loop
+
+**Shipped**
+- `docs/STATE.md` introduced as the single living snapshot of what's wired
+  vs. unwired right now. Updated at the end of every session. Becomes the
+  primary boot-up read alongside `CLAUDE.md`.
+- `CLAUDE.md` reality-synced: deleted the stale "Current Skeleton Status"
+  block (was still claiming `ColorRect` placeholder + no parallax + no doors),
+  replaced the "Session Start Protocol" with a leaner four-step version
+  that reads `STATE.md` + the issue + ONE relevant design doc, instead of
+  the full `docs/` tree.
+- `docs/MECHANICS.md` reality-synced against current code: split into
+  **Current Implemented Loop / Implemented / Known Stubs / Planned / Next
+  Safe Feature Candidates**. Removed `ColorRect` / `GradientTexture2D` lies,
+  documented the Door + Hub + Transition wiring as shipped, listed the
+  un-wired Curiosity animations as explicit stubs. Closes #57.
+- `.github/ISSUE_TEMPLATE/feat.md` + `art.md` now have a **Kill criteria**
+  section right after Acceptance — forces the "what would make me pull
+  this back?" question up front instead of post-merge.
+- `.github/ISSUE_TEMPLATE/realm.md` added — new template for queuing
+  realms. Fields: Theme word, Palette refs (3 colors min), Puzzle premise
+  (one sentence), Lore beat on exit (one line), What player carries
+  forward into the hub. Acceptance copied from `feat.md`, Kill criteria
+  required.
+- Bundled the `Chat protocol — how the brain evolves` section that was
+  added to `CLAUDE.md` during the 2026-05-17 design session — same theme
+  (cheap session boot), rolling it forward into `main`.
+
+**What didn't work / dead ends**
+- None this session — pure docs / meta work, no code paths exercised.
+
+**Next 3 safe candidates**
+1. Realm 1 lore moment (queued spec) — one short Curiosity-voice line on
+   Realm 1 exit before the fade. Local to the realm, no global dialogue
+   framework needed yet.
+2. Realm 1 jade-piece pickups — scattered collectible nodes, counter
+   tracked in a global singleton, hub-side "forge the key" moment on
+   return. Foundation for the Realm 1 → Door 2 unlock loop.
+3. Polish pass on platform rocks — `T_PLATFORM_L/M/R` currently reuse the
+   solid sub-floor block. A peak-top platform tile (e.g. row-22 rocky-band
+   coords) would read more as a floating ledge than a chunk of detached
+   floor.
+
+---
+
 ## 2026-05-11 — Realm 1 full geometry rebuild (classic platformer)
 
 **Shipped**
