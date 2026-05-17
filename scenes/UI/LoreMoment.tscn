@@ -1,0 +1,43 @@
+; Reusable lore-moment overlay. See scripts/LoreMoment.gd for behavior.
+;
+; Soft serif via SystemFont fallback chain — picks the host serif when
+; available, falls back to Godot default if running in a browser without
+; the requested fonts. A bundled .ttf is the planned polish follow-up.
+
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/LoreMoment.gd" id="1_lore"]
+
+[sub_resource type="SystemFont" id="SystemFont_serif"]
+font_names = PackedStringArray("Georgia", "Times New Roman", "DejaVu Serif", "Liberation Serif", "serif")
+antialiasing = 1
+hinting = 1
+subpixel_positioning = 1
+
+[node name="LoreMoment" type="CanvasLayer"]
+layer = 100
+script = ExtResource("1_lore")
+
+[node name="Container" type="Control" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Line" type="Label" parent="Container"]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -500.0
+offset_top = -60.0
+offset_right = 500.0
+offset_bottom = 60.0
+theme_override_colors/font_color = Color(0.96, 0.91, 0.78, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 6
+theme_override_fonts/font = SubResource("SystemFont_serif")
+theme_override_font_sizes/font_size = 36
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+text = ""

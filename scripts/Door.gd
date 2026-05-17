@@ -16,6 +16,11 @@ signal left_door(door)
 @export_group("Prompt")
 @export var prompt_offset: Vector2 = Vector2(0, -120)
 @export var prompt_text: String = "[Y] Enter"
+@export_group("Lore")
+## Optional single-line lore moment that plays before the transition fade.
+## Leave empty to skip. Used by realm exits to land an environmental beat
+## right before returning to the hub. See scripts/LoreMoment.gd.
+@export_multiline var exit_lore_line: String = ""
 
 const _PROMPT_SIZE: Vector2 = Vector2(140, 30)
 const _PROMPT_COLOR: Color = Color(1.0, 0.93, 0.66, 0.95)
@@ -116,7 +121,26 @@ func trigger() -> void:
 		Transition.last_door_id = door_id
 	# Hold the flash briefly so the player sees the Y register before fade.
 	await get_tree().create_timer(_TRIGGER_TO_FADE_DELAY).timeout
+	if exit_lore_line.strip_edges() != "":
+		await _play_lore(exit_lore_line)
 	await Transition.transition_to(path)
+
+
+func _play_lore(text: String) -> void:
+	# Instantiate a fresh LoreMoment overlay under the current scene, await
+	# its full fade-in / hold / fade-out cycle, and let it free itself.
+	var lore_scene: PackedScene = load("res://scenes/UI/LoreMoment.tscn")
+	if lore_scene == null:
+		push_warning("[Door] LoreMoment scene missing — skipping lore line")
+		return
+	var lore: Node = lore_scene.instantiate()
+	var host: Node = get_tree().current_scene
+	if host == null:
+		push_warning("[Door] No current scene to host LoreMoment — skipping")
+		return
+	host.add_child(lore)
+	if lore.has_method("play_line"):
+		await lore.play_line(text)
 
 
 static func _resolve_scene_path(target: String) -> String:
