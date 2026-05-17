@@ -9,6 +9,8 @@ Closes #
 - [ ] Played on the live site after merge OR verified in a local web export
 - [ ] No regression in visuals, performance, or feel
 - [ ] CLAUDE.md / docs/ updated if conventions changed
+- [ ] docs/STATE.md updated this session
+- [ ] docs/SESSIONS.md entry appended this session
 
 ## Screenshots / clips
 <!-- Required for any visual change. Stills preferred for atmosphere; short clips for motion or audio. -->

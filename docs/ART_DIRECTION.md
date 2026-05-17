@@ -60,3 +60,16 @@ Each realm shifts the palette without abandoning it. A realm may push toward blu
 
 ## What This Looks Like When Done Right
 A still frame from any moment in the game should be screenshotable, frameable, and *quiet*. If a screenshot looks like a screenshot, we missed. It should look like a painting that's holding its breath.
+
+---
+
+## See also
+
+- [`CLAUDE.md`](../CLAUDE.md) — repo-wide engineering guide; Quality Gate; Session Start Protocol
+- [`docs/STATE.md`](STATE.md) — single living snapshot of what's wired right now; updated every session
+- [`docs/SESSIONS.md`](SESSIONS.md) — append-only build log: shipped / didn't / next 3 per session
+- [`docs/VISION.md`](VISION.md) — north star: hero, hub, realms, the three bars (visual / technical / narrative)
+- [`docs/MECHANICS.md`](MECHANICS.md) — engineering reference: implemented vs planned systems
+- [`docs/REALMS.md`](REALMS.md) — per-realm spec: theme, palette, soundscape, puzzle mechanic, lore reveal
+- [`docs/STORY.md`](STORY.md) — narrative scaffolding: plot beats, tonal constraints, voice rules
+- [`docs/VIBE.md`](VIBE.md) — tone allow/deny lists; sanity check before naming or writing

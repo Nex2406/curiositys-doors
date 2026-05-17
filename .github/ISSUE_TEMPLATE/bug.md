@@ -27,3 +27,11 @@ labels: ["bug"]
 - [ ] p1 — visible to anyone who plays
 - [ ] p2 — edge case or polish gap
 - [ ] p3 — cosmetic, low impact
+
+## Acceptance
+- [ ] Root cause identified (not just symptom patched)
+- [ ] `godot --headless --import` passes
+- [ ] `godot --headless --export-release "Web" build/index.html` passes
+- [ ] Verified on the live site after merge
+- [ ] docs/STATE.md updated this session
+- [ ] docs/SESSIONS.md entry appended this session

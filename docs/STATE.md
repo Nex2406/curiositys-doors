@@ -30,16 +30,29 @@ Door 2 / Door 3: stubs.
 - Per-realm ambient audio
 
 ## Last session
-[2026-05-17 — Realm 1 lore moment + LoreMoment scene](SESSIONS.md#2026-05-17--realm-1-lore-moment--loremoment-scene)
+[2026-05-17 — Close the agentic loop](SESSIONS.md#2026-05-17--close-the-agentic-loop)
 
 ## Next 3 safe candidates
-1. **Realm 1 jade-piece pickups** — scattered collectible nodes, counter
+1. **Realm 2 — design + build (use `realm.md`)** — interview Advika for
+   all 5 template fields (theme word, palette refs, puzzle premise, lore
+   beat on exit, what player carries forward), then build. Do not invent
+   answers.
+2. **Realm 1 jade-piece pickups** — scattered collectible nodes, counter
    tracked in a global singleton, hub-side "forge the key" moment on
    return. Foundation for the Realm 1 → Door 2 unlock loop.
-2. **Polish pass on platform rocks** — `T_PLATFORM_L/M/R` currently reuse
-   the solid sub-floor block. A peak-top platform tile (e.g. row-22
-   rocky-band coords) would read more as a floating ledge than a chunk
-   of detached floor.
 3. **Hand-painted lantern falloff** — replace the `GradientTexture2D`
    placeholder with a painterly radial falloff. Pure art swap, no
    gameplay change.
+
+---
+
+## See also
+
+- [`CLAUDE.md`](../CLAUDE.md) — repo-wide engineering guide; Quality Gate; Session Start Protocol
+- [`docs/SESSIONS.md`](SESSIONS.md) — append-only build log: shipped / didn't / next 3 per session
+- [`docs/VISION.md`](VISION.md) — north star: hero, hub, realms, the three bars (visual / technical / narrative)
+- [`docs/MECHANICS.md`](MECHANICS.md) — engineering reference: implemented vs planned systems
+- [`docs/REALMS.md`](REALMS.md) — per-realm spec: theme, palette, soundscape, puzzle mechanic, lore reveal
+- [`docs/ART_DIRECTION.md`](ART_DIRECTION.md) — painterly bible: palette hexes, lighting model, scale rules
+- [`docs/STORY.md`](STORY.md) — narrative scaffolding: plot beats, tonal constraints, voice rules
+- [`docs/VIBE.md`](VIBE.md) — tone allow/deny lists; sanity check before naming or writing

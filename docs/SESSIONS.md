@@ -7,6 +7,52 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 
 ---
 
+## 2026-05-17 — Close the agentic loop
+
+**Shipped**
+- `docs/SESSION_PROMPT.md` — the durable single-paste session opener.
+  Names the protocol, the queue, the template choice, the acceptance
+  bar, and the 3-line end-of-session report. From now on, one paste
+  starts every session.
+- `CLAUDE.md` carries a one-line banner directly under the title
+  pointing at `SESSION_PROMPT.md`. The brain points at itself.
+- **Self-referential docs**: `## See also` footer added to each of
+  `CLAUDE.md`, `docs/STATE.md`, `docs/SESSIONS.md`, `docs/VISION.md`,
+  `docs/MECHANICS.md`, `docs/REALMS.md`, `docs/ART_DIRECTION.md`,
+  `docs/STORY.md`, `docs/VIBE.md`. Each footer lists the other 8 with
+  one-line roles. Open any doc → see the whole map.
+- `.github/PULL_REQUEST_TEMPLATE.md` + every issue template
+  (feat / bug / art / story / research / realm) now require two new
+  checkboxes in Acceptance: `docs/STATE.md updated this session` and
+  `docs/SESSIONS.md entry appended this session`. The discipline is in
+  the templates, not in someone's head.
+- `bug.md` gained an Acceptance section it never had — root-cause +
+  import/export green + live verification + the two new STATE/SESSIONS
+  checkboxes.
+- `docs/STATE.md` Next 3 re-ranked: item 1 is now
+  **"Realm 2 — design + build (use realm.md)"**.
+- For SESSIONS.md specifically: a note explains that new entries are
+  inserted *above* the See also footer so the footer stays permanent.
+
+**What didn't work / dead ends**
+- None this session — pure docs / scaffolding work, no code paths
+  exercised. The Phase 2 lore-moment PR was the live-build test for
+  the new loop and it landed green.
+
+**Next 3 safe candidates**
+1. Realm 2 — design + build (use realm.md). Interview Advika for all
+   5 template fields (theme word, palette refs, puzzle premise, lore
+   beat on exit, what player carries forward), then build. Do not
+   invent answers.
+2. Realm 1 jade-piece pickups — scattered collectible nodes, counter
+   tracked in a global singleton, hub-side "forge the key" moment on
+   return. Foundation for the Realm 1 → Door 2 unlock loop.
+3. Hand-painted lantern falloff — replace the `GradientTexture2D`
+   placeholder with a painterly radial falloff. Pure art swap, no
+   gameplay change.
+
+---
+
 ## 2026-05-17 — Realm 1 lore moment + LoreMoment scene
 
 **Shipped**
@@ -184,3 +230,20 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 3. Audit the parallax cave painting against the brown-cave foreground — the deepest layer
    is still a cool blue-grey while the tiles are warm brown. Subtle but the tonal split
    shows when there's an exposed gap.
+
+---
+
+> **Note for future appenders:** new session entries are inserted **above** the See also
+> footer (between the most recent entry and the footer), keeping the footer permanently at
+> the bottom of the file.
+
+## See also
+
+- [`CLAUDE.md`](../CLAUDE.md) — repo-wide engineering guide; Quality Gate; Session Start Protocol
+- [`docs/STATE.md`](STATE.md) — single living snapshot of what's wired right now; updated every session
+- [`docs/VISION.md`](VISION.md) — north star: hero, hub, realms, the three bars (visual / technical / narrative)
+- [`docs/MECHANICS.md`](MECHANICS.md) — engineering reference: implemented vs planned systems
+- [`docs/REALMS.md`](REALMS.md) — per-realm spec: theme, palette, soundscape, puzzle mechanic, lore reveal
+- [`docs/ART_DIRECTION.md`](ART_DIRECTION.md) — painterly bible: palette hexes, lighting model, scale rules
+- [`docs/STORY.md`](STORY.md) — narrative scaffolding: plot beats, tonal constraints, voice rules
+- [`docs/VIBE.md`](VIBE.md) — tone allow/deny lists; sanity check before naming or writing

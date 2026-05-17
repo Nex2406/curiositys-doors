@@ -1,5 +1,7 @@
 # Curiosity's Doors
 
+> Every session starts by pasting [`docs/SESSION_PROMPT.md`](docs/SESSION_PROMPT.md).
+
 ## North Star
 "Curiosity's Doors" is a 2D side-scrolling atmospheric puzzle game.
 - ONE hero: Curiosity — cloaked traveler, glowing lantern, blinking-eye cloak pattern, face hidden.
@@ -97,3 +99,16 @@ The design lives in `INTENT.md`, `docs/realms/*`, and `docs/SKETCHBOOK.md`. It g
 - **At session end**, ask: *"Anything new today we should write down before we close?"* Capture it.
 
 No interrogation. One open question at the right moments. The brain grows by listening, not by quizzing.
+
+---
+
+## See also
+
+- [`docs/STATE.md`](docs/STATE.md) — single living snapshot of what's wired right now; updated every session
+- [`docs/SESSIONS.md`](docs/SESSIONS.md) — append-only build log: shipped / didn't / next 3 per session
+- [`docs/VISION.md`](docs/VISION.md) — north star: hero, hub, realms, the three bars (visual / technical / narrative)
+- [`docs/MECHANICS.md`](docs/MECHANICS.md) — engineering reference: implemented vs planned systems
+- [`docs/REALMS.md`](docs/REALMS.md) — per-realm spec: theme, palette, soundscape, puzzle mechanic, lore reveal
+- [`docs/ART_DIRECTION.md`](docs/ART_DIRECTION.md) — painterly bible: palette hexes, lighting model, scale rules
+- [`docs/STORY.md`](docs/STORY.md) — narrative scaffolding: plot beats, tonal constraints, voice rules
+- [`docs/VIBE.md`](docs/VIBE.md) — tone allow/deny lists; sanity check before naming or writing

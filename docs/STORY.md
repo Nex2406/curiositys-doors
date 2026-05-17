@@ -50,3 +50,16 @@ The first door is closer than they thought.
 - Sentences short. Paragraphs sparse. White space is part of the writing.
 - No exclamations. No questions directed at the player. No "you must."
 - Verbs of stillness preferred: *holds, lingers, waits, listens, recognizes*. Verbs of action sparingly.
+
+---
+
+## See also
+
+- [`CLAUDE.md`](../CLAUDE.md) — repo-wide engineering guide; Quality Gate; Session Start Protocol
+- [`docs/STATE.md`](STATE.md) — single living snapshot of what's wired right now; updated every session
+- [`docs/SESSIONS.md`](SESSIONS.md) — append-only build log: shipped / didn't / next 3 per session
+- [`docs/VISION.md`](VISION.md) — north star: hero, hub, realms, the three bars (visual / technical / narrative)
+- [`docs/MECHANICS.md`](MECHANICS.md) — engineering reference: implemented vs planned systems
+- [`docs/REALMS.md`](REALMS.md) — per-realm spec: theme, palette, soundscape, puzzle mechanic, lore reveal
+- [`docs/ART_DIRECTION.md`](ART_DIRECTION.md) — painterly bible: palette hexes, lighting model, scale rules
+- [`docs/VIBE.md`](VIBE.md) — tone allow/deny lists; sanity check before naming or writing
