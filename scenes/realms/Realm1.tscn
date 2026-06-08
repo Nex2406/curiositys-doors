@@ -81,43 +81,43 @@ script = ExtResource("3_realm1")
 
 [node name="BG1" type="ParallaxLayer" parent="ParallaxBackground"]
 motion_scale = Vector2(0.1, 0)
-motion_mirroring = Vector2(1440, 0)
+motion_mirroring = Vector2(1536, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/BG1"]
 texture_filter = 1
 centered = false
 texture = ExtResource("5_bg1")
-scale = Vector2(1.5, 1.5)
+scale = Vector2(1.6, 1.6)
 
 [node name="BG2" type="ParallaxLayer" parent="ParallaxBackground"]
 motion_scale = Vector2(0.25, 0)
-motion_mirroring = Vector2(1440, 0)
+motion_mirroring = Vector2(1536, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/BG2"]
 texture_filter = 1
 centered = false
 texture = ExtResource("6_bg2")
-scale = Vector2(1.5, 1.5)
+scale = Vector2(1.6, 1.6)
 
 [node name="BG3" type="ParallaxLayer" parent="ParallaxBackground"]
 motion_scale = Vector2(0.45, 0)
-motion_mirroring = Vector2(1440, 0)
+motion_mirroring = Vector2(1536, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/BG3"]
 texture_filter = 1
 centered = false
 texture = ExtResource("7_bg3")
-scale = Vector2(1.5, 1.5)
+scale = Vector2(1.6, 1.6)
 
 [node name="BG4" type="ParallaxLayer" parent="ParallaxBackground"]
 motion_scale = Vector2(0.7, 0)
-motion_mirroring = Vector2(1440, 0)
+motion_mirroring = Vector2(1536, 0)
 
 [node name="Sprite" type="Sprite2D" parent="ParallaxBackground/BG4"]
 texture_filter = 1
 centered = false
 texture = ExtResource("8_bg4")
-scale = Vector2(1.5, 1.5)
+scale = Vector2(1.6, 1.6)
 
 [node name="CanvasModulate" type="CanvasModulate" parent="."]
 color = Color(0.72, 0.68, 0.66, 1)
@@ -131,7 +131,7 @@ scale = Vector2(2, 2)
 
 [node name="Curiosity" parent="." instance=ExtResource("1_curiosity")]
 position = Vector2(160, 1300)
-scale = Vector2(0.5, 0.5)
+scale = Vector2(0.4, 0.4)
 
 [node name="ExitDoor" type="Node2D" parent="."]
 position = Vector2(7520, 544)
