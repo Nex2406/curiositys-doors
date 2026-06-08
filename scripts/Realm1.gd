@@ -297,13 +297,21 @@ func _pick(variants: Array[Vector2i]) -> Vector2i:
 # ─── actor placement ─────────────────────────────────────────────────────
 func _position_curiosity() -> void:
 	# Floor in chunk 1 sits at tile y=22 → top edge at world y=1408.
-	# Curiosity body half-height = 108 (rect 88x432 at scene scale 0.5).
-	# Place her so the body bottom rests exactly on the floor top.
+	# Place Curiosity so their body bottom rests just above the floor top.
+	# Half-height is derived from the collision shape × the instance scale so
+	# this stays correct if Curiosity is rescaled (currently 0.4).
 	var floor_top_world: float = 22.0 * float(VISUAL_TILE)
 	_curiosity.position = Vector2(
 		float(SPAWN_TILE.x) * float(VISUAL_TILE) + float(VISUAL_TILE) * 0.5,
-		floor_top_world - 108.0
+		floor_top_world - _curiosity_half_height()
 	)
+
+
+func _curiosity_half_height() -> float:
+	var shape_node: CollisionShape2D = _curiosity.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if shape_node and shape_node.shape is RectangleShape2D:
+		return (shape_node.shape as RectangleShape2D).size.y * 0.5 * _curiosity.scale.y
+	return 100.0 * _curiosity.scale.y
 
 
 func _position_exit_door() -> void:

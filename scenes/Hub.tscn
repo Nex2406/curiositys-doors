@@ -233,6 +233,6 @@ process_material = SubResource("ParticleProcessMaterial_firefly_hub")
 
 [node name="Curiosity" parent="." instance=ExtResource("1_curiosity")]
 position = Vector2(640, 580)
-scale = Vector2(0.5, 0.5)
+scale = Vector2(0.4, 0.4)
 
 [node name="TouchControls" parent="." instance=ExtResource("2_touch")]
