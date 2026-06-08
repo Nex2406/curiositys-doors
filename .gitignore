@@ -33,5 +33,9 @@ __pycache__/
 # Inspection / sampling debug outputs from scripts/inspect_*.py & sample_*.py
 scripts/_*.json
 scripts/_*.png
+scripts/_*.png.import
 
 .claude/
+
+# Generated milestone PDF (regenerable from docs/MILESTONES.md)
+/Curiositys-Doors-Milestones.pdf

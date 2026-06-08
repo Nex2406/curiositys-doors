@@ -23,17 +23,16 @@ const SOURCE_TEXTURE: Texture2D = preload("res://assets/realms/realm1_caves/main
 const ATLAS_TILE_SIZE: Vector2i = Vector2i(32, 32)
 
 # ─── palette ─────────────────────────────────────────────────────────────
-const GROUND_TOP_VARIANTS: Array[Vector2i] = [
-	Vector2i(3, 20), Vector2i(5, 20), Vector2i(7, 20),
-	Vector2i(10, 20), Vector2i(12, 20),
-]
-const GROUND_FILL_VARIANTS: Array[Vector2i] = [
-	Vector2i(7, 23), Vector2i(8, 23), Vector2i(9, 23),
-	Vector2i(7, 24), Vector2i(8, 24), Vector2i(9, 24),
-	Vector2i(7, 25), Vector2i(8, 25),
-]
-const LEFT_EDGE_VARIANTS: Array[Vector2i] = [Vector2i(1, 20), Vector2i(1, 22)]
-const RIGHT_EDGE_VARIANTS: Array[Vector2i] = [Vector2i(13, 20), Vector2i(13, 22)]
+# STOPGAP (2026-06-08): this tileset is decorative rock chunks, not a seamless
+# terrain set, so the previous random per-cell variant mixing read as rubble.
+# Each role is collapsed to ONE consistent tile — repetition reads far cleaner
+# than randomness. A proper terrain-tileset rebuild is queued for M3 (Realm 1
+# to ship-quality). Every coord here must still appear in SOLID_TILES below so
+# the floor keeps its collision.
+const GROUND_TOP_VARIANTS: Array[Vector2i] = [Vector2i(7, 20)]
+const GROUND_FILL_VARIANTS: Array[Vector2i] = [Vector2i(8, 23)]
+const LEFT_EDGE_VARIANTS: Array[Vector2i] = [Vector2i(1, 22)]
+const RIGHT_EDGE_VARIANTS: Array[Vector2i] = [Vector2i(13, 22)]
 const STALACTITE_VARIANTS: Array[Vector2i] = [Vector2i(3, 18), Vector2i(14, 18)]
 const CRYSTAL_BLOCK: Vector2i = Vector2i(20, 25)
 const CRYSTAL_SURROUND: Vector2i = Vector2i(20, 24)
@@ -63,8 +62,14 @@ const EXIT_DOOR_TILE: Vector2i = Vector2i(117, 8)
 @onready var _solids: TileMapLayer = $World/Solids
 @onready var _stalactites: TileMapLayer = $World/Stalactites
 @onready var _curiosity: CharacterBody2D = $Curiosity
+@onready var _motes: GPUParticles2D = $CeilingMotes
+
+# Vertical offset from the camera's view-center up to where motes spawn —
+# half the 720 viewport plus a margin so they drift in from above the top edge.
+const MOTE_SPAWN_ABOVE_CENTER: float = 400.0
 
 var _rng: RandomNumberGenerator
+var _cam: Camera2D
 
 
 func _ready() -> void:
@@ -81,6 +86,17 @@ func _ready() -> void:
 	_position_curiosity()
 	_position_exit_door()
 	_setup_camera_limits()
+	_hide_tile_visuals()
+
+
+# TEMP (2026-06-08): the decorative tileset reads badly, so per Advika we hide
+# the tile *rendering* while keeping the collision intact — the warm parallax +
+# motes carry the look, and the obby stays playable on invisible ground.
+# Setting modulate alpha to 0 hides drawing only; tile physics is unaffected.
+# Restored when the proper terrain tileset lands (M3 — Realm 1 to ship-quality).
+func _hide_tile_visuals() -> void:
+	_solids.modulate.a = 0.0
+	_stalactites.modulate.a = 0.0
 
 
 # ─── tileset construction ────────────────────────────────────────────────
@@ -313,3 +329,15 @@ func _setup_camera_limits() -> void:
 	cam.limit_top = 0
 	cam.limit_bottom = LEVEL_HEIGHT_TILES * VISUAL_TILE # 1920
 	cam.position_smoothing_enabled = true
+	_cam = cam
+
+
+# Keep the ceiling-mote emitter pinned just above the top of the current
+# view so falling motes always fill the screen as the camera travels.
+# local_coords=false means already-spawned motes keep falling in world
+# space while the emitter band follows the camera.
+func _process(_delta: float) -> void:
+	if _cam == null or _motes == null:
+		return
+	var center: Vector2 = _cam.get_screen_center_position()
+	_motes.global_position = Vector2(center.x, center.y - MOTE_SPAWN_ABOVE_CENTER)

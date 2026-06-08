@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dc1vst2eh8omj"
-path="res://.godot/imported/firefly.png-52828354375dec003b9222d8f82f4004.ctex"
+uid="uid://njw63t2q3nar"
+path="res://.godot/imported/background4b.png-7f1eb3beef86150af1526202873ece96.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/effects/firefly.png"
-dest_files=["res://.godot/imported/firefly.png-52828354375dec003b9222d8f82f4004.ctex"]
+source_file="res://assets/realms/realm1_caves/background4b.png"
+dest_files=["res://.godot/imported/background4b.png-7f1eb3beef86150af1526202873ece96.ctex"]
 
 [params]
 
