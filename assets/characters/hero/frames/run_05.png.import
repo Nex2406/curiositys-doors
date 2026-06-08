@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dc1vst2eh8omj"
-path="res://.godot/imported/firefly.png-52828354375dec003b9222d8f82f4004.ctex"
+uid="uid://cru8m0d3rcnj7"
+path="res://.godot/imported/run_05.png-1eb88d4dac75f31e89bca94ad10a334e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/effects/firefly.png"
-dest_files=["res://.godot/imported/firefly.png-52828354375dec003b9222d8f82f4004.ctex"]
+source_file="res://assets/characters/hero/frames/run_05.png"
+dest_files=["res://.godot/imported/run_05.png-1eb88d4dac75f31e89bca94ad10a334e.ctex"]
 
 [params]
 

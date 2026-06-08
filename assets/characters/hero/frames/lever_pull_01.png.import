@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dc1vst2eh8omj"
-path="res://.godot/imported/firefly.png-52828354375dec003b9222d8f82f4004.ctex"
+uid="uid://b3un1fmr01ca3"
+path="res://.godot/imported/lever_pull_01.png-c38be1882614076dcc46fbb2f094a063.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/effects/firefly.png"
-dest_files=["res://.godot/imported/firefly.png-52828354375dec003b9222d8f82f4004.ctex"]
+source_file="res://assets/characters/hero/frames/lever_pull_01.png"
+dest_files=["res://.godot/imported/lever_pull_01.png-c38be1882614076dcc46fbb2f094a063.ctex"]
 
 [params]
 

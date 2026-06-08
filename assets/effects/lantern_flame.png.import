@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dc1vst2eh8omj"
-path="res://.godot/imported/firefly.png-52828354375dec003b9222d8f82f4004.ctex"
+uid="uid://c15jfx2nt2agn"
+path="res://.godot/imported/lantern_flame.png-2ae374b243c2a620a9ed10a56ee45556.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/effects/firefly.png"
-dest_files=["res://.godot/imported/firefly.png-52828354375dec003b9222d8f82f4004.ctex"]
+source_file="res://assets/effects/lantern_flame.png"
+dest_files=["res://.godot/imported/lantern_flame.png-2ae374b243c2a620a9ed10a56ee45556.ctex"]
 
 [params]
 
