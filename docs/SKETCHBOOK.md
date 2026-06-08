@@ -9,6 +9,25 @@ Rules:
 
 ---
 
+## 2026-06-08
+
+- **Combat & bosses are in scope.** Advika: each realm is its own dimension,
+  and they want *new characters / bosses* that Curiosity fights inside these
+  levels. Goal stated as "a fully playable, innovative 2D platformer." This
+  promotes the currently-unwired attack1/attack2/hurt/dash/charged animations
+  from dormant to needed. Combat verb is now part of the game's identity, not
+  just traversal + puzzles.
+- **Milestone-driven build model.** One milestone at a time; do not proceed
+  to the next until the current is *ready*. Ultimate v1 = a publishable game
+  with 3 full levels (Hub + Doors 1/2/3, each a complete realm). After v1
+  ships, keep adding levels. Always keep the project + Advika aware of which
+  milestone is active.
+- **v1 must-haves (Advika):** save/load, Curiosity textboxes, per-realm
+  ambient audio, title/menu screen, per-realm distinct theme ("separate
+  dimension"), and boss/enemy encounters.
+- **Realm 2 & 3:** no concepts yet — design each *with* Advika as its own
+  gate before building.
+
 ## 2026-05-17
 
 - **Realm 2: open.** Advika doesn't have the concept yet. Don't push. Come back to it next time something sparks.

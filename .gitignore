@@ -36,3 +36,6 @@ scripts/_*.png
 scripts/_*.png.import
 
 .claude/
+
+# Generated milestone PDF (regenerable from docs/MILESTONES.md)
+/Curiositys-Doors-Milestones.pdf
