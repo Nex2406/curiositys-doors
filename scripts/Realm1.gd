@@ -23,17 +23,16 @@ const SOURCE_TEXTURE: Texture2D = preload("res://assets/realms/realm1_caves/main
 const ATLAS_TILE_SIZE: Vector2i = Vector2i(32, 32)
 
 # ─── palette ─────────────────────────────────────────────────────────────
-const GROUND_TOP_VARIANTS: Array[Vector2i] = [
-	Vector2i(3, 20), Vector2i(5, 20), Vector2i(7, 20),
-	Vector2i(10, 20), Vector2i(12, 20),
-]
-const GROUND_FILL_VARIANTS: Array[Vector2i] = [
-	Vector2i(7, 23), Vector2i(8, 23), Vector2i(9, 23),
-	Vector2i(7, 24), Vector2i(8, 24), Vector2i(9, 24),
-	Vector2i(7, 25), Vector2i(8, 25),
-]
-const LEFT_EDGE_VARIANTS: Array[Vector2i] = [Vector2i(1, 20), Vector2i(1, 22)]
-const RIGHT_EDGE_VARIANTS: Array[Vector2i] = [Vector2i(13, 20), Vector2i(13, 22)]
+# STOPGAP (2026-06-08): this tileset is decorative rock chunks, not a seamless
+# terrain set, so the previous random per-cell variant mixing read as rubble.
+# Each role is collapsed to ONE consistent tile — repetition reads far cleaner
+# than randomness. A proper terrain-tileset rebuild is queued for M3 (Realm 1
+# to ship-quality). Every coord here must still appear in SOLID_TILES below so
+# the floor keeps its collision.
+const GROUND_TOP_VARIANTS: Array[Vector2i] = [Vector2i(7, 20)]
+const GROUND_FILL_VARIANTS: Array[Vector2i] = [Vector2i(8, 23)]
+const LEFT_EDGE_VARIANTS: Array[Vector2i] = [Vector2i(1, 22)]
+const RIGHT_EDGE_VARIANTS: Array[Vector2i] = [Vector2i(13, 22)]
 const STALACTITE_VARIANTS: Array[Vector2i] = [Vector2i(3, 18), Vector2i(14, 18)]
 const CRYSTAL_BLOCK: Vector2i = Vector2i(20, 25)
 const CRYSTAL_SURROUND: Vector2i = Vector2i(20, 24)
