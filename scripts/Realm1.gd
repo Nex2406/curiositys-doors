@@ -63,8 +63,14 @@ const EXIT_DOOR_TILE: Vector2i = Vector2i(117, 8)
 @onready var _solids: TileMapLayer = $World/Solids
 @onready var _stalactites: TileMapLayer = $World/Stalactites
 @onready var _curiosity: CharacterBody2D = $Curiosity
+@onready var _motes: GPUParticles2D = $CeilingMotes
+
+# Vertical offset from the camera's view-center up to where motes spawn —
+# half the 720 viewport plus a margin so they drift in from above the top edge.
+const MOTE_SPAWN_ABOVE_CENTER: float = 400.0
 
 var _rng: RandomNumberGenerator
+var _cam: Camera2D
 
 
 func _ready() -> void:
@@ -313,3 +319,15 @@ func _setup_camera_limits() -> void:
 	cam.limit_top = 0
 	cam.limit_bottom = LEVEL_HEIGHT_TILES * VISUAL_TILE # 1920
 	cam.position_smoothing_enabled = true
+	_cam = cam
+
+
+# Keep the ceiling-mote emitter pinned just above the top of the current
+# view so falling motes always fill the screen as the camera travels.
+# local_coords=false means already-spawned motes keep falling in world
+# space while the emitter band follows the camera.
+func _process(_delta: float) -> void:
+	if _cam == null or _motes == null:
+		return
+	var center: Vector2 = _cam.get_screen_center_position()
+	_motes.global_position = Vector2(center.x, center.y - MOTE_SPAWN_ABOVE_CENTER)
