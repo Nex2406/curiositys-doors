@@ -86,6 +86,17 @@ func _ready() -> void:
 	_position_curiosity()
 	_position_exit_door()
 	_setup_camera_limits()
+	_hide_tile_visuals()
+
+
+# TEMP (2026-06-08): the decorative tileset reads badly, so per Advika we hide
+# the tile *rendering* while keeping the collision intact — the warm parallax +
+# motes carry the look, and the obby stays playable on invisible ground.
+# Setting modulate alpha to 0 hides drawing only; tile physics is unaffected.
+# Restored when the proper terrain tileset lands (M3 — Realm 1 to ship-quality).
+func _hide_tile_visuals() -> void:
+	_solids.modulate.a = 0.0
+	_stalactites.modulate.a = 0.0
 
 
 # ─── tileset construction ────────────────────────────────────────────────
