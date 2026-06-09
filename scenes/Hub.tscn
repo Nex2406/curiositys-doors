@@ -50,6 +50,21 @@ tracks/0/keys = {
 "update": 0,
 "values": [0.0, -4.0, 0.0, 4.0, 0.0]
 }
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Visual/Portal:scale")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 1.75, 3.5),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector2(0.44, 0.44), Vector2(0.52, 0.52), Vector2(0.44, 0.44)]
+}
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_portal_add"]
+blend_mode = 1
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_door_bob"]
 _data = {
@@ -64,6 +79,28 @@ colors = PackedColorArray(0.353, 0.227, 0.478, 0, 0.353, 0.227, 0.478, 0.3, 0.35
 gradient = SubResource("Gradient_fog")
 width = 4
 height = 100
+fill_from = Vector2(0, 0)
+fill_to = Vector2(0, 1)
+
+[sub_resource type="Gradient" id="Gradient_floor_depth"]
+offsets = PackedFloat32Array(0, 0.22, 1)
+colors = PackedColorArray(0.16, 0.13, 0.22, 1, 0.09, 0.08, 0.14, 1, 0.02, 0.02, 0.04, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_floor_depth"]
+gradient = SubResource("Gradient_floor_depth")
+width = 4
+height = 256
+fill_from = Vector2(0, 0)
+fill_to = Vector2(0, 1)
+
+[sub_resource type="Gradient" id="Gradient_floor_edge"]
+offsets = PackedFloat32Array(0, 0.35, 1)
+colors = PackedColorArray(1, 0.82, 0.5, 0.5, 1, 0.78, 0.45, 0.12, 1, 0.78, 0.45, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_floor_edge"]
+gradient = SubResource("Gradient_floor_edge")
+width = 4
+height = 64
 fill_from = Vector2(0, 0)
 fill_to = Vector2(0, 1)
 
@@ -112,6 +149,12 @@ texture = ExtResource("9_nebula")
 [node name="CanvasModulate" type="CanvasModulate" parent="."]
 color = Color(0.7, 0.7, 0.85, 1)
 
+[node name="FloorDepth" type="Sprite2D" parent="."]
+position = Vector2(-2400, 660)
+scale = Vector2(1300, 5)
+centered = false
+texture = SubResource("GradientTexture2D_floor_depth")
+
 [node name="FloorVisual" type="TextureRect" parent="."]
 offset_left = -2000.0
 offset_top = 620.0
@@ -119,6 +162,12 @@ offset_right = 2000.0
 offset_bottom = 720.0
 texture = ExtResource("4_stone_floor")
 stretch_mode = 1
+
+[node name="FloorEdge" type="Sprite2D" parent="."]
+position = Vector2(-2400, 612)
+scale = Vector2(1300, 0.7)
+centered = false
+texture = SubResource("GradientTexture2D_floor_edge")
 
 [node name="Floor" type="StaticBody2D" parent="."]
 position = Vector2(640, 640)
@@ -141,9 +190,16 @@ position = Vector2(320, 280)
 [node name="Sprite" type="Sprite2D" parent="Doors/Door1/Visual"]
 texture = ExtResource("5_door_arch")
 
+[node name="Portal" type="Sprite2D" parent="Doors/Door1/Visual"]
+material = SubResource("CanvasItemMaterial_portal_add")
+position = Vector2(0, 15)
+scale = Vector2(0.45, 0.45)
+texture = ExtResource("6_halo")
+self_modulate = Color(1, 0.62, 0.32, 0.9)
+
 [node name="Glow" type="PointLight2D" parent="Doors/Door1/Visual"]
-color = Color(0.7216, 0.5804, 0.8392, 1)
-energy = 0.8
+color = Color(1, 0.7, 0.42, 1)
+energy = 1.1
 texture = ExtResource("6_halo")
 texture_scale = 1.5
 
@@ -171,9 +227,16 @@ position = Vector2(640, 240)
 [node name="Sprite" type="Sprite2D" parent="Doors/Door2/Visual"]
 texture = ExtResource("5_door_arch")
 
+[node name="Portal" type="Sprite2D" parent="Doors/Door2/Visual"]
+material = SubResource("CanvasItemMaterial_portal_add")
+position = Vector2(0, 15)
+scale = Vector2(0.45, 0.45)
+texture = ExtResource("6_halo")
+self_modulate = Color(0.4, 0.72, 0.95, 0.85)
+
 [node name="Glow" type="PointLight2D" parent="Doors/Door2/Visual"]
-color = Color(0.7216, 0.5804, 0.8392, 1)
-energy = 0.8
+color = Color(0.45, 0.72, 0.95, 1)
+energy = 1.1
 texture = ExtResource("6_halo")
 texture_scale = 1.5
 
@@ -201,9 +264,16 @@ position = Vector2(960, 290)
 [node name="Sprite" type="Sprite2D" parent="Doors/Door3/Visual"]
 texture = ExtResource("5_door_arch")
 
+[node name="Portal" type="Sprite2D" parent="Doors/Door3/Visual"]
+material = SubResource("CanvasItemMaterial_portal_add")
+position = Vector2(0, 15)
+scale = Vector2(0.45, 0.45)
+texture = ExtResource("6_halo")
+self_modulate = Color(0.76, 0.48, 1, 0.85)
+
 [node name="Glow" type="PointLight2D" parent="Doors/Door3/Visual"]
-color = Color(0.7216, 0.5804, 0.8392, 1)
-energy = 0.8
+color = Color(0.74, 0.52, 0.96, 1)
+energy = 1.1
 texture = ExtResource("6_halo")
 texture_scale = 1.5
 
