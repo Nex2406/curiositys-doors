@@ -32,6 +32,13 @@ const LIGHT_FLICKER_SLOW: float = 0.17
 const LIGHT_FLICKER_FAST_AMP: float = 0.12
 const LIGHT_FLICKER_SLOW_AMP: float = 0.06
 
+# The grounded poses hold the lantern low at the hand, but the jump/air poses
+# lift Curiosity into a horizontal leap — leaving the orb dangling below the
+# drawn lantern. Raise the orb while airborne so it rides up with the body,
+# eased so the windup and landing read smoothly rather than snapping.
+const LANTERN_AIR_LIFT: float = -90.0
+const LANTERN_LIFT_LERP: float = 10.0
+
 # Source art faces LEFT. Default unflipped = facing left.
 var _state: State = State.IDLE
 var _facing_right: bool = false
@@ -41,6 +48,7 @@ var _was_airborne: bool = false
 var _flame_time: float = 0.0
 var _flame_base_alpha: float = 1.0
 var _lantern_base_energy: float = 1.0
+var _lantern_base_y: float = 0.0
 
 
 func _ready() -> void:
@@ -51,6 +59,7 @@ func _ready() -> void:
 	flame.position.x = anchor_x
 	_flame_base_alpha = flame.modulate.a
 	_lantern_base_energy = lantern.energy
+	_lantern_base_y = lantern.position.y
 	visual.animation_finished.connect(_on_animation_finished)
 	visual.play(&"idle")
 
@@ -64,6 +73,14 @@ func _process(delta: float) -> void:
 		sin(_flame_time * TAU / LIGHT_FLICKER_FAST) * LIGHT_FLICKER_FAST_AMP \
 		+ sin(_flame_time * TAU / LIGHT_FLICKER_SLOW) * LIGHT_FLICKER_SLOW_AMP
 	lantern.energy = _lantern_base_energy * (1.0 + energy_flicker)
+
+	# Lift the orb up with the body while airborne so it stays in the lantern.
+	var airborne: bool = _state == State.AIR or _state == State.JUMP_START
+	var target_y: float = _lantern_base_y + (LANTERN_AIR_LIFT if airborne else 0.0)
+	var lift_t: float = clampf(delta * LANTERN_LIFT_LERP, 0.0, 1.0)
+	var new_y: float = lerpf(lantern.position.y, target_y, lift_t)
+	lantern.position.y = new_y
+	flame.position.y = new_y
 
 
 func _physics_process(delta: float) -> void:
