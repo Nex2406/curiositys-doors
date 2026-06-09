@@ -1,5 +1,5 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-05-17_
+_Last updated: 2026-06-09_
 
 ## Live loop
 Hub.tscn ↔ Realm1 (cave traversal) ↔ Hub return. Door 1 wired.
@@ -8,9 +8,12 @@ Door 2 / Door 3: stubs.
 
 ## What is wired
 - Curiosity locomotion: idle / walk / run / jump / air / land
-- Lantern PointLight2D with placeholder gradient + soft flame flicker
+- Lantern PointLight2D with placeholder gradient + soft flame flicker;
+  cast-light energy also breathes (two out-of-phase sines) so the warm pool
+  feels alive while idle
 - Parallax in Hub + Realm 1
-- Tilemap floor + platforms in Realm 1 (brown-cave palette)
+- Tilemap floor + platforms in Realm 1 — warm ember "Crimson Hollow" ambient
+  `(0.9, 0.2, 0.2)`: orange-lit rock, cold teal water, lantern as the focal coal
 - Door interact (Y key) → scene transition with fade
 - Hub respawn at the door Curiosity returned through
 - **LoreMoment overlay** (`scenes/UI/LoreMoment.tscn` + `scripts/LoreMoment.gd`) —

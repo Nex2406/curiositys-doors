@@ -225,10 +225,10 @@ shape = SubResource("RectangleShape2D_body")
 
 [node name="Lantern" type="PointLight2D" parent="."]
 position = Vector2(-160, 115)
-color = Color(1, 0.86, 0.33, 1)
-energy = 3.8
+color = Color(1, 0.85, 0.4, 1)
+energy = 4.4
 texture = ExtResource("56_lantern_halo")
-texture_scale = 7.0
+texture_scale = 10.0
 
 [node name="Camera" type="Camera2D" parent="."]
 position = Vector2(0, -160)

@@ -9,6 +9,19 @@ Rules:
 
 ---
 
+## 2026-06-09
+
+- **Realm 1 mood: cold → warm.** Tried a cool blue-grey ambient `(0.34,0.36,0.44)`
+  for "moody dark cave." Advika didn't connect with it. A throwaway debug test
+  cranked the tint hard red — Advika immediately loved it. Because
+  `CanvasModulate` *multiplies* the teal cave art, even a bold red reads as a
+  warm **ember** glow, not alarm: rocks go orange, the water stays cold teal,
+  Curiosity glows like a coal in the split. Landed on `(0.9,0.2,0.2)`. This
+  pulls Realm 1 back to its canon name — **The Crimson Hollow** — which the
+  cool blue had quietly drifted away from. Lesson: the warm accent wants a warm
+  *world* to live in here, not a cold one to fight. Lantern also now breathes
+  (cast-light energy flicker on two out-of-phase sines) so the pool feels alive.
+
 ## 2026-06-08
 
 - **Combat & bosses are in scope.** Advika: each realm is its own dimension,

@@ -25,6 +25,13 @@ const MOVE_EPSILON: float = 8.0
 const FLAME_FLICKER_AMPLITUDE: float = 0.05
 const FLAME_FLICKER_PERIOD: float = 0.4
 
+# The cast light breathes too — two out-of-phase sines give an organic,
+# non-mechanical flicker instead of a steady pulse.
+const LIGHT_FLICKER_FAST: float = 0.4
+const LIGHT_FLICKER_SLOW: float = 0.17
+const LIGHT_FLICKER_FAST_AMP: float = 0.12
+const LIGHT_FLICKER_SLOW_AMP: float = 0.06
+
 # Source art faces LEFT. Default unflipped = facing left.
 var _state: State = State.IDLE
 var _facing_right: bool = false
@@ -33,6 +40,7 @@ var _lantern_tween: Tween
 var _was_airborne: bool = false
 var _flame_time: float = 0.0
 var _flame_base_alpha: float = 1.0
+var _lantern_base_energy: float = 1.0
 
 
 func _ready() -> void:
@@ -42,6 +50,7 @@ func _ready() -> void:
 	lantern.position.x = anchor_x
 	flame.position.x = anchor_x
 	_flame_base_alpha = flame.modulate.a
+	_lantern_base_energy = lantern.energy
 	visual.animation_finished.connect(_on_animation_finished)
 	visual.play(&"idle")
 
@@ -50,6 +59,11 @@ func _process(delta: float) -> void:
 	_flame_time += delta
 	var flicker: float = sin(_flame_time * TAU / FLAME_FLICKER_PERIOD) * FLAME_FLICKER_AMPLITUDE
 	flame.modulate.a = clampf(_flame_base_alpha + flicker, 0.0, 1.0)
+	# Cast light breathes with the flame so the warm pool feels alive.
+	var energy_flicker: float = \
+		sin(_flame_time * TAU / LIGHT_FLICKER_FAST) * LIGHT_FLICKER_FAST_AMP \
+		+ sin(_flame_time * TAU / LIGHT_FLICKER_SLOW) * LIGHT_FLICKER_SLOW_AMP
+	lantern.energy = _lantern_base_energy * (1.0 + energy_flicker)
 
 
 func _physics_process(delta: float) -> void:
