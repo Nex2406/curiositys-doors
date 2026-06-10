@@ -39,3 +39,7 @@ scripts/_*.png.import
 
 # Generated milestone PDF (regenerable from docs/MILESTONES.md)
 /Curiositys-Doors-Milestones.pdf
+
+# Source background art (heavy originals). The game loads the compressed
+# assets/scenes/intro/*.webp set; these PNGs are kept local only.
+assets/backgrounds/

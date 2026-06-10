@@ -1,0 +1,88 @@
+[gd_scene load_steps=4 format=3 uid="uid://c1dlgbx0intro1"]
+
+[ext_resource type="Script" path="res://scripts/DialogueBox.gd" id="1_dialogue"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.043, 0.031, 0.071, 0.82)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.8, 0.66, 0.4, 0.45)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 18
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_margin"]
+
+[node name="DialogueBox" type="CanvasLayer"]
+layer = 10
+script = ExtResource("1_dialogue")
+
+[node name="Panel" type="Panel" parent="."]
+anchors_preset = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 140.0
+offset_top = -268.0
+offset_right = -140.0
+offset_bottom = -56.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 36
+theme_override_constants/margin_top = 26
+theme_override_constants/margin_right = 36
+theme_override_constants/margin_bottom = 26
+
+[node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Speaker" type="Label" parent="Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.78, 0.46, 1)
+theme_override_font_sizes/font_size = 30
+text = "Curiosity"
+
+[node name="Body" type="Label" parent="Panel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.9, 0.91, 0.96, 1)
+theme_override_font_sizes/font_size = 36
+text = "..."
+autowrap_mode = 3
+
+[node name="Indicator" type="Label" parent="Panel"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -56.0
+offset_top = -52.0
+offset_right = -16.0
+offset_bottom = -12.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.92, 0.78, 0.46, 1)
+theme_override_font_sizes/font_size = 34
+text = "▾"
+theme_override_styles/normal = SubResource("StyleBoxEmpty_margin")
