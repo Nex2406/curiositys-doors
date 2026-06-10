@@ -284,7 +284,7 @@ scale = Vector2(0.38, 0.38)
 
 [node name="Camera" parent="Curiosity" index="4"]
 position = Vector2(0, -790)
-zoom = Vector2(0.45, 0.45)
+zoom = Vector2(0.675, 0.675)
 
 [node name="Vignette" type="CanvasLayer" parent="."]
 layer = 1
