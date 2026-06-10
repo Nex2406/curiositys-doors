@@ -102,6 +102,27 @@ func _show_prompt(on: bool) -> void:
 		tween.tween_callback(func() -> void: _prompt.visible = false)
 
 
+# Driven by Hub.gd's X-proximity check: the doors float out of reach, so the
+# player can't physically overlap the Area2D. Hub calls this when the player
+# stands beneath this door (true) or moves away (false). Shows/hides the prompt
+# and brightens the glow so the selectable door reads as "lit up".
+func set_active(on: bool) -> void:
+	_player_inside = on
+	_show_prompt(on)
+	_highlight(on)
+
+
+func _highlight(on: bool) -> void:
+	if _glow == null:
+		return
+	if _flash_tween and _flash_tween.is_valid():
+		_flash_tween.kill()
+	var target: float = _glow_base_energy * 2.4 if on else _glow_base_energy
+	_flash_tween = create_tween()
+	_flash_tween.tween_property(_glow, "energy", target, 0.3) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
 func trigger() -> void:
 	# Hub.gd calls this once per "interact" press while the player is in range.
 	# Print survives for editor/devtools observers; the visible flash is what

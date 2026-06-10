@@ -1,20 +1,36 @@
 extends Node2D
 
-# Hub controller. One node owns "did the player press interact?" so we
-# don't have N doors all polling Input each frame. Each Door joins the
-# "doors" group on _ready and emits near_door / left_door as the player
-# enters/exits its Area2D; Hub tracks the latest active door and, on
-# "interact", calls trigger() on it.
+# Hub controller. Owns three responsibilities for the door-selection scene:
 #
-# The unconditional print is a deliberate breadcrumb for the live web
-# build — if it never appears in the JS console, the action isn't
-# reaching the game (focus / binding). If it prints with door=<none>,
-# the overlap signal is broken. If it prints with a door but nothing
-# visibly changes, trigger()'s feedback is the bug.
+#  1. LEVITATION BOB — the doors float HIGH in the sky, out of physical reach,
+#     so the whole door root bobs here (not just its art) which means the
+#     "[Y] Enter" label and the interaction collision — both descendants of
+#     the door root — ride the bob with it. Sine, ~18px amplitude, 3.5s cycle,
+#     phase-offset per door so they don't pulse in unison.
+#
+#  2. X-PROXIMITY ENTRY — because the player stands on the floor BENEATH the
+#     doors and can't touch them, the active door is whichever one the player
+#     is horizontally aligned under (nearest door X within _DOOR_X_RANGE).
+#     That door highlights + shows its prompt via Door.set_active(true).
+#
+#  3. INTERACT — on the "interact" action, trigger() the active door.
+#
+# The unconditional print is a deliberate breadcrumb for the live web build.
 
-const _CURIOSITY_FLOOR_Y: float = 580.0
+const _CURIOSITY_FLOOR_Y: float = 540.0
+
+const _BOB_AMPLITUDE: float = 18.0
+const _BOB_PERIOD: float = 3.5
+# How close in X (world units) the player must be to a door to stand "beneath"
+# it. Doors are ~288px wide and ~440px apart, so 160 keeps activation under the
+# door without bleeding into its neighbour.
+const _DOOR_X_RANGE: float = 160.0
 
 var _current_door: Node = null
+var _door_roots: Array[Node2D] = []
+var _door_base_y: Array[float] = []
+var _door_phase: Array[float] = []
+var _bob_time: float = 0.0
 
 
 func _ready() -> void:
@@ -22,8 +38,17 @@ func _ready() -> void:
 	if Transition.last_door_id != "":
 		_respawn_at_door(Transition.last_door_id)
 		Transition.last_door_id = ""
-	for door in get_tree().get_nodes_in_group("doors"):
-		_connect_door(door)
+	# Cache each door root, its resting Y, and a phase offset for the bob.
+	var doors_root: Node = get_node_or_null("Doors")
+	if doors_root:
+		var index: int = 0
+		for child in doors_root.get_children():
+			if child is Node2D:
+				_door_roots.append(child)
+				_door_base_y.append((child as Node2D).position.y)
+				# Spread phases evenly around the cycle: 0, 120deg, 240deg, ...
+				_door_phase.append(float(index) * TAU / 3.0)
+				index += 1
 
 
 func _respawn_at_door(door_id: String) -> void:
@@ -36,19 +61,16 @@ func _respawn_at_door(door_id: String) -> void:
 	var curiosity: Node2D = get_node_or_null("Curiosity") as Node2D
 	if curiosity == null:
 		return
-	# Park her one step to the side of the door so she isn't standing in it.
+	# Park her one step to the side of the door's column so she reads as
+	# "just stepped out from beneath it".
 	var anchor_x: float = (door_root as Node2D).position.x + 90.0
 	curiosity.position = Vector2(anchor_x, _CURIOSITY_FLOOR_Y)
 
 
-func _connect_door(door: Node) -> void:
-	if door.has_signal("near_door") and not door.near_door.is_connected(_on_door_entered):
-		door.near_door.connect(_on_door_entered)
-	if door.has_signal("left_door") and not door.left_door.is_connected(_on_door_exited):
-		door.left_door.connect(_on_door_exited)
+func _process(delta: float) -> void:
+	_animate_bob(delta)
+	_update_active_door()
 
-
-func _process(_delta: float) -> void:
 	if not Input.is_action_just_pressed("interact"):
 		return
 	var door_label: String = "<none>"
@@ -59,10 +81,30 @@ func _process(_delta: float) -> void:
 		_current_door.trigger()
 
 
-func _on_door_entered(door: Node) -> void:
-	_current_door = door
+func _animate_bob(delta: float) -> void:
+	_bob_time += delta
+	for i in _door_roots.size():
+		var offset: float = sin(_bob_time * TAU / _BOB_PERIOD + _door_phase[i]) * _BOB_AMPLITUDE
+		_door_roots[i].position.y = _door_base_y[i] + offset
 
 
-func _on_door_exited(door: Node) -> void:
-	if _current_door == door:
-		_current_door = null
+func _update_active_door() -> void:
+	# Active door = the one the player is standing horizontally beneath.
+	var curiosity: Node2D = get_node_or_null("Curiosity") as Node2D
+	if curiosity == null:
+		return
+	var player_x: float = curiosity.global_position.x
+	var nearest: Node = null
+	var nearest_dx: float = _DOOR_X_RANGE
+	for door in get_tree().get_nodes_in_group("doors"):
+		var dx: float = absf(door.global_position.x - player_x)
+		if dx < nearest_dx:
+			nearest_dx = dx
+			nearest = door
+	if nearest == _current_door:
+		return
+	if _current_door and _current_door.has_method("set_active"):
+		_current_door.set_active(false)
+	_current_door = nearest
+	if _current_door and _current_door.has_method("set_active"):
+		_current_door.set_active(true)

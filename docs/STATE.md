@@ -1,10 +1,23 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-06-09_
+_Last updated: 2026-06-10_
 
 ## Live loop
 Hub.tscn ↔ Realm1 (cave traversal) ↔ Hub return. Door 1 wired.
 Realm 1 exit plays a one-line lore moment before the fade.
 Door 2 / Door 3: stubs.
+
+## Hub — door-selection scene
+Reframed to a full-bleed painterly composition (target ref:
+`assets/_reference/hub_target_2026-06-09.png`). Screen-anchored gradient `Sky`
+CanvasLayer + `Vignette` overlay fill the viewport at any window size (no black
+bands), solid violet ground (no void), soft moon glow, dimmed nebula stars.
+Camera zoomed out (Hub-only override, zoom 0.45) so the hero reads small (~11%
+of viewport) on the floor (~74% down). Three equal-size arch doors spread WIDE
+left/mid/right, bases on the floor, each levitating (sine bob ~18px, 3.5s,
+phase-offset per door — whole door bobs so label + hitbox ride it). Entry is
+**X-proximity** (`Hub.gd`): the door the hero stands beneath highlights + shows
+`[Y] Enter` (`Door.set_active()`); interact triggers it. Door art is still the
+placeholder arch — ornate door / eyed moon / silhouettes are the next art lift.
 
 ## What is wired
 - Curiosity locomotion: idle / walk / run / jump / air / land
