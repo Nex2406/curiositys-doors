@@ -84,8 +84,11 @@ func _process(delta: float) -> void:
 func _animate_bob(delta: float) -> void:
 	_bob_time += delta
 	for i in _door_roots.size():
-		var offset: float = sin(_bob_time * TAU / _BOB_PERIOD + _door_phase[i]) * _BOB_AMPLITUDE
-		_door_roots[i].position.y = _door_base_y[i] + offset
+		# Upward-only bob: remap sin's -1..1 to 0..1 so the door floats between
+		# its resting Y (lowest, on the floor) and base_y - amplitude (highest).
+		# It never crosses below base_y, so the bases never clip into the floor.
+		var rise: float = (sin(_bob_time * TAU / _BOB_PERIOD + _door_phase[i]) * 0.5 + 0.5) * _BOB_AMPLITUDE
+		_door_roots[i].position.y = _door_base_y[i] - rise
 
 
 func _update_active_door() -> void:
