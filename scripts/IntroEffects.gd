@@ -249,8 +249,11 @@ func _build_cauldron(gi: int) -> void:
 		KIND_PULSE, 0.7, 0.35, 0.7, 0.06)
 
 
-# 2 — GRIMOIRE 1: open spellbook. Drifting dust catching light, red gem hero
-# glow + softer cluster glow, warm candlelight flicker over the page.
+# 2 — GRIMOIRE 1: open spellbook. Drifting dust catching light over a scattered
+# constellation of gem/orb glows — one per object the player circled, each with
+# its OWN pulse speed + peak brightness so they twinkle out of sync. The red gem
+# is the brightest hero; the pale/pearl orbs are the subtlest. Colours match the
+# painted object. All positions normalised; adjust here to nudge onto a gem.
 func _build_grimoire(gi: int) -> void:
 	_particles(gi, _n(0.5, 0.5), {
 		"amount": 18, "lifetime": 7.0, "tex": "firefly",
@@ -259,24 +262,38 @@ func _build_grimoire(gi: int) -> void:
 		"smin": 0.25, "smax": 0.6, "color": Color(1.0, 0.93, 0.75, 0.5),
 		"add": true, "angmax": 10.0,
 	})
-	# A scattered constellation of gem/orb glows — each its own brightness and
-	# pulse rate so no two twinkle in sync.
-	_glow(gi, _n(0.42, 0.65), Color(1.0, 0.18, 0.15), Vector2(1.0, 1.0),
-		KIND_PULSE, 1.1, 0.45, 0.95, 0.1)     # red gem — brightest, strong
-	_glow(gi, _n(0.37, 0.32), Color(0.5, 0.95, 0.6), Vector2(0.9, 0.9),
-		KIND_PULSE, 0.7, 0.3, 0.6)            # green goblet — medium, cooler
-	_glow(gi, _n(0.18, 0.46), Color(0.4, 0.9, 0.95), Vector2(0.85, 0.85),
-		KIND_PULSE, 0.45, 0.15, 0.4)          # teal orb left — faint, slow
-	_glow(gi, _n(0.4, 0.44), Color(0.95, 0.97, 1.0), Vector2(0.8, 0.8),
-		KIND_PULSE, 0.6, 0.2, 0.5)            # pale orbs centre — soft white
-	_glow(gi, _n(0.62, 0.42), Color(0.55, 0.92, 0.55), Vector2(0.85, 0.85),
-		KIND_PULSE, 0.85, 0.28, 0.58)         # green orb right — medium
-	_glow(gi, _n(0.66, 0.66), Color(0.45, 0.6, 1.0), Vector2(0.8, 0.8),
-		KIND_PULSE, 0.4, 0.15, 0.4)           # blue vial — faint, slow
-	_glow(gi, _n(0.3, 0.4), Color(1.0, 0.75, 0.35), Vector2(0.55, 0.55),
-		KIND_FLICKER, 5.0, 0.2, 0.5)          # amber accent — low, quick flicker
-	_glow(gi, _n(0.72, 0.4), Color(1.0, 0.78, 0.4), Vector2(0.55, 0.55),
-		KIND_FLICKER, 6.0, 0.2, 0.5)          # amber accent — low, quick flicker
+
+	# --- LEFT PAGE ---
+	_glow(gi, _n(0.20, 0.36), Color(1.0, 0.68, 0.28), Vector2(1.3, 1.3),
+		KIND_PULSE, 0.95, 0.62, 1.0, 0.11)    # amber gem — warm
+	_glow(gi, _n(0.20, 0.47), Color(0.35, 0.9, 0.9), Vector2(1.25, 1.25),
+		KIND_PULSE, 0.50, 0.60, 0.97, 0.11)   # teal gem
+	_glow(gi, _n(0.12, 0.55), Color(0.45, 0.92, 0.55), Vector2(1.25, 1.25),
+		KIND_PULSE, 0.38, 0.60, 0.96, 0.11)   # green-teal gem
+	_glow(gi, _n(0.10, 0.66), Color(0.95, 0.97, 1.0), Vector2(1.15, 1.15),
+		KIND_PULSE, 0.55, 0.55, 0.92, 0.11)   # pale orb lower-left — soft white
+
+	# --- CENTER PAGE ---
+	_glow(gi, _n(0.36, 0.33), Color(0.5, 0.95, 0.6), Vector2(1.3, 1.3),
+		KIND_PULSE, 0.72, 0.62, 0.99, 0.11)   # green goblet
+	_glow(gi, _n(0.37, 0.47), Color(0.95, 0.97, 1.0), Vector2(1.35, 1.15),
+		KIND_PULSE, 0.63, 0.55, 0.92, 0.11)   # two pale orbs — soft white (one glow)
+	_glow(gi, _n(0.43, 0.66), Color(1.0, 0.18, 0.15), Vector2(1.4, 1.4),
+		KIND_PULSE, 1.15, 0.68, 1.0, 0.12)    # RED gem — hero, prominent
+	_glow(gi, _n(0.49, 0.70), Color(0.95, 0.97, 1.0), Vector2(0.95, 0.95),
+		KIND_FLICKER, 5.5, 0.55, 0.93, 0.11)  # pale orb lower — quick flicker
+
+	# --- RIGHT PAGE ---
+	_glow(gi, _n(0.62, 0.43), Color(0.55, 0.92, 0.55), Vector2(1.3, 1.3),
+		KIND_PULSE, 0.83, 0.62, 0.99, 0.11)   # green orb left
+	_glow(gi, _n(0.66, 0.52), Color(1.0, 0.78, 0.4), Vector2(1.25, 1.25),
+		KIND_PULSE, 0.58, 0.62, 0.98, 0.11)   # amber/gold disc
+	_glow(gi, _n(0.65, 0.70), Color(0.45, 0.6, 1.0), Vector2(1.3, 1.3),
+		KIND_PULSE, 0.42, 0.60, 0.97, 0.11)   # blue vial — cool blue
+	_glow(gi, _n(0.78, 0.30), Color(0.4, 0.9, 0.85), Vector2(1.3, 1.3),
+		KIND_PULSE, 0.78, 0.62, 0.99, 0.11)   # teal/green orb top-right
+	_glow(gi, _n(0.83, 0.33), Color(0.95, 0.97, 1.0), Vector2(1.1, 1.1),
+		KIND_PULSE, 0.47, 0.55, 0.92, 0.11)   # pale orb top-right — soft white
 
 
 # 3 — SHELVES 6: foggy teal alchemy bottles. Rolling fog is the star, faint
