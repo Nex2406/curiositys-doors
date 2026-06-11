@@ -18,19 +18,31 @@ const KIND_PULSE: int = 0        # smooth sine breathing
 const KIND_FLICKER: int = 1      # irregular candle / lantern flicker
 
 # --- Cauldron 2 "smoke spirit" (group 0 only) -------------------------------
-# A half-seen white-teal presence that forms in the rising steam at the painted
-# face (~0.40,0.30): it breathes in and out, drifts/sways, trails wisps, and has
-# two faint glowing eyes that track it — and that "notice" the player on the
-# opening line. All values are STARTING positions, tuned to stay eerie not solid.
-const SPIRIT_POS: Vector2 = Vector2(0.40, 0.30)        # normalised face centre
-const SPIRIT_EYE_L: Vector2 = Vector2(0.385, 0.29)
-const SPIRIT_EYE_R: Vector2 = Vector2(0.415, 0.29)
-const SPIRIT_CYCLE: float = 7.5        # seconds per emerge / hold / dissolve loop
-const SPIRIT_BODY_TINT: Color = Color(0.72, 0.95, 0.93)
-const SPIRIT_EYE_TINT: Color = Color(0.78, 0.98, 0.96)
-const SPIRIT_BODY_PEAK: float = 0.35   # max additive alpha at full emerge (faint)
-const SPIRIT_BODY_MIN: float = 0.03    # near-invisible at the trough
-const SPIRIT_EYE_BASE: float = 0.28    # eye glow at full emerge (before pulse)
+# A half-seen white-teal hooded figure that forms in the rising steam at the
+# painted face (~0.40,0.30). Built from a REAL painted sprite (spirit_body.png,
+# normal/alpha blend so it reads as a shape over the bright steam — additive made
+# it vanish) plus two soft-additive eye glows over its sockets. It breathes in and
+# out, drifts/sways, trails wisps, and "notices" the player on the opening line.
+const SPIRIT_POS: Vector2 = Vector2(0.40, 0.30)        # normalised sprite centre
+# Eye sockets in the 512px texture: ~21px out / ~94px above centre. Stored as a
+# texture-space offset and multiplied by SPIRIT_BODY_SCALE at build time, so the
+# eyes stay locked to the sockets no matter how big the body is scaled.
+const SPIRIT_EYE_OFFSET: Vector2 = Vector2(21.0, -94.0)
+const SPIRIT_BODY_SCALE: float = 0.60  # 512px texture → ~307px tall ≈ 28% of frame
+const SPIRIT_CYCLE: float = 16.0       # seconds per full appear → orbit → dissolve loop
+# Travel path: the spirit fades in out on the RIGHT side of the cauldron, then
+# orbits the face anti-clockwise (a flattened ellipse) while spiralling inward,
+# arriving over the painted face just as it dissolves — then loops from the side.
+const SPIRIT_ORBIT_RX: float = 300.0   # ellipse half-width in px (start = right edge)
+const SPIRIT_ORBIT_RY: float = 140.0   # ellipse half-height in px (flattened orbit)
+const SPIRIT_ORBIT_START: float = 0.0  # start angle: 0 = due right of the face
+const SPIRIT_ORBIT_SWEEP: float = -TAU # total swept angle (negative = anti-clockwise)
+const SPIRIT_ORBIT_R_OUT: float = 1.0  # radius factor on entry (out at the side)
+const SPIRIT_ORBIT_R_IN: float = 0.12  # radius factor on arrival (basically the face)
+const SPIRIT_EYE_TINT: Color = Color(0.82, 1.0, 0.97)
+const SPIRIT_BODY_PEAK: float = 0.95   # max alpha at full emerge (strongly present)
+const SPIRIT_BODY_MIN: float = 0.0     # fully dissolved at the trough (ghostly)
+const SPIRIT_EYE_BASE: float = 0.75    # eye glow at full emerge (before pulse)
 const SPIRIT_REACT_TIME: float = 2.6   # one-shot "notice you" beat on line 1
 
 var _groups: Array[Node2D] = []
@@ -40,14 +52,16 @@ var _t: float = 0.0
 
 var _halo: Texture2D
 var _firefly: Texture2D
+var _spirit_body_tex: Texture2D
+var _spirit_eye_tex: Texture2D
 var _add_mat: CanvasItemMaterial
 
 # Smoke-spirit state (cauldron / group 0 only).
 var _spirit_root: Node2D                       # swaying container; eyes parent to it
-var _spirit_body: Sprite2D                     # soft vertical figure glow
+var _spirit_body: Sprite2D                     # painted hooded-figure sprite
 var _spirit_eyes: Array[Sprite2D] = []
-var _spirit_base: Vector2                      # face centre in pixels
-var _spirit_body_scale: Vector2 = Vector2(1.05, 1.55)  # taller than wide → a figure
+var _spirit_wisp: CPUParticles2D               # tendril trail; rides + fades with it
+var _spirit_base: Vector2                      # orbit-anchor (the face) in pixels
 var _spirit_reacting: bool = false
 var _react_t: float = 0.0
 
@@ -55,6 +69,8 @@ var _react_t: float = 0.0
 func _ready() -> void:
 	_halo = load("res://assets/effects/lantern_halo.png")
 	_firefly = load("res://assets/effects/firefly.png")
+	_spirit_body_tex = load("res://assets/effects/spirit_body.png")
+	_spirit_eye_tex = load("res://assets/effects/spirit_eye.png")
 	_add_mat = CanvasItemMaterial.new()
 	_add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 
@@ -280,56 +296,79 @@ func _build_cauldron(gi: int) -> void:
 	_build_spirit(gi)
 
 
-# Smoke spirit: a soft vertical body glow + two eye points in a swaying root,
-# plus a few tendril wisps rising off the face. The root is animated each frame
-# in _animate_spirit (only while group 0 is active).
+# Smoke spirit: the painted figure + two eye glows + a trailing wisp emitter, all
+# under one root that TRAVELS — fading in at the side, orbiting/spiralling in to the
+# face, then dissolving. The root is animated each frame in _animate_spirit (only
+# while group 0 is active). SPIRIT_POS / _spirit_base is the orbit anchor (the face).
 func _build_spirit(gi: int) -> void:
 	_spirit_base = _n(SPIRIT_POS.x, SPIRIT_POS.y)
 	_spirit_root = Node2D.new()
 	_spirit_root.position = _spirit_base
 	_groups[gi].add_child(_spirit_root)
 
-	# Soft vertical glow suggesting a head/figure forming in the steam.
+	# The painted hooded figure itself. NORMAL/alpha blend (not additive) so it
+	# reads as a solid shape over the bright steam; the sprite is already the right
+	# cold white-teal, so modulate stays full white — only its alpha is driven.
 	_spirit_body = Sprite2D.new()
-	_spirit_body.texture = _halo
-	_spirit_body.material = _add_mat
-	_spirit_body.scale = _spirit_body_scale
-	_spirit_body.modulate = Color(SPIRIT_BODY_TINT.r, SPIRIT_BODY_TINT.g,
-		SPIRIT_BODY_TINT.b, SPIRIT_BODY_MIN)
+	_spirit_body.texture = _spirit_body_tex
+	_spirit_body.scale = Vector2(SPIRIT_BODY_SCALE, SPIRIT_BODY_SCALE)
+	_spirit_body.modulate = Color(1.0, 1.0, 1.0, SPIRIT_BODY_MIN)
 	_spirit_root.add_child(_spirit_body)
 
-	# Two faint eyes, positioned relative to the face centre so they sway and
-	# tilt WITH the spirit (children of the root). Start dark; the loop lights them.
-	for ep: Vector2 in [SPIRIT_EYE_L, SPIRIT_EYE_R]:
+	# Two soft-additive eye glows over the sprite's painted sockets, positioned
+	# relative to the centre so they sway and tilt WITH the figure (children of the
+	# root). Start dark; the loop lights them.
+	for sgn: float in [-1.0, 1.0]:
 		var e := Sprite2D.new()
-		e.texture = _halo
+		e.texture = _spirit_eye_tex
 		e.material = _add_mat
-		e.scale = Vector2(0.14, 0.14)
-		e.position = _n(ep.x, ep.y) - _spirit_base
+		e.scale = Vector2(0.10, 0.10)
+		e.position = Vector2(sgn * SPIRIT_EYE_OFFSET.x, SPIRIT_EYE_OFFSET.y) * SPIRIT_BODY_SCALE
 		e.modulate = Color(SPIRIT_EYE_TINT.r, SPIRIT_EYE_TINT.g,
 			SPIRIT_EYE_TINT.b, 0.0)
 		_spirit_root.add_child(e)
 		_spirit_eyes.append(e)
 
-	# A few soft tendril wisps drifting up off the face (the painted tendril).
-	_particles(gi, _spirit_base + Vector2(0, -12), {
-		"amount": 7, "lifetime": 4.5, "tex": "halo",
-		"dir": Vector2(0, -1), "spread": 16.0, "grav": Vector2(0, -8),
-		"vmin": 7.0, "vmax": 16.0, "smin": 0.35, "smax": 0.8,
-		"color": Color(0.7, 0.95, 0.92, 0.1), "angmax": 6.0, "add": true,
-	})
+	# A few soft tendril wisps rising off the head — parented to the root so they
+	# TRAIL the figure as it travels. Its alpha is driven with the body in the loop.
+	_spirit_wisp = CPUParticles2D.new()
+	_spirit_wisp.texture = _halo
+	_spirit_wisp.material = _add_mat
+	_spirit_wisp.position = Vector2(0, -90)         # just above the head
+	_spirit_wisp.amount = 7
+	_spirit_wisp.lifetime = 4.5
+	_spirit_wisp.lifetime_randomness = 0.4
+	_spirit_wisp.preprocess = 3.0
+	_spirit_wisp.direction = Vector2(0, -1)
+	_spirit_wisp.spread = 16.0
+	_spirit_wisp.gravity = Vector2(0, -8)
+	_spirit_wisp.initial_velocity_min = 7.0
+	_spirit_wisp.initial_velocity_max = 16.0
+	_spirit_wisp.scale_amount_min = 0.35
+	_spirit_wisp.scale_amount_max = 0.8
+	_spirit_wisp.angular_velocity_min = -6.0
+	_spirit_wisp.angular_velocity_max = 6.0
+	_spirit_wisp.color = Color(1, 1, 1, 1)
+	_spirit_wisp.color_ramp = _ramp(Color(0.7, 0.95, 0.92, 0.1))
+	_spirit_wisp.emitting = true
+	_spirit_root.add_child(_spirit_wisp)
 
 
-# Per-frame spirit motion: breathing envelope (emerge/hold/dissolve), drift/sway,
-# scale pulse, faint eye pulse, and the one-shot line-1 "notice" reaction.
+# Per-frame spirit motion: travel path (appear at side → orbit/spiral to the face),
+# the alpha envelope, a little extra drift/scale-pulse, eye pulse, and the one-shot
+# line-1 "notice" reaction.
 func _animate_spirit(delta: float) -> void:
 	var phase: float = fmod(_t, SPIRIT_CYCLE) / SPIRIT_CYCLE
 	var env: float = _spirit_env(phase)
 
-	# Slow drift: vertical bob + side sway + gentle whole-figure scale pulse.
-	var bob: float = sin(_t * 0.55) * 13.0
-	var sway: float = sin(_t * 0.38 + 1.3) * 9.0
-	var pulse: float = 1.0 + 0.05 * sin(_t * 0.7)
+	# The journey along the orbit, plus a floaty multi-frequency weave on top so it
+	# drifts weightlessly rather than tracking the ellipse rigidly: layered sines for
+	# the side-sway and the vertical float, plus a slow leaf-like side-to-side tilt.
+	var travel: Vector2 = _spirit_journey(phase)
+	var sway: float = sin(_t * 0.37 + 1.3) * 13.0 + sin(_t * 0.19) * 7.0
+	var bob: float = sin(_t * 0.50) * 10.0 + sin(_t * 0.23 + 2.0) * 8.0
+	var rock: float = sin(_t * 0.42) * deg_to_rad(4.5)   # slow floating tilt
+	var pulse: float = 1.0 + 0.06 * sin(_t * 0.55)
 
 	# Reaction beat: turn slightly toward centre-screen (to the right of the
 	# spirit) and brighten the eyes, then settle. Fired once, on the opening line.
@@ -340,11 +379,13 @@ func _animate_spirit(delta: float) -> void:
 		if _react_t >= SPIRIT_REACT_TIME:
 			_spirit_reacting = false
 
-	_spirit_root.position = _spirit_base + Vector2(sway + re * 8.0, bob)
+	_spirit_root.position = _spirit_base + travel + Vector2(sway + re * 8.0, bob)
 	_spirit_root.scale = Vector2(pulse, pulse)
-	_spirit_root.rotation = re * deg_to_rad(5.0)
+	_spirit_root.rotation = rock + re * deg_to_rad(5.0)
 
 	_spirit_body.modulate.a = lerpf(SPIRIT_BODY_MIN, SPIRIT_BODY_PEAK, env)
+	if _spirit_wisp != null:
+		_spirit_wisp.self_modulate.a = env       # the trail fades with the figure
 
 	# Eyes only glow when the spirit is present; the reaction adds a brief boost.
 	var eye_pulse: float = 0.85 + 0.15 * sin(_t * 1.3)
@@ -353,15 +394,27 @@ func _animate_spirit(delta: float) -> void:
 		e.modulate.a = eye_a
 
 
-# Breathing envelope over one cycle: rise, hold, dissolve, brief absence.
+# Travel offset from the anchor (the face) for a given cycle phase. Eases the angle
+# and the radius together: starts wide on the right (appears at the side), then
+# orbits anti-clockwise while spiralling inward to arrive over the face.
+func _spirit_journey(phase: float) -> Vector2:
+	var pe: float = smoothstep(0.0, 1.0, phase)
+	var ang: float = SPIRIT_ORBIT_START + SPIRIT_ORBIT_SWEEP * pe
+	var rad: float = lerpf(SPIRIT_ORBIT_R_OUT, SPIRIT_ORBIT_R_IN, pe)
+	return Vector2(cos(ang) * SPIRIT_ORBIT_RX, sin(ang) * SPIRIT_ORBIT_RY) * rad
+
+
+# Alpha envelope across the journey: fade in at the side, stay present through the
+# orbit, dissolve as it reaches the face, brief absence, then loop from the side.
+# At SPIRIT_CYCLE = 16s it is clearly present ~12s of the trip.
 func _spirit_env(phase: float) -> float:
-	if phase < 0.30:
-		return smoothstep(0.0, 1.0, phase / 0.30)        # emerge
-	elif phase < 0.58:
-		return 1.0                                       # hold
-	elif phase < 0.92:
-		return 1.0 - smoothstep(0.0, 1.0, (phase - 0.58) / 0.34)  # dissolve
-	return 0.0                                           # near-invisible
+	if phase < 0.12:
+		return smoothstep(0.0, 1.0, phase / 0.12)        # fade in at the side (~1.7s)
+	elif phase < 0.84:
+		return 1.0                                       # present through the orbit (~10s)
+	elif phase < 0.98:
+		return 1.0 - smoothstep(0.0, 1.0, (phase - 0.84) / 0.14)  # dissolve at the face (~2s)
+	return 0.0                                           # absent (~0.3s)
 
 
 # One-shot reaction shape: quick ramp up, short hold, slow ease back.
