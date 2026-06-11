@@ -180,9 +180,28 @@ func _particles(gi: int, pos: Vector2, cfg: Dictionary) -> void:
 	_groups[gi].add_child(p)
 
 
-# 1 — CAULDRON 2: misty forest brew. Rising white-teal smoke, ground smoke-ring
-# shimmer, warm cauldron-emblem glow, a few drifting embers.
+# 1 — CAULDRON 2: misty forest brew. Low rolling ground fog, rising white-teal
+# smoke, ground smoke-ring shimmer, warm cauldron-emblem glow, drifting embers.
 func _build_cauldron(gi: int) -> void:
+	# Low ground-level fog drifting horizontally (left -> right) across the
+	# lower third — large soft puffs, low opacity. Added first so it sits
+	# behind the smoke/embers/glow. Particles fade via the colour ramp, so the
+	# drift is endless with no loop seam.
+	_particles(gi, _n(0.5, 0.82), {
+		"amount": 12, "lifetime": 12.0, "tex": "halo",
+		"rect": Vector2(1100, 120), "dir": Vector2(1, 0), "spread": 8.0,
+		"grav": Vector2(0, -1), "vmin": 8.0, "vmax": 18.0,
+		"smin": 1.8, "smax": 3.4, "color": Color(0.78, 0.93, 0.92, 0.08),
+		"life_rand": 0.5,
+	})
+	# Faint second wisp, a touch higher and faster, for depth.
+	_particles(gi, _n(0.5, 0.72), {
+		"amount": 8, "lifetime": 15.0, "tex": "halo",
+		"rect": Vector2(1100, 90), "dir": Vector2(1, 0), "spread": 6.0,
+		"grav": Vector2(0, -1), "vmin": 14.0, "vmax": 26.0,
+		"smin": 1.4, "smax": 2.6, "color": Color(0.8, 0.94, 0.93, 0.05),
+		"life_rand": 0.5,
+	})
 	_particles(gi, _n(0.42, 0.45), {
 		"amount": 16, "lifetime": 5.0, "tex": "halo",
 		"dir": Vector2(0, -1), "spread": 14.0, "grav": Vector2(0, -6),
