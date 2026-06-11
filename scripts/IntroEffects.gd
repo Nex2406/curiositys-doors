@@ -67,6 +67,14 @@ func set_active(idx: int) -> void:
 	_t = 0.0
 
 
+# Pause whatever group is live without bringing another up (used by the
+# Shelves 6 dive so its mist stops the moment the camera flies into the glass).
+func deactivate_current() -> void:
+	if _active >= 0:
+		_deactivate(_active)
+		_active = -1
+
+
 func _activate(i: int) -> void:
 	var g: Node2D = _groups[i]
 	g.visible = true
