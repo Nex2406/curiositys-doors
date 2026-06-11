@@ -67,6 +67,14 @@ func set_active(idx: int) -> void:
 	_t = 0.0
 
 
+# Pause whatever group is live without bringing another up (used by the
+# Shelves 6 dive so its mist stops the moment the camera flies into the glass).
+func deactivate_current() -> void:
+	if _active >= 0:
+		_deactivate(_active)
+		_active = -1
+
+
 func _activate(i: int) -> void:
 	var g: Node2D = _groups[i]
 	g.visible = true
@@ -173,6 +181,24 @@ func _particles(gi: int, pos: Vector2, cfg: Dictionary) -> void:
 	if ang != 0.0:
 		p.angular_velocity_min = -ang
 		p.angular_velocity_max = ang
+	# Optional churn: orbit (swirl around emission centre), tangential/radial
+	# acceleration (curl), and damping (settle) for living, billowing mist.
+	var orbit: float = cfg.get("orbit", 0.0)
+	if orbit != 0.0:
+		p.orbit_velocity_min = orbit * 0.4
+		p.orbit_velocity_max = orbit
+	var tang: float = cfg.get("tang", 0.0)
+	if tang != 0.0:
+		p.tangential_accel_min = -tang
+		p.tangential_accel_max = tang
+	var radial: float = cfg.get("radial", 0.0)
+	if radial != 0.0:
+		p.radial_accel_min = radial
+		p.radial_accel_max = radial * 0.4
+	var damping: float = cfg.get("damping", 0.0)
+	if damping != 0.0:
+		p.damping_min = 0.0
+		p.damping_max = damping
 	p.color = Color(1, 1, 1, 1)
 	p.color_ramp = _ramp(cfg.color)
 	if cfg.get("add", false):
@@ -183,24 +209,25 @@ func _particles(gi: int, pos: Vector2, cfg: Dictionary) -> void:
 # 1 — CAULDRON 2: misty forest brew. Low rolling ground fog, rising white-teal
 # smoke, ground smoke-ring shimmer, warm cauldron-emblem glow, drifting embers.
 func _build_cauldron(gi: int) -> void:
-	# Low ground-level fog drifting horizontally (left -> right) across the
-	# lower third — large soft puffs, low opacity. Added first so it sits
-	# behind the smoke/embers/glow. Particles fade via the colour ramp, so the
-	# drift is endless with no loop seam.
-	_particles(gi, _n(0.5, 0.82), {
-		"amount": 12, "lifetime": 12.0, "tex": "halo",
-		"rect": Vector2(1100, 120), "dir": Vector2(1, 0), "spread": 8.0,
-		"grav": Vector2(0, -1), "vmin": 8.0, "vmax": 18.0,
-		"smin": 1.8, "smax": 3.4, "color": Color(0.78, 0.93, 0.92, 0.08),
-		"life_rand": 0.5,
+	# Churning ground mist pooled around the cauldron base (y ~0.58-0.80): large
+	# soft white-teal puffs that orbit/curl AND drift sideways, fading in and out
+	# over their lifetime so the cloud constantly reshapes — living steam, not a
+	# frozen bank. This is the focal effect. Added first (behind smoke/glow).
+	_particles(gi, _n(0.46, 0.7), {
+		"amount": 16, "lifetime": 9.0, "tex": "halo",
+		"rect": Vector2(900, 240), "dir": Vector2(1, 0), "spread": 22.0,
+		"grav": Vector2(0, -2), "vmin": 6.0, "vmax": 16.0,
+		"smin": 1.6, "smax": 3.0, "color": Color(0.78, 0.93, 0.92, 0.1),
+		"life_rand": 0.5, "orbit": 0.09, "tang": 9.0, "radial": -3.0,
+		"damping": 4.0,
 	})
-	# Faint second wisp, a touch higher and faster, for depth.
-	_particles(gi, _n(0.5, 0.72), {
-		"amount": 8, "lifetime": 15.0, "tex": "halo",
-		"rect": Vector2(1100, 90), "dir": Vector2(1, 0), "spread": 6.0,
-		"grav": Vector2(0, -1), "vmin": 14.0, "vmax": 26.0,
+	# Faint higher wisp, a touch faster with a slight curl, for depth.
+	_particles(gi, _n(0.5, 0.58), {
+		"amount": 10, "lifetime": 13.0, "tex": "halo",
+		"rect": Vector2(1100, 150), "dir": Vector2(1, 0), "spread": 10.0,
+		"grav": Vector2(0, -1), "vmin": 12.0, "vmax": 24.0,
 		"smin": 1.4, "smax": 2.6, "color": Color(0.8, 0.94, 0.93, 0.05),
-		"life_rand": 0.5,
+		"life_rand": 0.5, "tang": 4.0,
 	})
 	_particles(gi, _n(0.42, 0.45), {
 		"amount": 16, "lifetime": 5.0, "tex": "halo",
@@ -232,15 +259,24 @@ func _build_grimoire(gi: int) -> void:
 		"smin": 0.25, "smax": 0.6, "color": Color(1.0, 0.93, 0.75, 0.5),
 		"add": true, "angmax": 10.0,
 	})
-	# Hero glow — red gem.
-	_glow(gi, _n(0.43, 0.62), Color(1.0, 0.2, 0.2), Vector2(1.1, 1.1),
-		KIND_PULSE, 0.9, 0.4, 0.8, 0.08)
-	# Secondary softer glow over the gem cluster.
-	_glow(gi, _n(0.3, 0.5), Color(0.95, 0.45, 0.35), Vector2(1.4, 1.4),
-		KIND_PULSE, 0.6, 0.22, 0.5)
-	# Candlelight flicker over the page.
-	_glow(gi, _n(0.5, 0.6), Color(1.0, 0.8, 0.45), Vector2(3.2, 2.2),
-		KIND_FLICKER, 3.5, 0.12, 0.3)
+	# A scattered constellation of gem/orb glows — each its own brightness and
+	# pulse rate so no two twinkle in sync.
+	_glow(gi, _n(0.42, 0.65), Color(1.0, 0.18, 0.15), Vector2(1.0, 1.0),
+		KIND_PULSE, 1.1, 0.45, 0.95, 0.1)     # red gem — brightest, strong
+	_glow(gi, _n(0.37, 0.32), Color(0.5, 0.95, 0.6), Vector2(0.9, 0.9),
+		KIND_PULSE, 0.7, 0.3, 0.6)            # green goblet — medium, cooler
+	_glow(gi, _n(0.18, 0.46), Color(0.4, 0.9, 0.95), Vector2(0.85, 0.85),
+		KIND_PULSE, 0.45, 0.15, 0.4)          # teal orb left — faint, slow
+	_glow(gi, _n(0.4, 0.44), Color(0.95, 0.97, 1.0), Vector2(0.8, 0.8),
+		KIND_PULSE, 0.6, 0.2, 0.5)            # pale orbs centre — soft white
+	_glow(gi, _n(0.62, 0.42), Color(0.55, 0.92, 0.55), Vector2(0.85, 0.85),
+		KIND_PULSE, 0.85, 0.28, 0.58)         # green orb right — medium
+	_glow(gi, _n(0.66, 0.66), Color(0.45, 0.6, 1.0), Vector2(0.8, 0.8),
+		KIND_PULSE, 0.4, 0.15, 0.4)           # blue vial — faint, slow
+	_glow(gi, _n(0.3, 0.4), Color(1.0, 0.75, 0.35), Vector2(0.55, 0.55),
+		KIND_FLICKER, 5.0, 0.2, 0.5)          # amber accent — low, quick flicker
+	_glow(gi, _n(0.72, 0.4), Color(1.0, 0.78, 0.4), Vector2(0.55, 0.55),
+		KIND_FLICKER, 6.0, 0.2, 0.5)          # amber accent — low, quick flicker
 
 
 # 3 — SHELVES 6: foggy teal alchemy bottles. Rolling fog is the star, faint
@@ -307,9 +343,27 @@ func _build_shelves1(gi: int) -> void:
 # 6 — TENT 3: warm lamplit tent. Lantern flicker + hero glow on the brightest
 # lamp, lazy incense wisp rising, warm dust motes in the lamplight.
 func _build_tent(gi: int) -> void:
-	# Hero glow + lantern flicker on the brightest lamp.
-	_glow(gi, _n(0.5, 0.35), Color(1.0, 0.75, 0.4), Vector2(2.4, 2.4),
-		KIND_FLICKER, 4.0, 0.4, 0.78, 0.05)
+	# Hanging bulb (top) — small blue-white, gentle irregular flicker.
+	_glow(gi, _n(0.32, 0.13), Color(0.7, 0.85, 1.0), Vector2(1.0, 1.0),
+		KIND_FLICKER, 3.0, 0.3, 0.6)
+	# Main lantern on the table — brightest, slow irregular warm-gold flicker.
+	_glow(gi, _n(0.38, 0.42), Color(1.0, 0.72, 0.35), Vector2(2.0, 2.0),
+		KIND_FLICKER, 4.0, 0.45, 0.85, 0.05)
+	# Faint object glows, each a little different.
+	_glow(gi, _n(0.16, 0.5), Color(1.0, 0.3, 0.2), Vector2(1.1, 1.1),
+		KIND_PULSE, 0.5, 0.12, 0.32)          # red glowing panel left
+	_glow(gi, _n(0.27, 0.5), Color(1.0, 0.8, 0.4), Vector2(1.0, 1.0),
+		KIND_PULSE, 0.45, 0.12, 0.3)          # ornate gold panel
+	_glow(gi, _n(0.45, 0.58), Color(1.0, 0.78, 0.5), Vector2(0.7, 0.7),
+		KIND_PULSE, 0.7, 0.1, 0.28)           # small trinkets on the table
+	# Faint warm haze drifting slowly through the mid-tent (cozy smoke).
+	_particles(gi, _n(0.4, 0.42), {
+		"amount": 8, "lifetime": 10.0, "tex": "halo",
+		"rect": Vector2(700, 220), "dir": Vector2(1, 0), "spread": 15.0,
+		"grav": Vector2(0, -1), "vmin": 4.0, "vmax": 12.0,
+		"smin": 1.2, "smax": 2.2, "color": Color(1.0, 0.85, 0.6, 0.06),
+		"life_rand": 0.5, "tang": 4.0,
+	})
 	# Lazy incense smoke wisp, slight sway.
 	_particles(gi, _n(0.5, 0.62), {
 		"amount": 10, "lifetime": 6.0, "tex": "halo",
