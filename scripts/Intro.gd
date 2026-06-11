@@ -171,6 +171,9 @@ func _begin_dialogue() -> void:
 func _on_line_changed(index: int) -> void:
 	if index < 0 or index >= BG_FOR_LINE.size():
 		return
+	# Opening line on Cauldron 2: the smoke spirit quietly notices the player.
+	if index == 0:
+		_effects.spirit_react()
 	var target: int = BG_FOR_LINE[index]
 	if target != _current_bg:
 		# Leaving Shelves 6 for Shelves 2 gets the flask dive; everything else

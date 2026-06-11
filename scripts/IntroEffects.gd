@@ -17,6 +17,22 @@ const FADE: float = 1.2          # matches Intro.gd cross-fade
 const KIND_PULSE: int = 0        # smooth sine breathing
 const KIND_FLICKER: int = 1      # irregular candle / lantern flicker
 
+# --- Cauldron 2 "smoke spirit" (group 0 only) -------------------------------
+# A half-seen white-teal presence that forms in the rising steam at the painted
+# face (~0.40,0.30): it breathes in and out, drifts/sways, trails wisps, and has
+# two faint glowing eyes that track it — and that "notice" the player on the
+# opening line. All values are STARTING positions, tuned to stay eerie not solid.
+const SPIRIT_POS: Vector2 = Vector2(0.40, 0.30)        # normalised face centre
+const SPIRIT_EYE_L: Vector2 = Vector2(0.385, 0.29)
+const SPIRIT_EYE_R: Vector2 = Vector2(0.415, 0.29)
+const SPIRIT_CYCLE: float = 7.5        # seconds per emerge / hold / dissolve loop
+const SPIRIT_BODY_TINT: Color = Color(0.72, 0.95, 0.93)
+const SPIRIT_EYE_TINT: Color = Color(0.78, 0.98, 0.96)
+const SPIRIT_BODY_PEAK: float = 0.35   # max additive alpha at full emerge (faint)
+const SPIRIT_BODY_MIN: float = 0.03    # near-invisible at the trough
+const SPIRIT_EYE_BASE: float = 0.28    # eye glow at full emerge (before pulse)
+const SPIRIT_REACT_TIME: float = 2.6   # one-shot "notice you" beat on line 1
+
 var _groups: Array[Node2D] = []
 var _glows: Array = []           # per-group Array of glow descriptors
 var _active: int = -1
@@ -25,6 +41,15 @@ var _t: float = 0.0
 var _halo: Texture2D
 var _firefly: Texture2D
 var _add_mat: CanvasItemMaterial
+
+# Smoke-spirit state (cauldron / group 0 only).
+var _spirit_root: Node2D                       # swaying container; eyes parent to it
+var _spirit_body: Sprite2D                     # soft vertical figure glow
+var _spirit_eyes: Array[Sprite2D] = []
+var _spirit_base: Vector2                      # face centre in pixels
+var _spirit_body_scale: Vector2 = Vector2(1.05, 1.55)  # taller than wide → a figure
+var _spirit_reacting: bool = false
+var _react_t: float = 0.0
 
 
 func _ready() -> void:
@@ -118,6 +143,10 @@ func _process(delta: float) -> void:
 			f = 0.5 + 0.5 * sin(_t * gd.speed)
 		s.modulate.a = lerpf(gd.amin, gd.amax, f)
 		s.scale = gd.bscale * (1.0 + gd.samt * (f - 0.5) * 2.0)
+
+	# The Cauldron 2 smoke spirit runs its own envelope-driven loop on top.
+	if _active == 0 and _spirit_root != null:
+		_animate_spirit(delta)
 
 
 # --- Builders ---------------------------------------------------------------
@@ -247,6 +276,111 @@ func _build_cauldron(gi: int) -> void:
 	# Hero glow — warm orange on the cauldron emblem.
 	_glow(gi, _n(0.42, 0.58), Color(1.0, 0.55, 0.2), Vector2(1.6, 1.6),
 		KIND_PULSE, 0.7, 0.35, 0.7, 0.06)
+	# Smoke spirit — added LAST so it layers above this group's smoke/mist/embers.
+	_build_spirit(gi)
+
+
+# Smoke spirit: a soft vertical body glow + two eye points in a swaying root,
+# plus a few tendril wisps rising off the face. The root is animated each frame
+# in _animate_spirit (only while group 0 is active).
+func _build_spirit(gi: int) -> void:
+	_spirit_base = _n(SPIRIT_POS.x, SPIRIT_POS.y)
+	_spirit_root = Node2D.new()
+	_spirit_root.position = _spirit_base
+	_groups[gi].add_child(_spirit_root)
+
+	# Soft vertical glow suggesting a head/figure forming in the steam.
+	_spirit_body = Sprite2D.new()
+	_spirit_body.texture = _halo
+	_spirit_body.material = _add_mat
+	_spirit_body.scale = _spirit_body_scale
+	_spirit_body.modulate = Color(SPIRIT_BODY_TINT.r, SPIRIT_BODY_TINT.g,
+		SPIRIT_BODY_TINT.b, SPIRIT_BODY_MIN)
+	_spirit_root.add_child(_spirit_body)
+
+	# Two faint eyes, positioned relative to the face centre so they sway and
+	# tilt WITH the spirit (children of the root). Start dark; the loop lights them.
+	for ep: Vector2 in [SPIRIT_EYE_L, SPIRIT_EYE_R]:
+		var e := Sprite2D.new()
+		e.texture = _halo
+		e.material = _add_mat
+		e.scale = Vector2(0.14, 0.14)
+		e.position = _n(ep.x, ep.y) - _spirit_base
+		e.modulate = Color(SPIRIT_EYE_TINT.r, SPIRIT_EYE_TINT.g,
+			SPIRIT_EYE_TINT.b, 0.0)
+		_spirit_root.add_child(e)
+		_spirit_eyes.append(e)
+
+	# A few soft tendril wisps drifting up off the face (the painted tendril).
+	_particles(gi, _spirit_base + Vector2(0, -12), {
+		"amount": 7, "lifetime": 4.5, "tex": "halo",
+		"dir": Vector2(0, -1), "spread": 16.0, "grav": Vector2(0, -8),
+		"vmin": 7.0, "vmax": 16.0, "smin": 0.35, "smax": 0.8,
+		"color": Color(0.7, 0.95, 0.92, 0.1), "angmax": 6.0, "add": true,
+	})
+
+
+# Per-frame spirit motion: breathing envelope (emerge/hold/dissolve), drift/sway,
+# scale pulse, faint eye pulse, and the one-shot line-1 "notice" reaction.
+func _animate_spirit(delta: float) -> void:
+	var phase: float = fmod(_t, SPIRIT_CYCLE) / SPIRIT_CYCLE
+	var env: float = _spirit_env(phase)
+
+	# Slow drift: vertical bob + side sway + gentle whole-figure scale pulse.
+	var bob: float = sin(_t * 0.55) * 13.0
+	var sway: float = sin(_t * 0.38 + 1.3) * 9.0
+	var pulse: float = 1.0 + 0.05 * sin(_t * 0.7)
+
+	# Reaction beat: turn slightly toward centre-screen (to the right of the
+	# spirit) and brighten the eyes, then settle. Fired once, on the opening line.
+	var re: float = 0.0
+	if _spirit_reacting:
+		_react_t += delta
+		re = _spirit_react_env(_react_t)
+		if _react_t >= SPIRIT_REACT_TIME:
+			_spirit_reacting = false
+
+	_spirit_root.position = _spirit_base + Vector2(sway + re * 8.0, bob)
+	_spirit_root.scale = Vector2(pulse, pulse)
+	_spirit_root.rotation = re * deg_to_rad(5.0)
+
+	_spirit_body.modulate.a = lerpf(SPIRIT_BODY_MIN, SPIRIT_BODY_PEAK, env)
+
+	# Eyes only glow when the spirit is present; the reaction adds a brief boost.
+	var eye_pulse: float = 0.85 + 0.15 * sin(_t * 1.3)
+	var eye_a: float = env * (SPIRIT_EYE_BASE * eye_pulse + re * 0.4)
+	for e: Sprite2D in _spirit_eyes:
+		e.modulate.a = eye_a
+
+
+# Breathing envelope over one cycle: rise, hold, dissolve, brief absence.
+func _spirit_env(phase: float) -> float:
+	if phase < 0.30:
+		return smoothstep(0.0, 1.0, phase / 0.30)        # emerge
+	elif phase < 0.58:
+		return 1.0                                       # hold
+	elif phase < 0.92:
+		return 1.0 - smoothstep(0.0, 1.0, (phase - 0.58) / 0.34)  # dissolve
+	return 0.0                                           # near-invisible
+
+
+# One-shot reaction shape: quick ramp up, short hold, slow ease back.
+func _spirit_react_env(d: float) -> float:
+	if d < 0.5:
+		return smoothstep(0.0, 1.0, d / 0.5)
+	elif d < 1.1:
+		return 1.0
+	elif d < SPIRIT_REACT_TIME:
+		return 1.0 - smoothstep(0.0, 1.0, (d - 1.1) / (SPIRIT_REACT_TIME - 1.1))
+	return 0.0
+
+
+# Called by Intro.gd on the opening line — the spirit "notices" the player.
+func spirit_react() -> void:
+	if _spirit_root == null:
+		return
+	_spirit_reacting = true
+	_react_t = 0.0
 
 
 # 2 — GRIMOIRE 1: open spellbook. Drifting dust catching light over a scattered
