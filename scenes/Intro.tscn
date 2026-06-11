@@ -1,8 +1,9 @@
-[gd_scene load_steps=10 format=3 uid="uid://c0intr0sceneprolog"]
+[gd_scene load_steps=11 format=3 uid="uid://c0intr0sceneprolog"]
 
 [ext_resource type="Script" path="res://scripts/Intro.gd" id="1_intro"]
 [ext_resource type="Texture2D" path="res://assets/effects/firefly.png" id="2_firefly"]
 [ext_resource type="PackedScene" path="res://scenes/UI/DialogueBox.tscn" id="3_dialogue"]
+[ext_resource type="Script" path="res://scripts/IntroEffects.gd" id="4_effects"]
 
 [sub_resource type="Gradient" id="Gradient_spark_alpha"]
 offsets = PackedFloat32Array(0, 0.25, 0.7, 1)
@@ -76,6 +77,9 @@ preprocess = 5.0
 modulate = Color(1, 1, 1, 0.55)
 texture = ExtResource("2_firefly")
 process_material = SubResource("ParticleProcessMaterial_sparkle")
+
+[node name="BgEffects" type="Node2D" parent="."]
+script = ExtResource("4_effects")
 
 [node name="Eyelids" type="CanvasLayer" parent="."]
 layer = 20

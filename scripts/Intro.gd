@@ -85,6 +85,7 @@ var _fade_tween: Tween
 @onready var _dialogue: CanvasLayer = $DialogueBox
 @onready var _lid: ColorRect = $Eyelids/Lid
 @onready var _vignette: TextureRect = $Eyelids/Vignette
+@onready var _effects: Node2D = $BgEffects
 
 
 func _ready() -> void:
@@ -95,6 +96,9 @@ func _ready() -> void:
 	_bg_a.modulate.a = 1.0
 	_bg_b.modulate.a = 0.0
 	_current_bg = 0
+
+	# Light up only the first background's tailored effects; the rest stay cold.
+	_effects.set_active(0)
 
 	_dialogue.line_changed.connect(_on_line_changed)
 	_dialogue.finished.connect(_on_finished)
@@ -163,6 +167,9 @@ func _on_line_changed(index: int) -> void:
 # settling the result back onto BgA so the next fade starts clean.
 func _crossfade_to(bg_index: int) -> void:
 	_current_bg = bg_index
+	# Hand the tailored effects over in lockstep with the image cross-fade so
+	# only the incoming (and briefly outgoing) background's effects run.
+	_effects.set_active(bg_index)
 	_bg_b.texture = load(BACKGROUNDS[bg_index])
 	_bg_b.modulate.a = 0.0
 
