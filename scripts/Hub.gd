@@ -34,6 +34,9 @@ var _bob_time: float = 0.0
 
 
 func _ready() -> void:
+	# Ambient bed for the hub. Placeholder drone until a real hub track lands;
+	# crossfades from a realm's ambient on return. (AudioManager M1 foundation.)
+	AudioManager.play_placeholder("hub")
 	# If returning from a realm, snap Curiosity to the entry door before reveal.
 	if Transition.last_door_id != "":
 		_respawn_at_door(Transition.last_door_id)
