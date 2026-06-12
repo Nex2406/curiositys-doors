@@ -47,6 +47,24 @@ placeholder arch — ornate door / eyed moon / silhouettes are the next art lift
   for the Intro; this just makes it callable from anywhere. No canonical lines
   authored yet — Advika writes them; content is the caller's. Headless test
   `tests/test_dialogue.gd` (8/8 pass).
+- **AudioManager** (`scripts/AudioManager.gd` autoload) — M1 foundation. Ambient
+  + SFX buses created at runtime (routed to Master); two ambient players
+  crossfade when a scene requests a new track and no-op on re-request.
+  `play_ambient(stream, name)` / `play_placeholder(name)` / `stop_ambient` /
+  `play_sfx`. Placeholder ambience is a soft seamless-looping low drone
+  synthesized in code (no committed/licensed audio) — real per-scene tracks
+  (hub, prologue, each realm; Advika sources them) drop in with a one-line swap.
+  Hub + Realm 1 play the placeholder on enter. Test `tests/test_audio_manager.gd`
+  (16/16 pass).
+- **RealmBase** (`scripts/RealmBase.gd`, `class_name RealmBase`) — M1 foundation,
+  the template future realms inherit. On enter: play ambient, set visited flag,
+  restore saved realm state; hooks `_on_realm_ready` / `capture_state` /
+  `apply_state` for subclasses; `exit_to_hub()` saves → optional exit lore →
+  transitions home. Realm state persists via SaveManager's per-realm namespace
+  (`set_realm_state`/`get_realm_state`). **Realm 1 is NOT on RealmBase yet** —
+  that retrofit is M3. Proven by `TestRealm` (throwaway, not shipped/reachable):
+  `scenes/realms/TestRealm.tscn` — [Y] collects a token (persisted), [S]/↓ exits;
+  relaunch restores the count (in-realm save/restore proof).
 - **LoreMoment overlay** (`scenes/UI/LoreMoment.tscn` + `scripts/LoreMoment.gd`) —
   reusable single-line lore display: slow fade-in / hold / fade-out, soft
   serif via SystemFont fallback, no box. Wired into `Door.exit_lore_line`
@@ -59,9 +77,11 @@ placeholder arch — ornate door / eyed moon / silhouettes are the next art lift
 - Combat / dash / lever / approach / hurt / charged / celebrate animations
   on Curiosity (frames imported, not reachable from state machine)
 - Puzzle framework (docs-only)
-- SaveManager exists + persists, but no scene yet *restores* from it on boot
-  (no resume-to-hub / resume-into-realm flow); proven via self-test, not yet
-  via in-game refresh. That's the next M1 brick (TestRealm save/restore).
+- No "continue / resume on boot" flow yet — the game always starts at the Intro.
+  SaveManager persists and RealmBase restores per-realm state on *re-entry*, but
+  there's no title-screen "continue" that boots you back into your last realm.
+  That's a front-end concern (M6), not an engine gap.
+- Realm 1 still predates RealmBase (its own bespoke Node2D). Retrofit is M3.
 - Hand-painted lantern falloff (still gradient placeholder)
 - Cloak / eye-blink / fog shaders
 - Per-realm ambient audio
@@ -70,18 +90,19 @@ placeholder arch — ornate door / eyed moon / silhouettes are the next art lift
 [2026-05-17 — Close the agentic loop](SESSIONS.md#2026-05-17--close-the-agentic-loop)
 
 ## Next 3 safe candidates
-_Still inside M1 — Core engine foundations. Two bricks down (SaveManager,
-Dialogue); two to go (Audio, RealmBase)._
-1. **M1 — Audio manager** — autoload ambient bus + SFX hooks; plays a per-scene
-   ambient track on enter, stops on exit. Satisfies the M1 audio done-when.
-   (Needs an ambient track from Advika, or a placeholder loop.)
-2. **M1 — RealmBase + TestRealm + save/restore** — realm template (entry/exit/
-   lore/audio/save hooks) proven on a throwaway TestRealm that saves on exit and
-   restores after a page refresh, exercising the SaveManager in-game. Closes the
-   remaining M1 done-when items and the "no scene restores from save yet" gap.
-3. **Wire a real dialogue moment** (once Advika provides lines) — e.g. a short
-   first-entry hub beat gated by a SaveManager flag, demonstrating Dialogue +
-   SaveManager together in-game. Blocked on Advika's lines.
+_**M1 — Core engine foundations is COMPLETE** (SaveManager · Dialogue ·
+AudioManager · RealmBase, all shipped + green). Active milestone is now **M2 —
+Combat & enemy/boss framework**._
+1. **M2 — wire Curiosity's combat animations** — the attack / hurt / dash /
+   charged frames are imported but unreachable; bring them into the state
+   machine. First combat brick, no enemies yet.
+2. **M2 — reusable `Enemy` base** — patrol / detect / attack / take damage / die,
+   proven on a placeholder enemy in a test arena (reuse RealmBase / TestRealm).
+3. **M2 — reusable `Boss` base** — health bar, ≥2 phases, telegraphed attacks,
+   defeat beat. The shared spine every realm boss inherits.
+
+_Content waiting on Advika (drops into the finished engine anytime): real
+ambient tracks per scene; Curiosity's dialogue lines for a real in-game moment._
 
 ---
 

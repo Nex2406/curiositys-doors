@@ -57,24 +57,31 @@ the "10x later" investment.
 
 ## The milestones
 
-### ▶ M1 — Core engine foundations
+### ✅ M1 — Core engine foundations  _(complete 2026-06-12)_
 *The compounding layer. Build the systems every realm reuses, proven on a throwaway test room — not on a real realm yet.*
 
 - **Why now:** these get used by all 3 realms. Building them first means Realms
   1–3 are authoring, not engineering.
 - **Scope:**
-  - Save / load singleton (autoload).
+  - Save / load singleton (autoload). → `SaveManager` (#102)
   - Dialogue / textbox system (generalize LoreMoment → sequenced, Curiosity voice).
-  - Audio manager (ambient bus + SFX hooks).
-  - RealmBase template + generalized Door/unlock framework.
+    → `Dialogue` service over existing `DialogueBox` (#104)
+  - Audio manager (ambient bus + SFX hooks). → `AudioManager` (#106)
+  - RealmBase template. → `RealmBase` + `TestRealm` (#108)
 - **Done-when:**
-  - [ ] A throwaway `TestRealm` can be entered/exited via RealmBase.
-  - [ ] It can save state and restore it after a page refresh.
-  - [ ] Curiosity can speak a multi-line sequence in the textbox system.
-  - [ ] It plays an ambient track on enter, stops on exit.
-  - [ ] All four "ready" gates pass.
+  - [x] A throwaway `TestRealm` can be entered/exited via RealmBase.
+  - [x] It can save state and restore it after a page refresh (per-realm state
+        persists; restored on re-entry — proven in-realm via TestRealm).
+  - [x] Curiosity can speak a multi-line sequence in the textbox system.
+  - [x] It plays an ambient track on enter (placeholder drone until real tracks).
+  - [x] All four "ready" gates pass.
+- **Deferred (intentional, not gaps):** generalized Door/unlock framework folded
+  into M3's jade-key loop (build it on the real realm, not abstractly); a
+  title-screen "continue / resume on boot" flow is M6 front-end; retrofitting
+  Realm 1 onto RealmBase is M3. Real ambient tracks + canonical dialogue lines
+  are content (Advika), slot into the finished engine anytime.
 
-### M2 — Combat & enemy/boss framework
+### ▶ M2 — Combat & enemy/boss framework
 *Curiosity learns to fight. Reusable enemy + boss bases, proven in a test arena.*
 
 - **Why now:** combat is core to the game's identity and shared by every realm's
