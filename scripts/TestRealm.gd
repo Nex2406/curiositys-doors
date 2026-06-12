@@ -38,7 +38,12 @@ func _process(_delta: float) -> void:
 
 
 func _refresh() -> void:
-	_label.text = "TestRealm — collected %d / %d\n[Y] collect    [S / ↓] exit to hub" % [_collected, TOKEN_COUNT]
+	var msg: String
+	if _collected < TOKEN_COUNT:
+		msg = "SAVE TEST\n\nPress  Y  to fill the dots  (%d / %d)" % [_collected, TOKEN_COUNT]
+	else:
+		msg = "SAVED.  Now REFRESH this page (F5).\n\nIf the dots are still gold, the save system works."
+	_label.text = msg
 	for i in _tokens.get_child_count():
 		var dot: ColorRect = _tokens.get_child(i) as ColorRect
 		if dot:
