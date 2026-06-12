@@ -84,6 +84,15 @@ func _process(delta: float) -> void:
 		_current_door.trigger()
 
 
+# TEMP (testing): press T to jump into the throwaway TestRealm, so the M1
+# save/restore loop is reachable on the live build without a shipped door.
+# Invisible (no art/text). Remove once M2 has its own test arena. See issue #110.
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo \
+			and (event as InputEventKey).keycode == KEY_T:
+		Transition.transition_to("res://scenes/realms/TestRealm.tscn")
+
+
 func _animate_bob(delta: float) -> void:
 	_bob_time += delta
 	for i in _door_roots.size():
