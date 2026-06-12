@@ -10,6 +10,7 @@ extends Node
 #   doors_opened : Array[String]        # door_ids the player has entered
 #   inventory    : Dictionary           # item_name -> int count
 #   flags        : Dictionary           # arbitrary named bool/value flags
+#   realms       : Dictionary           # realm_id -> that realm's saved state
 #
 # Persistence: JSON at user://. On the HTML5 build user:// is backed by the
 # browser's IndexedDB, which Godot 4 flushes on file close — so a save written
@@ -114,6 +115,25 @@ func get_flag(name: String, default_value: Variant = false) -> Variant:
 	return (_state["flags"] as Dictionary).get(name, default_value)
 
 
+# ─── per-realm state ───────────────────────────────────────────────────────
+# Each realm owns an opaque dictionary of its own progress (tokens collected,
+# levers pulled, etc.). RealmBase reads/writes this; the shapes are the realm's
+# business, not SaveManager's.
+
+func set_realm_state(realm_id: String, data: Dictionary) -> void:
+	if realm_id == "":
+		return
+	(_state["realms"] as Dictionary)[realm_id] = data.duplicate(true)
+	save_game()
+
+
+func get_realm_state(realm_id: String) -> Dictionary:
+	var realms: Dictionary = _state["realms"]
+	if realms.has(realm_id) and realms[realm_id] is Dictionary:
+		return (realms[realm_id] as Dictionary).duplicate(true)
+	return {}
+
+
 # ─── internals ─────────────────────────────────────────────────────────────
 
 func _default_state() -> Dictionary:
@@ -122,6 +142,7 @@ func _default_state() -> Dictionary:
 		"doors_opened": [],
 		"inventory": {},
 		"flags": {},
+		"realms": {},
 	}
 
 
@@ -137,3 +158,5 @@ func _merge_into_state(loaded: Dictionary) -> void:
 		_state["inventory"] = (loaded["inventory"] as Dictionary).duplicate()
 	if loaded.has("flags") and loaded["flags"] is Dictionary:
 		_state["flags"] = (loaded["flags"] as Dictionary).duplicate()
+	if loaded.has("realms") and loaded["realms"] is Dictionary:
+		_state["realms"] = (loaded["realms"] as Dictionary).duplicate(true)

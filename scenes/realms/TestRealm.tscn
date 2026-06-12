@@ -1,0 +1,67 @@
+[gd_scene load_steps=2 format=3 uid="uid://b0testrealm0m1x"]
+
+[ext_resource type="Script" path="res://scripts/TestRealm.gd" id="1_testrealm"]
+
+[node name="TestRealm" type="Node2D"]
+script = ExtResource("1_testrealm")
+realm_id = "test_realm"
+ambient_name = "test_realm"
+exit_lore_line = "A door is only a question you have not yet asked."
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="BG" type="ColorRect" parent="UI"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.043, 0.051, 0.082, 1)
+
+[node name="Label" type="Label" parent="UI"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -360.0
+offset_top = -120.0
+offset_right = 360.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.9, 0.91, 0.96, 1)
+theme_override_font_sizes/font_size = 40
+text = "TestRealm"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Tokens" type="HBoxContainer" parent="UI"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = 40.0
+offset_right = 120.0
+offset_bottom = 88.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="Dot0" type="ColorRect" parent="UI/Tokens"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+color = Color(0.22, 0.2, 0.26, 1)
+
+[node name="Dot1" type="ColorRect" parent="UI/Tokens"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+color = Color(0.22, 0.2, 0.26, 1)
+
+[node name="Dot2" type="ColorRect" parent="UI/Tokens"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+color = Color(0.22, 0.2, 0.26, 1)
