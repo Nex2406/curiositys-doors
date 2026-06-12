@@ -73,6 +73,9 @@ var _cam: Camera2D
 
 
 func _ready() -> void:
+	# Ambient bed for the Crimson Hollow. Placeholder drone until a real realm 1
+	# track lands; crossfades from the hub ambient on entry. (AudioManager M1.)
+	AudioManager.play_placeholder("realm1")
 	_rng = RandomNumberGenerator.new()
 	_rng.seed = RNG_SEED
 	var ts: TileSet = _build_tileset()
