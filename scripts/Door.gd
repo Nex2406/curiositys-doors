@@ -140,6 +140,9 @@ func trigger() -> void:
 	# Curiosity at the same door on return. Hub-bound trips leave it intact.
 	if target_realm.begins_with("realm_"):
 		Transition.last_door_id = door_id
+		# Persist that this door has been entered, so progress survives a
+		# refresh. First real consumer of the SaveManager foundation.
+		SaveManager.mark_door_opened(door_id)
 	# Hold the flash briefly so the player sees the Y register before fade.
 	await get_tree().create_timer(_TRIGGER_TO_FADE_DELAY).timeout
 	if exit_lore_line.strip_edges() != "":
