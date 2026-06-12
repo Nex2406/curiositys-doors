@@ -39,6 +39,14 @@ func _initialize() -> void:
 	sm3.load_game()
 	fails += _check("dedupe: no duplicate door entry", sm3.is_door_opened("Door1"))
 
+	# Per-realm state round-trips and stays isolated per realm.
+	fails += _check("realm: empty before write", sm3.get_realm_state("test_realm").is_empty())
+	sm3.set_realm_state("test_realm", {"collected": 2})
+	var sm4: Node = SaveManagerScript.new()
+	sm4.load_game()
+	fails += _check("realm: state persisted", int(sm4.get_realm_state("test_realm").get("collected", 0)) == 2)
+	fails += _check("realm: other realm untouched", sm4.get_realm_state("realm_9").is_empty())
+
 	# Cleanup so a real game boots fresh.
 	sm.reset()
 
