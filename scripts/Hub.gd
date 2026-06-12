@@ -87,9 +87,20 @@ func _process(delta: float) -> void:
 # TEMP (testing): press T to jump into the throwaway TestRealm, so the M1
 # save/restore loop is reachable on the live build without a shipped door.
 # Invisible (no art/text). Remove once M2 has its own test arena. See issue #110.
-func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo \
-			and (event as InputEventKey).keycode == KEY_T:
+# Uses _input (top of the chain, so nothing can swallow it first) and matches
+# both keycode and physical_keycode — on web builds a key event sometimes
+# carries only the physical code. The print is a breadcrumb for devtools.
+var _dev_jumping: bool = false
+
+func _input(event: InputEvent) -> void:
+	if _dev_jumping or not (event is InputEventKey):
+		return
+	var key: InputEventKey = event as InputEventKey
+	if not key.pressed or key.echo:
+		return
+	if key.keycode == KEY_T or key.physical_keycode == KEY_T:
+		print("[Hub] DEV: T pressed → entering TestRealm")
+		_dev_jumping = true
 		Transition.transition_to("res://scenes/realms/TestRealm.tscn")
 
 
