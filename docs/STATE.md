@@ -38,6 +38,15 @@ placeholder arch — ornate door / eyed moon / silhouettes are the next art lift
   complete default (forward-compatible). First real consumer: `Door.trigger()`
   records a door opened on entry. Headless round-trip self-test in
   `tests/test_save_manager.gd` (9/9 pass).
+- **Dialogue service** (`scripts/Dialogue.gd` autoload, wraps existing
+  `DialogueBox.tscn/.gd`) — M1 foundation. Any scene can run a multi-line
+  sequence with `await Dialogue.say([...lines...], speaker)`, which resolves
+  once the player dismisses the last line. One dialogue at a time;
+  `is_active()` + `started`/`closed` signals. The DialogueBox itself (typewriter,
+  [Y]/space/click advance, snap-to-complete, blink indicator) was already built
+  for the Intro; this just makes it callable from anywhere. No canonical lines
+  authored yet — Advika writes them; content is the caller's. Headless test
+  `tests/test_dialogue.gd` (8/8 pass).
 - **LoreMoment overlay** (`scenes/UI/LoreMoment.tscn` + `scripts/LoreMoment.gd`) —
   reusable single-line lore display: slow fade-in / hold / fade-out, soft
   serif via SystemFont fallback, no box. Wired into `Door.exit_lore_line`
@@ -61,17 +70,18 @@ placeholder arch — ornate door / eyed moon / silhouettes are the next art lift
 [2026-05-17 — Close the agentic loop](SESSIONS.md#2026-05-17--close-the-agentic-loop)
 
 ## Next 3 safe candidates
-_Still inside M1 — Core engine foundations. Keep laying bones before realms._
-1. **M1 — Dialogue/textbox system** — generalize the one-line LoreMoment into a
-   sequenced multi-line textbox in Curiosity's voice (`DialogueBox.tscn/.gd`
-   already exist, half-built — finish + wire). Satisfies the M1 "Curiosity
-   speaks a multi-line sequence" done-when.
-2. **M1 — Audio manager** — autoload ambient bus + SFX hooks; plays a per-scene
+_Still inside M1 — Core engine foundations. Two bricks down (SaveManager,
+Dialogue); two to go (Audio, RealmBase)._
+1. **M1 — Audio manager** — autoload ambient bus + SFX hooks; plays a per-scene
    ambient track on enter, stops on exit. Satisfies the M1 audio done-when.
-3. **M1 — RealmBase + TestRealm + save/restore** — realm template (entry/exit/
+   (Needs an ambient track from Advika, or a placeholder loop.)
+2. **M1 — RealmBase + TestRealm + save/restore** — realm template (entry/exit/
    lore/audio/save hooks) proven on a throwaway TestRealm that saves on exit and
-   restores after a page refresh, exercising the new SaveManager in-game.
-   Closes the remaining M1 done-when items.
+   restores after a page refresh, exercising the SaveManager in-game. Closes the
+   remaining M1 done-when items and the "no scene restores from save yet" gap.
+3. **Wire a real dialogue moment** (once Advika provides lines) — e.g. a short
+   first-entry hub beat gated by a SaveManager flag, demonstrating Dialogue +
+   SaveManager together in-game. Blocked on Advika's lines.
 
 ---
 
