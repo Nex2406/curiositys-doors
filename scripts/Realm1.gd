@@ -2,311 +2,108 @@ extends Node2D
 
 # Realm 1 — "The Crimson Hollow".
 #
-# 120-wide x 30-tall tilemap, 2x visual scale (each tile renders 64x64 px).
-# World extents: 7680 x 1920 px.
+# IMPORTANT: the level geometry is HAND-PAINTED by Advika directly into the
+# $TileMapLayer node in the Godot editor. This script does NOT generate any
+# tiles. It only does the plumbing that makes a painted level playable:
 #
-# Five chunks of mechanical placement (no creative deviation):
-#   1. Intro Cave            (x=  0..24)  flat floor at y=22 + 2 hop platforms
-#   2. Broken Cavern         (x= 25..49)  floor with 3 gaps + bridge platforms
-#   3. Red Crystal Chamber   (x= 50..74)  big chasm, crystal platforms + pillars
-#   4. Vertical Climb        (x= 75..99)  walled shaft with climbing staircase
-#   5. Final Core Chamber    (x=100..119) high floor at y=9, exit door + pillar
+#   1. Collision   — every painted cell becomes solid ground at runtime, so
+#                    you stand on exactly what you see. Paint more tiles and
+#                    they are automatically walkable. No code change needed.
+#   2. Spawn       — Curiosity is placed on top of the painted floor, at its
+#                    left edge.
+#   3. Exit door   — anchored to the right edge of the painted floor; pressing
+#                    the interact key (Y) while standing in it returns to the hub.
+#   4. Camera      — limits clamped to the painted level's bounds.
 #
-# Two TileMapLayers:
-#   * Solids — colliding. Ground tops/fills, edge walls, crystal blocks/surrounds.
-#   * Stalactites — decorative only, NO collision.
-#
-# Tile palette is mixed within each role for visual variety; selection is
-# deterministic from a seeded RNG so the level renders identically every run.
+# The old code-that-generated-the-whole-level approach was removed: it built a
+# second, invisible level that fought the painted one (Curiosity spawned ~700px
+# below the floor you could see). One level system now — yours.
 
-const SOURCE_TEXTURE: Texture2D = preload("res://assets/realms/realm1_caves/mainlev_build.png")
-const ATLAS_TILE_SIZE: Vector2i = Vector2i(32, 32)
-
-# ─── palette ─────────────────────────────────────────────────────────────
-# STOPGAP (2026-06-08): this tileset is decorative rock chunks, not a seamless
-# terrain set, so the previous random per-cell variant mixing read as rubble.
-# Each role is collapsed to ONE consistent tile — repetition reads far cleaner
-# than randomness. A proper terrain-tileset rebuild is queued for M3 (Realm 1
-# to ship-quality). Every coord here must still appear in SOLID_TILES below so
-# the floor keeps its collision.
-const GROUND_TOP_VARIANTS: Array[Vector2i] = [Vector2i(7, 20)]
-const GROUND_FILL_VARIANTS: Array[Vector2i] = [Vector2i(8, 23)]
-const LEFT_EDGE_VARIANTS: Array[Vector2i] = [Vector2i(1, 22)]
-const RIGHT_EDGE_VARIANTS: Array[Vector2i] = [Vector2i(13, 22)]
-const STALACTITE_VARIANTS: Array[Vector2i] = [Vector2i(3, 18), Vector2i(14, 18)]
-const CRYSTAL_BLOCK: Vector2i = Vector2i(20, 25)
-const CRYSTAL_SURROUND: Vector2i = Vector2i(20, 24)
-
-# Every coord that lives in the colliding Solids layer.
-const SOLID_TILES: Array[Vector2i] = [
-	Vector2i(3, 20), Vector2i(5, 20), Vector2i(7, 20),
-	Vector2i(10, 20), Vector2i(12, 20),
-	Vector2i(7, 23), Vector2i(8, 23), Vector2i(9, 23),
-	Vector2i(7, 24), Vector2i(8, 24), Vector2i(9, 24),
-	Vector2i(7, 25), Vector2i(8, 25),
-	Vector2i(1, 20), Vector2i(1, 22),
-	Vector2i(13, 20), Vector2i(13, 22),
-	Vector2i(20, 24), Vector2i(20, 25),
-]
-
-# ─── geometry ────────────────────────────────────────────────────────────
-const VISUAL_TILE: int = 64
-const LEVEL_WIDTH_TILES: int = 120
-const LEVEL_HEIGHT_TILES: int = 30
-const MAP_BOTTOM_Y: int = 29  # last fill row before the map edge
-const RNG_SEED: int = 0x6c6f7265 # "lore" — deterministic variant picking
-
-const SPAWN_TILE: Vector2i = Vector2i(2, 20)
-const EXIT_DOOR_TILE: Vector2i = Vector2i(117, 8)
-
-@onready var _solids: TileMapLayer = $World/Solids
-@onready var _stalactites: TileMapLayer = $World/Stalactites
+@onready var _tiles: TileMapLayer = $TileMapLayer
 @onready var _curiosity: CharacterBody2D = $Curiosity
 @onready var _motes: GPUParticles2D = $CeilingMotes
+@onready var _exit_door: Area2D = $ExitDoor/DoorArea
 
-# Vertical offset from the camera's view-center up to where motes spawn —
-# half the 720 viewport plus a margin so they drift in from above the top edge.
+# Vertical offset from the camera's view-center up to where motes spawn.
 const MOTE_SPAWN_ABOVE_CENTER: float = 400.0
 
-var _rng: RandomNumberGenerator
 var _cam: Camera2D
+var _at_exit: bool = false
+
+
+# How far to zoom (the camera inherits Curiosity's 0.4 scale, so this is the
+# counter-zoom). Lower = more of the world on screen. Tuned by eye.
+const CAMERA_ZOOM: float = 1.6
+
+# Cave-art sizing. The parallax layers render smaller as we zoom out, which
+# opens a dark void below the art. Scale them up so the cave fills the frame
+# down to the floor, and shift vertically so the waterline meets the floor.
+# Tuned by eye for CAMERA_ZOOM above.
+const BG_SCALE: float = 2.5
+const BG_Y_OFFSET: float = -500.0
+const BG_IMG_WIDTH: float = 960.0  # source background image width (for tiling)
 
 
 func _ready() -> void:
-	# Ambient bed for the Crimson Hollow. Placeholder drone until a real realm 1
-	# track lands; crossfades from the hub ambient on entry. (AudioManager M1.)
+	# Ambient bed for the Crimson Hollow (placeholder drone until a real track).
 	AudioManager.play_placeholder("realm1")
-	_rng = RandomNumberGenerator.new()
-	_rng.seed = RNG_SEED
-	var ts: TileSet = _build_tileset()
-	_solids.tile_set = ts
-	_stalactites.tile_set = ts
-	_paint_chunk_1_intro_cave()
-	_paint_chunk_2_broken_cavern()
-	_paint_chunk_3_crystal_chamber()
-	_paint_chunk_4_vertical_climb()
-	_paint_chunk_5_final_core()
-	_position_curiosity()
-	_position_exit_door()
+	_align_background()
+	_make_painted_tiles_solid()
+	_place_curiosity_on_floor()
+	_place_exit_door()
+	_wire_exit_door()
 	_setup_camera_limits()
-	_hide_tile_visuals()
 
 
-# TEMP (2026-06-08): the decorative tileset reads badly, so per Advika we hide
-# the tile *rendering* while keeping the collision intact — the warm parallax +
-# motes carry the look, and the obby stays playable on invisible ground.
-# Setting modulate alpha to 0 hides drawing only; tile physics is unaffected.
-# Restored when the proper terrain tileset lands (M3 — Realm 1 to ship-quality).
-func _hide_tile_visuals() -> void:
-	_solids.modulate.a = 0.0
-	_stalactites.modulate.a = 0.0
-
-
-# ─── tileset construction ────────────────────────────────────────────────
-func _build_tileset() -> TileSet:
-	var ts: TileSet = TileSet.new()
-	ts.tile_size = ATLAS_TILE_SIZE
-	var phys_layer_id: int = ts.get_physics_layers_count()
-	ts.add_physics_layer(phys_layer_id)
-
-	var src: TileSetAtlasSource = TileSetAtlasSource.new()
-	src.texture = SOURCE_TEXTURE
-	src.texture_region_size = ATLAS_TILE_SIZE
-	# Source must be attached BEFORE create_tile so the physics layer
-	# propagates to per-tile data; otherwise add_collision_polygon
-	# errors with physics.size()=0 and every tile ends up non-colliding.
-	ts.add_source(src, 0)
-
-	var img: Image = SOURCE_TEXTURE.get_image()
-	if img == null:
-		push_error("[Realm1] tileset source has no image — import failed?")
-		return ts
-	var cols: int = img.get_width() / ATLAS_TILE_SIZE.x
-	var rows: int = img.get_height() / ATLAS_TILE_SIZE.y
-	for ty in range(rows):
-		for tx in range(cols):
-			var coord: Vector2i = Vector2i(tx, ty)
-			if not _cell_is_filled(img, coord):
-				continue
-			src.create_tile(coord)
-			if SOLID_TILES.has(coord):
-				_attach_full_collision(src, coord, phys_layer_id)
-	return ts
-
-
-func _cell_is_filled(img: Image, coord: Vector2i) -> bool:
-	var threshold: int = int(ATLAS_TILE_SIZE.x * ATLAS_TILE_SIZE.y * 0.05)
-	var nonempty: int = 0
-	var ax: int = coord.x * ATLAS_TILE_SIZE.x
-	var ay: int = coord.y * ATLAS_TILE_SIZE.y
-	for y in range(ATLAS_TILE_SIZE.y):
-		for x in range(ATLAS_TILE_SIZE.x):
-			if img.get_pixel(ax + x, ay + y).a > 0.12:
-				nonempty += 1
-				if nonempty > threshold:
-					return true
-	return false
-
-
-func _attach_full_collision(src: TileSetAtlasSource, coord: Vector2i, phys_layer: int) -> void:
-	var data: TileData = src.get_tile_data(coord, 0)
-	if data == null:
+func _align_background() -> void:
+	var pbg: Node = get_node_or_null("ParallaxBackground")
+	if pbg == null:
 		return
-	var half: float = float(ATLAS_TILE_SIZE.x) * 0.5
-	var poly: PackedVector2Array = PackedVector2Array([
-		Vector2(-half, -half),
-		Vector2(half, -half),
-		Vector2(half, half),
-		Vector2(-half, half),
-	])
-	data.add_collision_polygon(phys_layer)
-	data.set_collision_polygon_points(phys_layer, 0, poly)
+	for layer in pbg.get_children():
+		var spr: Node2D = (layer as Node).get_node_or_null("Sprite") as Node2D
+		if spr != null:
+			spr.scale = Vector2(BG_SCALE, BG_SCALE)
+			spr.position.y = BG_Y_OFFSET
+		# Keep horizontal tiling matched to the new art width so there are no
+		# seams as the camera scrolls.
+		if layer is ParallaxLayer:
+			(layer as ParallaxLayer).motion_mirroring = Vector2(BG_IMG_WIDTH * BG_SCALE, 0)
 
 
-# ─── chunk painters ──────────────────────────────────────────────────────
-# All coordinates and ranges below are LITERAL from the design spec.
-
-func _paint_chunk_1_intro_cave() -> void:
-	# Continuous floor at y=22 from x=0..24.
-	_paint_floor_row(0, 24, 22)
-	# Floating platform (x=10..13, y=18) — 4 wide.
-	_paint_ground_strip(10, 13, 18)
-	# Floating platform (x=18..20, y=17) — 3 wide.
-	_paint_ground_strip(18, 20, 17)
-	# Decorative stalactites.
-	_paint_stalactite(5, 12)
-	_paint_stalactite(8, 12)
-	_paint_stalactite(15, 12)
-	_paint_stalactite(22, 12)
-
-
-func _paint_chunk_2_broken_cavern() -> void:
-	# Floor at y=22 from x=25..49 with gaps at 28..31, 37..41, 45..47.
-	var gaps: Array = [[28, 31], [37, 41], [45, 47]]
-	for x in range(25, 50):
-		if _x_in_any_range(x, gaps):
-			continue
-		_paint_floor_column(x, 22)
-	# Bridge platforms above each gap.
-	_paint_ground_strip(28, 30, 19)
-	_paint_ground_strip(36, 39, 18)
-	_paint_ground_strip(44, 46, 18)
-	# Stalactites.
-	_paint_stalactite(32, 12)
-	_paint_stalactite(40, 12)
+# ─── collision ───────────────────────────────────────────────────────────
+# Build one StaticBody2D with a box collider per painted cell. Parented under
+# the TileMapLayer so it inherits the layer's transform (the tiles' offset).
+# Deterministic, self-contained — doesn't touch the TileSet resource, so it
+# can't desync from the painted art.
+func _make_painted_tiles_solid() -> void:
+	if _tiles == null or _tiles.tile_set == null:
+		return
+	var tsize: Vector2 = Vector2(_tiles.tile_set.tile_size)
+	var body: StaticBody2D = StaticBody2D.new()
+	body.name = "PaintedCollision"
+	_tiles.add_child(body)
+	for cell in _tiles.get_used_cells():
+		var cs: CollisionShape2D = CollisionShape2D.new()
+		var rect: RectangleShape2D = RectangleShape2D.new()
+		rect.size = tsize
+		cs.shape = rect
+		# Cell center in TileMapLayer-local space.
+		cs.position = (Vector2(cell) + Vector2(0.5, 0.5)) * tsize
+		body.add_child(cs)
 
 
-func _paint_chunk_3_crystal_chamber() -> void:
-	# Floor at y=22 from x=50..52, then big chasm 53..62.
-	_paint_floor_row(50, 52, 22)
-	# Crystal platforms (crystal_surround + crystal_block mix).
-	_paint_crystal_strip(54, 55, 20)
-	_paint_crystal_strip(57, 58, 18)
-	_paint_crystal_strip(60, 61, 20)
-	# Floor 63..67.
-	_paint_floor_row(63, 67, 22)
-	# Mini chasm 68..71; crystal platform 69..70 at y=20.
-	_paint_crystal_strip(69, 70, 20)
-	# Floor 72..74.
-	_paint_floor_row(72, 74, 22)
-	# Vertical crystal pillars at x=63 and x=72, y=19..21.
-	for py in range(19, 22):
-		_solids.set_cell(Vector2i(63, py), 0, CRYSTAL_BLOCK)
-		_solids.set_cell(Vector2i(72, py), 0, CRYSTAL_BLOCK)
-
-
-func _paint_chunk_4_vertical_climb() -> void:
-	# Floor 75..79 at y=22.
-	_paint_floor_row(75, 79, 22)
-	# Left wall column at x=75, y=15..21.
-	for wy in range(15, 22):
-		_solids.set_cell(Vector2i(75, wy), 0, _pick(LEFT_EDGE_VARIANTS))
-	# Right wall column at x=99, y=8..21.
-	for wy in range(8, 22):
-		_solids.set_cell(Vector2i(99, wy), 0, _pick(RIGHT_EDGE_VARIANTS))
-	# Climbing staircase.
-	_paint_ground_strip(82, 84, 20)
-	_paint_ground_strip(87, 88, 18)
-	_paint_ground_strip(85, 86, 15)
-	_paint_ground_strip(89, 91, 12)
-	_paint_ground_strip(93, 95, 9)
-	# Stalactites.
-	_paint_stalactite(78, 5)
-	_paint_stalactite(88, 4)
-	_paint_stalactite(96, 4)
-
-
-func _paint_chunk_5_final_core() -> void:
-	# Floor at y=9 from x=100..119 with gap 107..111.
-	for x in range(100, 120):
-		if x >= 107 and x <= 111:
-			continue
-		_paint_floor_column(x, 9)
-	# Mid-pit precision platform at (x=109, y=7).
-	_paint_ground_strip(109, 109, 7)
-	# Crystal pillar at (x=115, y=4..8).
-	for py in range(4, 9):
-		_solids.set_cell(Vector2i(115, py), 0, CRYSTAL_BLOCK)
-	# Stalactites.
-	_paint_stalactite(102, 2)
-	_paint_stalactite(108, 1)
-	_paint_stalactite(113, 2)
-
-
-# ─── painter helpers ─────────────────────────────────────────────────────
-
-# Paint a horizontal run of ground (top row + sub-floor fill to map bottom).
-func _paint_floor_row(x_from: int, x_to_inclusive: int, top_y: int) -> void:
-	for x in range(x_from, x_to_inclusive + 1):
-		_paint_floor_column(x, top_y)
-
-
-# Paint a single column of floor: top tile at top_y, fill down to MAP_BOTTOM_Y.
-func _paint_floor_column(x: int, top_y: int) -> void:
-	_solids.set_cell(Vector2i(x, top_y), 0, _pick(GROUND_TOP_VARIANTS))
-	for fy in range(top_y + 1, MAP_BOTTOM_Y + 1):
-		_solids.set_cell(Vector2i(x, fy), 0, _pick(GROUND_FILL_VARIANTS))
-
-
-# Paint a one-tile-tall ground platform (no sub-fill).
-func _paint_ground_strip(x_from: int, x_to_inclusive: int, y: int) -> void:
-	for x in range(x_from, x_to_inclusive + 1):
-		_solids.set_cell(Vector2i(x, y), 0, _pick(GROUND_TOP_VARIANTS))
-
-
-# Paint a one-tile-tall crystal strip alternating surround / block for variety.
-func _paint_crystal_strip(x_from: int, x_to_inclusive: int, y: int) -> void:
-	for x in range(x_from, x_to_inclusive + 1):
-		var coord: Vector2i = CRYSTAL_SURROUND if ((x - x_from) % 2 == 0) else CRYSTAL_BLOCK
-		_solids.set_cell(Vector2i(x, y), 0, coord)
-
-
-# Place a stalactite on the non-colliding Stalactites layer.
-func _paint_stalactite(x: int, y: int) -> void:
-	_stalactites.set_cell(Vector2i(x, y), 0, _pick(STALACTITE_VARIANTS))
-
-
-func _x_in_any_range(x: int, ranges: Array) -> bool:
-	for r in ranges:
-		if x >= int(r[0]) and x <= int(r[1]):
-			return true
-	return false
-
-
-func _pick(variants: Array[Vector2i]) -> Vector2i:
-	return variants[_rng.randi() % variants.size()]
-
-
-# ─── actor placement ─────────────────────────────────────────────────────
-func _position_curiosity() -> void:
-	# Floor in chunk 1 sits at tile y=22 → top edge at world y=1408.
-	# Place Curiosity so their body bottom rests just above the floor top.
-	# Half-height is derived from the collision shape × the instance scale so
-	# this stays correct if Curiosity is rescaled (currently 0.4).
-	var floor_top_world: float = 22.0 * float(VISUAL_TILE)
+# ─── placement ───────────────────────────────────────────────────────────
+func _place_curiosity_on_floor() -> void:
+	if _curiosity == null or _tiles == null or _tiles.tile_set == null:
+		return
+	var ur: Rect2i = _tiles.get_used_rect()
+	var tsize: Vector2 = Vector2(_tiles.tile_set.tile_size)
+	# Top edge of the painted area, in world space.
+	var floor_top: float = _tiles.to_global(Vector2(ur.position) * tsize).y
+	var left_x: float = _tiles.to_global(Vector2(ur.position) * tsize).x
 	_curiosity.position = Vector2(
-		float(SPAWN_TILE.x) * float(VISUAL_TILE) + float(VISUAL_TILE) * 0.5,
-		floor_top_world - _curiosity_half_height()
+		left_x + tsize.x * 6.0,                       # a few tiles in from the left
+		floor_top - _curiosity_half_height()          # feet rest on the floor top
 	)
 
 
@@ -317,38 +114,63 @@ func _curiosity_half_height() -> float:
 	return 100.0 * _curiosity.scale.y
 
 
-func _position_exit_door() -> void:
+func _place_exit_door() -> void:
 	var door: Node2D = get_node_or_null("ExitDoor") as Node2D
-	if door == null:
+	if door == null or _tiles == null or _tiles.tile_set == null:
 		return
-	# Anchor at the exit tile center (per spec: pixel coord (7520, 544)).
-	# DoorArea collision (120x430, centered, no offset in scene) will then
-	# span y=329..759, fully overlapping Curiosity when she stands on the
-	# chunk-5 floor at y=9 (body center 468).
-	door.position = Vector2(
-		float(EXIT_DOOR_TILE.x) * float(VISUAL_TILE) + float(VISUAL_TILE) * 0.5,
-		float(EXIT_DOOR_TILE.y) * float(VISUAL_TILE) + float(VISUAL_TILE) * 0.5
-	)
+	var ur: Rect2i = _tiles.get_used_rect()
+	var tsize: Vector2 = Vector2(_tiles.tile_set.tile_size)
+	var right_x: float = _tiles.to_global(Vector2(ur.position + ur.size) * tsize).x
+	var floor_top: float = _tiles.to_global(Vector2(ur.position) * tsize).y
+	# Anchor just inside the right edge, lifted so the door's Area2D overlaps
+	# Curiosity standing on the floor.
+	door.position = Vector2(right_x - tsize.x * 4.0, floor_top - 100.0)
+
+
+# ─── exit interaction ──────────────────────────────────────────────────────
+# The door only fires when an external controller calls trigger() (the Hub does
+# the same). Here the realm is that controller: while Curiosity overlaps the
+# exit door, pressing "interact" (Y) returns to the hub.
+func _wire_exit_door() -> void:
+	if _exit_door == null:
+		return
+	_exit_door.near_door.connect(func(_d: Node) -> void: _at_exit = true)
+	_exit_door.left_door.connect(func(_d: Node) -> void: _at_exit = false)
 
 
 func _setup_camera_limits() -> void:
-	var cam: Camera2D = _curiosity.get_node_or_null("Camera") as Camera2D
-	if cam == null:
+	if _curiosity == null:
 		return
-	cam.limit_left = 0
-	cam.limit_right = LEVEL_WIDTH_TILES * VISUAL_TILE   # 7680
-	cam.limit_top = 0
-	cam.limit_bottom = LEVEL_HEIGHT_TILES * VISUAL_TILE # 1920
+	var cam: Camera2D = _curiosity.get_node_or_null("Camera") as Camera2D
+	if cam == null or _tiles == null or _tiles.tile_set == null:
+		return
+	var ur: Rect2i = _tiles.get_used_rect()
+	var tsize: Vector2 = Vector2(_tiles.tile_set.tile_size)
+	var top_left: Vector2 = _tiles.to_global(Vector2(ur.position) * tsize)
+	var bot_right: Vector2 = _tiles.to_global(Vector2(ur.position + ur.size) * tsize)
+	# Curiosity (and so the camera) is scaled 0.4. Counter most of that so the
+	# view frames the cave nicely without being right up in her face.
+	cam.zoom = Vector2(CAMERA_ZOOM, CAMERA_ZOOM)
+	# How much world the camera shows vertically at this zoom.
+	var view_h: float = get_viewport().get_visible_rect().size.y / (CAMERA_ZOOM * absf(cam.global_scale.y))
+	# Horizontal: clamp to the painted level width.
+	cam.limit_left = int(top_left.x)
+	cam.limit_right = int(bot_right.x)
+	# Vertical: LOCK it. Setting the limit band exactly equal to the view height
+	# pins the camera's Y — it can only scroll sideways. Jumping never reveals
+	# anything below the floor, so the dark void can't appear. Floor sits at the
+	# bottom of the frame.
+	cam.limit_bottom = int(bot_right.y)
+	cam.limit_top = int(bot_right.y - view_h)
 	cam.position_smoothing_enabled = true
 	_cam = cam
 
 
-# Keep the ceiling-mote emitter pinned just above the top of the current
-# view so falling motes always fill the screen as the camera travels.
-# local_coords=false means already-spawned motes keep falling in world
-# space while the emitter band follows the camera.
 func _process(_delta: float) -> void:
-	if _cam == null or _motes == null:
-		return
-	var center: Vector2 = _cam.get_screen_center_position()
-	_motes.global_position = Vector2(center.x, center.y - MOTE_SPAWN_ABOVE_CENTER)
+	if _at_exit and Input.is_action_just_pressed("interact"):
+		_exit_door.trigger()
+	# Keep the ceiling-mote emitter pinned just above the top of the view so
+	# falling motes always fill the screen as the camera travels.
+	if _cam != null and _motes != null:
+		var center: Vector2 = _cam.get_screen_center_position()
+		_motes.global_position = Vector2(center.x, center.y - MOTE_SPAWN_ABOVE_CENTER)
