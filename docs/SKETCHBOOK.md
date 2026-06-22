@@ -9,6 +9,30 @@ Rules:
 
 ---
 
+## 2026-06-22
+
+- **Realm 1 becomes a real platformer (the full vision).** Advika nailed down
+  what the Crimson Hollow actually *is* to play, not just walk through:
+  - **Core loop:** a platforming course ("obby") where Curiosity collects
+    **scattered jade pieces**. The pieces assemble into a **key** that unlocks
+    **Door 2** in the hub. (Closes the long-open "jade key = Realm 1 closer"
+    thread from 2026-05-17.)
+  - **Platforming:** real challenge — **moving platforms**, vertical/lateral
+    traversal, not a flat stroll.
+  - **Combat:** small **black creatures/enemies** that attack Curiosity;
+    Curiosity kills them with the **slash / dash** moves (the attack/dash
+    sprites we already have but never wired — this is M2's combat brick landing
+    *inside* Realm 1).
+  - **Hazard (debating, not committed):** **shooting stars** raining onto the
+    course that damage Curiosity / knock them off, raising difficulty. Advika
+    is undecided — hold as optional polish layer, add only if the base obby
+    feels too easy.
+  - **Length target:** current run is **~14 seconds** door-to-door (Advika
+    timed it) — way too short. Target **~90 seconds** of engaged play. The jade
+    hunt + platforming + enemies are what fill that time, not just a longer
+    hallway.
+  - Pronoun note for any lore/prose: Curiosity is they/them.
+
 ## 2026-06-09
 
 - **Realm 1 mood: cold → warm.** Tried a cool blue-grey ambient `(0.34,0.36,0.44)`
