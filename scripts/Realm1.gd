@@ -49,6 +49,7 @@ func _ready() -> void:
 	AudioManager.play_placeholder("realm1")
 	_align_background()
 	_make_painted_tiles_solid()
+	_add_boundary_walls()
 	_place_curiosity_on_floor()
 	_place_exit_door()
 	_wire_exit_door()
@@ -89,6 +90,36 @@ func _make_painted_tiles_solid() -> void:
 		cs.shape = rect
 		# Cell center in TileMapLayer-local space.
 		cs.position = (Vector2(cell) + Vector2(0.5, 0.5)) * tsize
+		body.add_child(cs)
+
+
+# ─── boundary walls ──────────────────────────────────────────────────────
+# Invisible walls at the far-left and far-right edges of the painted level so
+# Curiosity can't walk off the world into the void. Tall enough that you can't
+# jump over them either. Derived from the level bounds, so they stay correct at
+# any level length.
+func _add_boundary_walls() -> void:
+	if _tiles == null or _tiles.tile_set == null:
+		return
+	var ur: Rect2i = _tiles.get_used_rect()
+	var tsize: Vector2 = Vector2(_tiles.tile_set.tile_size)
+	var top: float = float(ur.position.y) * tsize.y
+	var bottom: float = float(ur.position.y + ur.size.y) * tsize.y
+	var center_y: float = (top + bottom) * 0.5
+	# Span the whole level height plus a generous buffer above/below.
+	var wall_h: float = (bottom - top) + tsize.y * 60.0
+	var left_x: float = float(ur.position.x) * tsize.x
+	var right_x: float = float(ur.position.x + ur.size.x) * tsize.x
+
+	var body: StaticBody2D = StaticBody2D.new()
+	body.name = "BoundaryWalls"
+	_tiles.add_child(body)
+	for wall_x in [left_x, right_x]:
+		var cs: CollisionShape2D = CollisionShape2D.new()
+		var rect: RectangleShape2D = RectangleShape2D.new()
+		rect.size = Vector2(tsize.x * 2.0, wall_h)
+		cs.shape = rect
+		cs.position = Vector2(wall_x, center_y)
 		body.add_child(cs)
 
 
