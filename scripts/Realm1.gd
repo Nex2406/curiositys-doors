@@ -27,8 +27,17 @@ extends Node2D
 # Vertical offset from the camera's view-center up to where motes spawn.
 const MOTE_SPAWN_ABOVE_CENTER: float = 400.0
 
+# Eyes-as-lives HUD: 3 eyes, one closes per death (constant rule every realm).
+const LIVES_HUD := preload("res://scenes/UI/LivesHUD.tscn")
+const STARTING_LIVES: int = 3
+
 var _cam: Camera2D
 var _at_exit: bool = false
+
+var _lives: LivesHUD
+var _spawn_pos: Vector2
+var _kill_y: float = INF      # fall below this (a pit) and you die
+var _dying: bool = false      # guards the death/respawn sequence
 
 
 # How far to zoom (the camera inherits Curiosity's 0.4 scale, so this is the
@@ -54,6 +63,7 @@ func _ready() -> void:
 	_place_exit_door()
 	_wire_exit_door()
 	_setup_camera_limits()
+	_setup_lives()
 
 
 func _align_background() -> void:
@@ -136,6 +146,10 @@ func _place_curiosity_on_floor() -> void:
 		left_x + tsize.x * 6.0,                       # a few tiles in from the left
 		floor_top - _curiosity_half_height()          # feet rest on the floor top
 	)
+	_spawn_pos = _curiosity.position
+	# A "pit" kill plane well below the floor — falling past it counts as a death.
+	var bottom: float = _tiles.to_global(Vector2(ur.position + ur.size) * tsize).y
+	_kill_y = bottom + tsize.y * 30.0
 
 
 func _curiosity_half_height() -> float:
@@ -197,9 +211,47 @@ func _setup_camera_limits() -> void:
 	_cam = cam
 
 
+# ─── lives / death / respawn ───────────────────────────────────────────────
+func _setup_lives() -> void:
+	_lives = LIVES_HUD.instantiate() as LivesHUD
+	add_child(_lives)
+	_lives.reset(STARTING_LIVES)
+
+
+# Run the death beat: flinch, close an eye, respawn at the start. When the last
+# eye closes, refill to full (soft reset) so the realm is always playable.
+func _die() -> void:
+	if _dying:
+		return
+	_dying = true
+	_curiosity.hurt()
+	var remaining: int = _lives.lose_eye()
+	await get_tree().create_timer(0.45).timeout
+	if remaining <= 0:
+		_lives.reset(STARTING_LIVES)
+	_respawn()
+	_dying = false
+
+
+func _respawn() -> void:
+	_curiosity.velocity = Vector2.ZERO
+	_curiosity.position = _spawn_pos
+
+
+func _input(event: InputEvent) -> void:
+	# DEV (temporary): Backspace takes a hit, so the eyes/respawn are testable
+	# before real damage (creatures/hazards) exists. Remove with the enemy brick.
+	if event is InputEventKey and event.pressed and not event.echo \
+			and (event as InputEventKey).keycode == KEY_BACKSPACE:
+		_die()
+
+
 func _process(_delta: float) -> void:
 	if _at_exit and Input.is_action_just_pressed("interact"):
 		_exit_door.trigger()
+	# Fall into a pit (below the kill plane) → death.
+	if not _dying and _curiosity != null and _curiosity.global_position.y > _kill_y:
+		_die()
 	# Keep the ceiling-mote emitter pinned just above the top of the view so
 	# falling motes always fill the screen as the camera travels.
 	if _cam != null and _motes != null:

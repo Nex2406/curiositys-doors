@@ -1,9 +1,9 @@
 extends CharacterBody2D
 
-# Combat (attack1/attack2/dash) is wired below. Still dormant in SpriteFrames:
-# charged, hurt, approach, lever_pull, lever_hold, celebrate — those land with
-# the systems that need them (hurt with health, lever with lever puzzles, etc.).
-enum State { IDLE, WALK, RUN, JUMP_START, AIR, LAND, ATTACK, DASH }
+# Combat (attack1/attack2/dash) and hurt are wired below. Still dormant in
+# SpriteFrames: charged, approach, lever_pull, lever_hold, celebrate — those land
+# with the systems that need them (lever with lever puzzles, etc.).
+enum State { IDLE, WALK, RUN, JUMP_START, AIR, LAND, ATTACK, DASH, HURT }
 
 # Drifting-traveler tuning: gravity is well below normal-platformer (~980)
 # so falls glide rather than thud. Jump magnitude is correspondingly low,
@@ -104,6 +104,9 @@ func _physics_process(delta: float) -> void:
 	if _state == State.ATTACK:
 		_process_attack(delta)
 		return
+	if _state == State.HURT:
+		_process_hurt(delta)
+		return
 
 	if not is_on_floor():
 		velocity.y += gravity * delta
@@ -187,6 +190,20 @@ func _process_attack(delta: float) -> void:
 	move_and_slide()
 
 
+# Public: play the hurt flinch (called by the realm when a life is lost). An
+# optional knockback nudges Curiosity opposite the hit direction.
+func hurt(knockback: Vector2 = Vector2.ZERO) -> void:
+	velocity = knockback
+	_set_state(State.HURT)
+
+
+func _process_hurt(delta: float) -> void:
+	if not is_on_floor():
+		velocity.y += gravity * delta
+	velocity.x = move_toward(velocity.x, 0.0, (run_speed / accel_time) * delta)
+	move_and_slide()
+
+
 # Leave a dash/attack: re-evaluate into the right locomotion or air state.
 func _exit_action_state() -> void:
 	if not is_on_floor():
@@ -222,6 +239,7 @@ func _set_state(new_state: State) -> void:
 		State.LAND: visual.play(&"land")
 		State.ATTACK: visual.play(&"attack1")
 		State.DASH: visual.play(&"dash")
+		State.HURT: visual.play(&"hurt")
 
 
 func _on_animation_finished() -> void:
@@ -238,6 +256,8 @@ func _on_animation_finished() -> void:
 			# Dash usually ends on its timer, but if the (shorter) clip finishes
 			# first just hold the last frame until the burst completes.
 			pass
+		State.HURT:
+			_exit_action_state()
 		State.JUMP_START:
 			_set_state(State.AIR)
 		State.LAND:
