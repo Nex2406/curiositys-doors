@@ -1,10 +1,9 @@
 extends CharacterBody2D
 
-# TODO: combat and lever animations (attack1, attack2, charged, dash, hurt,
-# approach, lever_pull, lever_hold, celebrate) are loaded in SpriteFrames
-# but not yet wired to states — wiring lands in future PRs once enemies
-# and lever puzzles exist.
-enum State { IDLE, WALK, RUN, JUMP_START, AIR, LAND }
+# Combat (attack1/attack2/dash) is wired below. Still dormant in SpriteFrames:
+# charged, hurt, approach, lever_pull, lever_hold, celebrate — those land with
+# the systems that need them (hurt with health, lever with lever puzzles, etc.).
+enum State { IDLE, WALK, RUN, JUMP_START, AIR, LAND, ATTACK, DASH }
 
 # Drifting-traveler tuning: gravity is well below normal-platformer (~980)
 # so falls glide rather than thud. Jump magnitude is correspondingly low,
@@ -15,6 +14,12 @@ enum State { IDLE, WALK, RUN, JUMP_START, AIR, LAND }
 @export var jump_velocity: float = -240.0
 @export var accel_time: float = 0.15
 @export var lantern_sway_time: float = 0.2
+
+# Combat / dash feel. A slash locks Curiosity in place for the swing; a dash is
+# a quick weighty burst in the facing direction (also the platforming gap-closer).
+@export var dash_speed: float = 760.0
+@export var dash_time: float = 0.22
+@export var dash_cooldown: float = 0.45
 
 const MOVE_EPSILON: float = 8.0
 
@@ -50,6 +55,12 @@ var _flame_base_alpha: float = 1.0
 var _lantern_base_energy: float = 1.0
 var _lantern_base_y: float = 0.0
 
+# Combat / dash runtime state.
+var _dash_timer: float = 0.0
+var _dash_cooldown_timer: float = 0.0
+var _attack_combo: int = 0       # 0 = first swing (attack1), 1 = combo (attack2)
+var _attack_queued: bool = false # pressed attack again mid-swing → chain to attack2
+
 
 func _ready() -> void:
 	_lantern_offset_x = abs(lantern.position.x)
@@ -84,8 +95,26 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_dash_cooldown_timer = maxf(0.0, _dash_cooldown_timer - delta)
+
+	# Action states drive their own movement and consume the frame.
+	if _state == State.DASH:
+		_process_dash(delta)
+		return
+	if _state == State.ATTACK:
+		_process_attack(delta)
+		return
+
 	if not is_on_floor():
 		velocity.y += gravity * delta
+
+	# Dash / slash interrupt locomotion from any ground or air state.
+	if Input.is_action_just_pressed("dash") and _dash_cooldown_timer <= 0.0:
+		_start_dash()
+		return
+	if Input.is_action_just_pressed("attack"):
+		_start_attack()
+		return
 
 	var direction: float = Input.get_axis("move_left", "move_right")
 	var sprint: bool = Input.is_key_pressed(KEY_SHIFT)
@@ -123,6 +152,53 @@ func _is_ground_state() -> bool:
 		or _state == State.RUN or _state == State.LAND
 
 
+# ─── combat / dash ─────────────────────────────────────────────────────────
+func _start_dash() -> void:
+	_dash_timer = dash_time
+	_dash_cooldown_timer = dash_cooldown
+	_set_state(State.DASH)
+
+
+func _process_dash(delta: float) -> void:
+	_dash_timer -= delta
+	# Flat horizontal burst in the facing direction; gravity paused so the dash
+	# reads as a clean lunge (and reliably clears platforming gaps).
+	velocity.x = (1.0 if _facing_right else -1.0) * dash_speed
+	velocity.y = 0.0
+	move_and_slide()
+	if _dash_timer <= 0.0:
+		_exit_action_state()
+
+
+func _start_attack() -> void:
+	_attack_combo = 0
+	_attack_queued = false
+	_set_state(State.ATTACK)
+
+
+func _process_attack(delta: float) -> void:
+	# Hold position for the swing: bleed off horizontal speed, keep falling if
+	# airborne. A second press during the swing chains into attack2.
+	if not is_on_floor():
+		velocity.y += gravity * delta
+	velocity.x = move_toward(velocity.x, 0.0, (run_speed / accel_time) * delta)
+	if Input.is_action_just_pressed("attack"):
+		_attack_queued = true
+	move_and_slide()
+
+
+# Leave a dash/attack: re-evaluate into the right locomotion or air state.
+func _exit_action_state() -> void:
+	if not is_on_floor():
+		_set_state(State.AIR)
+		return
+	var direction: float = Input.get_axis("move_left", "move_right")
+	if direction != 0.0 and absf(velocity.x) > MOVE_EPSILON:
+		_set_state(State.RUN if Input.is_key_pressed(KEY_SHIFT) else State.WALK)
+	else:
+		_set_state(State.IDLE)
+
+
 func _update_locomotion(direction: float, sprint: bool) -> void:
 	var moving: bool = absf(velocity.x) > MOVE_EPSILON and direction != 0.0
 	if not moving:
@@ -144,10 +220,24 @@ func _set_state(new_state: State) -> void:
 		State.JUMP_START: visual.play(&"jump_start")
 		State.AIR: visual.play(&"air")
 		State.LAND: visual.play(&"land")
+		State.ATTACK: visual.play(&"attack1")
+		State.DASH: visual.play(&"dash")
 
 
 func _on_animation_finished() -> void:
 	match _state:
+		State.ATTACK:
+			# Chain attack1 → attack2 if the player tapped again mid-swing.
+			if _attack_combo == 0 and _attack_queued:
+				_attack_combo = 1
+				_attack_queued = false
+				visual.play(&"attack2")
+			else:
+				_exit_action_state()
+		State.DASH:
+			# Dash usually ends on its timer, but if the (shorter) clip finishes
+			# first just hold the last frame until the burst completes.
+			pass
 		State.JUMP_START:
 			_set_state(State.AIR)
 		State.LAND:

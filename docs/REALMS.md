@@ -28,6 +28,33 @@ Use this template for every new realm. Fill it in before writing any scene code.
 
 ## Drafted Realms
 
+### Realm 1 — The Crimson Hollow
+**STATUS:** BUILDING (2026-06-22) — full spec below; first realm to receive a real puzzle/combat loop
+**Door Tag:** realm:crimson-hollow
+
+- **Theme:** warm ember cave; the first descent. Patience and footing.
+- **Emotional core:** small, alight, and climbing through the dark toward a debt repaid.
+- **Play loop (the "obby"):** a ~90-second platforming course (current door-to-door
+  is ~14s — far too short). Real platforming: **moving platforms**, vertical and
+  lateral traversal, hazards. Curiosity uses **slash / dash** (existing combat
+  sprites) to kill **small black creatures** that attack along the route.
+- **Collectible:** **jade pieces**, coin-like, scattered across the course
+  (target **8** — jade/prosperity number; alt idea: **5** = Confucius's five
+  virtues of jade, one per piece). Tracked via SaveManager.
+- **The keeper (NPC):** the **smoke/ghost spirit** from the Intro (the one that
+  twirls over the cauldron) waits at the **end** of the course. Curiosity gives
+  it all the jade; it forms and hands back a **key**.
+- **Gating:** the key is carried to the **Hub** and **inserted at Door 2** to open
+  it (deliberate unlocking beat, save-backed so it stays open).
+- **Damage model:** **health + respawn** — hearts; lose them to creatures/hazards
+  and respawn at the last checkpoint.
+- **Optional hazard (deferred):** **shooting stars** raining onto the course to
+  raise difficulty. Build the base loop first; add only if it plays too easy.
+- **Lore reveal:** what jade *means* to Curiosity (origin hint?), surfaced through
+  the spirit's exchange. Exit line currently: "The dark grew careful where her
+  lantern had been." (Curiosity is they/them in all prose.)
+- **Door appearance:** placeholder arch for now; ornate art is a later lift.
+
 ### Realm of Forgotten Names
 **STATUS:** drafted — gameplay TBD
 **Door Tag:** realm:forgotten-names
