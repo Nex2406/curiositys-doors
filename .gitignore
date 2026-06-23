@@ -43,3 +43,6 @@ scripts/_*.png.import
 # Source background art (heavy originals). The game loads the compressed
 # assets/scenes/intro/*.webp set; these PNGs are kept local only.
 assets/backgrounds/
+
+# screenshot harness output
+tools/shots/
