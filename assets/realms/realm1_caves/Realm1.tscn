@@ -1010,7 +1010,7 @@ color = Color(0.42, 0.46, 0.62, 1)
 [node name="Curiosity" parent="." unique_id=2072415762 instance=ExtResource("1_curiosity")]
 z_index = 5
 position = Vector2(4363, 376)
-scale = Vector2(0.4, 0.4)
+scale = Vector2(0.28, 0.28)
 
 [node name="ExitDoor" type="Node2D" parent="." unique_id=1015135027]
 position = Vector2(7520, 544)
