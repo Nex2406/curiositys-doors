@@ -35,6 +35,8 @@ const LIVES_HUD := preload("res://scenes/UI/LivesHUD.tscn")
 const STARTING_LIVES: int = 3
 
 var _cam: Camera2D
+var _cam_pos: Vector2 = Vector2.ZERO   # our own smoothed camera position (parent-independent)
+var _cam_target_y: float = 0.0         # vertical follow target; only updates while grounded
 var _at_exit: bool = false
 
 var _lives: LivesHUD
@@ -46,6 +48,10 @@ var _dying: bool = false      # guards the death/respawn sequence
 # Camera zoom (the camera inherits Curiosity's scale, so this counter-zooms to
 # frame the cave). Lower = more world on screen.
 const CAMERA_ZOOM: float = 2.0
+
+# Camera follow feel (we drive the camera in _drive_camera).
+const CAM_LERP: float = 4.5      # follow responsiveness (higher = tighter / snappier)
+const CAM_Y_LOOK: float = -50.0  # bias the view slightly above Curiosity
 
 # Cave-art sizing. The parallax layers render smaller as we zoom out, which
 # opens a dark void below the art. Scale them up so the cave fills the frame
@@ -71,19 +77,28 @@ func _ready() -> void:
 	_setup_lives()
 
 
+# Horizontal parallax speed per band, BG1 (farthest) → BG4 (nearest). Wider spread
+# = stronger receding-space feel: the far cave nearly crawls, the near rock rushes
+# as Curiosity walks. (World/gameplay layer moves at 1.0.)
+const PARALLAX_X: Array[float] = [0.04, 0.14, 0.32, 0.62]
+
 func _align_background() -> void:
 	var pbg: Node = get_node_or_null("ParallaxBackground")
 	if pbg == null:
 		return
+	var idx: int = 0
 	for layer in pbg.get_children():
 		var spr: Node2D = (layer as Node).get_node_or_null("Sprite") as Node2D
 		if spr != null:
 			spr.scale = Vector2(BG_SCALE, BG_SCALE)
 			spr.position.y = BG_Y_OFFSET
 		# Keep horizontal tiling matched to the new art width so there are no
-		# seams as the camera scrolls.
+		# seams as the camera scrolls, and widen the per-band speed spread.
 		if layer is ParallaxLayer:
 			(layer as ParallaxLayer).motion_mirroring = Vector2(BG_IMG_WIDTH * BG_SCALE, 0)
+			if idx < PARALLAX_X.size():
+				(layer as ParallaxLayer).motion_scale = Vector2(PARALLAX_X[idx], 0.0)
+		idx += 1
 
 
 # ─── atmosphere (depth pass) ───────────────────────────────────────────────
@@ -95,13 +110,17 @@ func _align_background() -> void:
 # cool (reads as hazy distance); near = dark. This bright→dark gradient is the
 # core depth cue.
 const BAND_TINTS: Array[Color] = [
-	Color(0.98, 1.04, 1.20),   # BG1 farthest — slight cool brighten, hazy
-	Color(0.74, 0.80, 0.98),   # BG2
-	Color(0.55, 0.60, 0.78),   # BG3
-	Color(0.40, 0.44, 0.60),   # BG4 nearest bg — darkest
+	Color(1.02, 1.08, 1.24),   # BG1 farthest — cool brighten, hazy
+	Color(0.86, 0.92, 1.08),   # BG2
+	Color(0.70, 0.76, 0.92),   # BG3
+	Color(0.56, 0.60, 0.76),   # BG4 nearest bg — darkest (but lifted)
 ]
 
-const VIGNETTE_STRENGTH: float = 0.6   # 0..1 edge darkness
+# Ambient light level (overrides the scene's CanvasModulate). Higher = brighter
+# base; the lantern/glows still read as the focal warmth on top of this.
+const AMBIENT_LIGHT: Color = Color(0.88, 0.90, 1.02)
+
+const VIGNETTE_STRENGTH: float = 0.32   # 0..1 edge darkness
 const VIGNETTE_INNER: float = 0.48     # where the darkening starts (smaller = more)
 const VIGNETTE_COLOR: Color = Color(0.02, 0.01, 0.05, 1.0)
 
@@ -118,6 +137,9 @@ void fragment() {
 "
 
 func _setup_atmosphere() -> void:
+	var cm: CanvasModulate = get_node_or_null("CanvasModulate") as CanvasModulate
+	if cm != null:
+		cm.color = AMBIENT_LIGHT
 	_tint_parallax_bands()
 	_add_vignette()
 
@@ -555,8 +577,33 @@ func _setup_camera_limits() -> void:
 	# as Curiosity climbs; when short, it stays locked with the floor at bottom.
 	cam.limit_bottom = int(bot_right.y)
 	cam.limit_top = int(minf(top_left.y - tsize.y * 4.0, bot_right.y - view_h))
-	cam.position_smoothing_enabled = true
+	# Steady the camera: we drive it ourselves (see _drive_camera). It follows X
+	# always and follows Curiosity's HEIGHT only while she's grounded — during a
+	# jump the vertical target holds, so hops never bob the view, yet it still
+	# tracks where she lands / when she's carried up a platform. No dead-zone drift.
+	cam.position_smoothing_enabled = false
+	cam.drag_vertical_enabled = false
+	cam.drag_horizontal_enabled = false
 	_cam = cam
+	_cam_target_y = _curiosity.global_position.y + CAM_Y_LOOK
+	_cam_pos = Vector2(_curiosity.global_position.x, _cam_target_y)
+	cam.global_position = _cam_pos
+
+
+# Follow Curiosity: X always; Y only while she's grounded (held during jumps so
+# hops don't bob the view). Camera2D limits still clamp the final view to the
+# level bounds.
+func _drive_camera(delta: float) -> void:
+	if _cam == null or _curiosity == null:
+		return
+	if _curiosity.is_on_floor():
+		_cam_target_y = _curiosity.global_position.y + CAM_Y_LOOK
+	# Track our own position (not the camera's, which the parent yanks each frame)
+	# so the vertical hold during a jump is absolute, not a tug-of-war.
+	var t: float = clampf(delta * CAM_LERP, 0.0, 1.0)
+	_cam_pos.x = lerpf(_cam_pos.x, _curiosity.global_position.x, t)
+	_cam_pos.y = lerpf(_cam_pos.y, _cam_target_y, t)
+	_cam.global_position = _cam_pos
 
 
 # ─── lives / death / respawn ───────────────────────────────────────────────
@@ -594,7 +641,8 @@ func _input(event: InputEvent) -> void:
 		_die()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_drive_camera(delta)
 	if _at_exit and Input.is_action_just_pressed("interact"):
 		_exit_door.trigger()
 	# Fall into a pit (below the kill plane) → death.
