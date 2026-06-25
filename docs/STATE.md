@@ -35,12 +35,16 @@ placeholder arch — ornate door / eyed moon / silhouettes are the next art lift
   piece: `PIECE_MOTION` (side / updown / bob / *_fast / static) + `PIECE_SPEED` /
   `PIECE_DIST` dials + global `MOTION_DURATION_SCALE`; both mirrored halves tuned to
   match. `DEBUG_PIECE_LABELS` (off) floats each piece's index in-game for picking.
-- **Realm 1 depth pass (step 1 of 3)** (`Realm1.gd` `_setup_atmosphere`) — pushing
-  toward Hollow-Knight depth. Value separation across the 4 parallax bands
-  (`BAND_TINTS`: far = light/cool/hazy → near = dark) + a shader **vignette** that
-  frames the view. Camera zoom raised 1.6 → 2.0 so Curiosity reads at a believable
-  scale (was dwarfed by the map). Still to come: dark foreground silhouette frame
-  (step 2), camera headroom + parallax retune (step 3).
+- **Realm 1 depth + camera pass** (`Realm1.gd` `_setup_atmosphere` / `_drive_camera`)
+  — pushing toward a Hollow-Knight read. Value separation across the 4 parallax
+  bands (`BAND_TINTS`: far = light/cool/hazy → near = dark) + a shader **vignette**;
+  widened parallax speed spread (`PARALLAX_X`, far crawls / near rushes) for
+  receding space; ambient lifted (`AMBIENT_LIGHT`) after it read too dark. Camera
+  zoom 1.6 → 2.0 (Curiosity at a believable scale). **Camera is hand-driven**
+  (`_drive_camera`): follows X always, follows height only while grounded (holds
+  during a jump so hops don't bob), eased by `CAM_LERP`. A foreground silhouette
+  frame was tried and rejected (procedural shapes looked crude — revisit with
+  painted art).
 - Door interact (Y key) → scene transition with fade
 - Hub respawn at the door Curiosity returned through
 - **SaveManager autoload** (`scripts/SaveManager.gd`) — M1 foundation, the single
