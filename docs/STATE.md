@@ -27,6 +27,14 @@ placeholder arch — ornate door / eyed moon / silhouettes are the next art lift
 - Parallax in Hub + Realm 1
 - Tilemap floor + platforms in Realm 1 — warm ember "Crimson Hollow" ambient
   `(0.9, 0.2, 0.2)`: orange-lit rock, cold teal water, lantern as the focal coal
+- **Moving platforms in Realm 1** (`Realm1.gd` `_setup_pieces`) — the level is one
+  hand-painted static `TileMapLayer`, so each floating piece is found by connected
+  components and LIFTED into its own `AnimatableBody2D` (art copy + merged collider)
+  animated by a looping tween; `sync_to_physics` carries Curiosity when she rides
+  one. The painted floor/terrain stays baked & static. Motion is data-driven per
+  piece: `PIECE_MOTION` (side / updown / bob / *_fast / static) + `PIECE_SPEED` /
+  `PIECE_DIST` dials + global `MOTION_DURATION_SCALE`; both mirrored halves tuned to
+  match. `DEBUG_PIECE_LABELS` (off) floats each piece's index in-game for picking.
 - Door interact (Y key) → scene transition with fade
 - Hub respawn at the door Curiosity returned through
 - **SaveManager autoload** (`scripts/SaveManager.gd`) — M1 foundation, the single
