@@ -306,6 +306,16 @@ const PIECE_DIST := {
 	27: 1.5,
 }
 
+# Jade collectibles: one floats just above (most) pieces, riding it if it moves.
+# Skip every Nth piece so the total lands around 25 across the level.
+const JADE_SCENE := preload("res://scenes/Jade.tscn")
+const JADE_SCALE: float = 0.15
+const JADE_FLOAT_GAP: float = 30.0   # px the jade hovers above the piece's top
+const JADE_SKIP_EVERY: int = 4       # skip every 4th piece (~25 of ~34)
+
+var _jade_total: int = 0
+var _jade_got: int = 0
+
 func _setup_pieces() -> void:
 	if _tiles == null or _tiles.tile_set == null:
 		return
@@ -319,8 +329,31 @@ func _setup_pieces() -> void:
 		var body: AnimatableBody2D = null
 		if motion != "static":
 			body = _lift_piece(p, tsize, i, motion)
+		if (i % JADE_SKIP_EVERY) != (JADE_SKIP_EVERY - 1):
+			_place_jade_on_piece(p, tsize, body)
 		if DEBUG_PIECE_LABELS:
 			_label_piece(p, tsize, i, body)
+
+
+# Float a jade just above a piece's top-centre. Parent it to the moving body so it
+# rides the platform; for a static piece, parent to the tile layer (same space).
+func _place_jade_on_piece(p: Dictionary, tsize: Vector2, body: AnimatableBody2D) -> void:
+	var mn: Vector2i = p["mn"]
+	var mx: Vector2i = p["mx"]
+	var cx: float = (float(mn.x) + float(mx.x) + 1.0) * 0.5 * tsize.x
+	var top_y: float = float(mn.y) * tsize.y
+	var j: Area2D = JADE_SCENE.instantiate()
+	j.piece_scale = JADE_SCALE
+	var parent: Node = body if body != null else _tiles
+	parent.add_child(j)
+	j.position = Vector2(cx, top_y - JADE_FLOAT_GAP)
+	j.collected.connect(_on_jade_collected)
+	_jade_total += 1
+
+
+func _on_jade_collected() -> void:
+	_jade_got += 1
+	print("jade %d/%d" % [_jade_got, _jade_total])
 
 
 # Connected components (4-connectivity) of painted cells, minus the floor/terrain
