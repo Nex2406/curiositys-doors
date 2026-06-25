@@ -60,6 +60,7 @@ func _ready() -> void:
 	# Ambient bed for the Crimson Hollow (placeholder drone until a real track).
 	AudioManager.play_placeholder("realm1")
 	_align_background()
+	_setup_pieces()
 	_make_painted_tiles_solid()
 	_add_boundary_walls()
 	_place_curiosity_on_floor()
@@ -96,13 +97,20 @@ func _make_painted_tiles_solid() -> void:
 	var body: StaticBody2D = StaticBody2D.new()
 	body.name = "PaintedCollision"
 	_tiles.add_child(body)
-	# Merge painted cells into maximal rectangles. One box PER CELL left internal
-	# seams between neighbouring boxes that Curiosity's collider caught on — it
-	# jittered and is_on_floor() failed, freezing her in the air pose. Greedy
-	# merge (grow each rect right, then down) yields seamless colliders.
+	# Every still-painted cell becomes solid ground. (Moving planks were already
+	# erased from the layer in _extract_moving_planks, so they're skipped here.)
 	var remaining := {}
 	for cell in _tiles.get_used_cells():
 		remaining[cell] = true
+	_emit_merged_colliders(body, remaining, tsize)
+
+
+# Greedy-merge a set of cells (Dictionary<Vector2i, true>) into maximal rectangles
+# and add one CollisionShape2D per rectangle to `body`. One box PER CELL left
+# internal seams that Curiosity's collider caught on — she jittered and
+# is_on_floor() failed, freezing her in the air pose. Merging (grow each rect
+# right, then down) yields seamless colliders. Consumes `remaining`.
+func _emit_merged_colliders(body: CollisionObject2D, remaining: Dictionary, tsize: Vector2) -> void:
 	var keys: Array = remaining.keys()
 	keys.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
 		return (a.y * 100000 + a.x) < (b.y * 100000 + b.x))
@@ -134,6 +142,225 @@ func _make_painted_tiles_solid() -> void:
 		cs.shape = rect
 		cs.position = (Vector2(start) + Vector2(w, h) * 0.5) * tsize
 		body.add_child(cs)
+
+
+# ─── moving pieces ─────────────────────────────────────────────────────────
+# Advika hand-paints the whole level — floor, structures, and the thin floating
+# planks/logs — into one static TileMapLayer. A baked tile can't move, so to make
+# a piece move we LIFT its cells out of the layer into a self-contained
+# AnimatableBody2D (its own copy of the art + a collider) and animate it.
+# Curiosity rides them correctly: an AnimatableBody2D with sync_to_physics carries
+# a CharacterBody2D standing on it.
+#
+# Pieces are found by connected components of the painted cells: the floor (+
+# anything sitting on it) is one huge component, left baked & static; every other
+# component is a movable "piece" — thin ones are planks, taller ones structures.
+const PLANK_MAX_H: int = 4      # tiles tall; taller floating groups are "structures"
+const PLANK_MIN_W: int = 4      # tiles wide; narrower floating bits are "structures" too
+const FLOOR_MIN_CELLS: int = 150 # a component this big is the painted floor/terrain
+const FLOOR_MIN_W: int = 45      # …or this wide
+
+# Global speed dial for every piece's motion: lower = faster. 1.0 = original feel.
+const MOTION_DURATION_SCALE: float = 0.5
+
+# DEBUG: float each movable piece's index above it in-game so Advika can call out
+# which piece should get which motion. Set false to hide the numbers.
+const DEBUG_PIECE_LABELS: bool = false
+
+# Per-piece motion override, keyed by the piece index shown above it. Values:
+# "side" (←→ slide), "updown" (↑↓ elevator), "bob" (slow drift), "static" (frozen).
+# Pieces not listed fall back to their kind's default: planks animate (mixed
+# slide/elevator/bob), floating structures stay still.
+const PIECE_MOTION := {
+	# ── left half ──
+	2: "updown",        # brick gateway structure — elevator
+	3: "side",          # plank — slides left/right
+	4: "side",
+	5: "side",
+	6: "updown",        # structure — elevator
+	10: "side",
+	# fast, alternating-direction gauntlet over the tight stepping-stone cluster
+	12: "side_fast",
+	13: "updown_fast",
+	14: "side_fast",
+	15: "updown_fast",
+	16: "side_fast",
+	# ── right half (mirror, index +17) — same layout duplicated across the map ──
+	19: "updown",
+	20: "side",
+	21: "side",
+	22: "side",
+	23: "updown",
+	27: "side",
+	29: "side_fast",
+	30: "updown_fast",
+	31: "side_fast",
+	32: "updown_fast",
+	33: "side_fast",
+}
+
+# Per-piece fine tuning (both default to 1.0 when unlisted).
+#   PIECE_SPEED — higher = faster motion
+#   PIECE_DIST  — higher = travels farther
+const PIECE_SPEED := {
+	10: 1.6,
+	19: 1.5,
+	22: 1.5,
+	27: 1.6,
+}
+const PIECE_DIST := {
+	10: 1.25,
+	20: 1.6,
+	27: 1.5,
+}
+
+func _setup_pieces() -> void:
+	if _tiles == null or _tiles.tile_set == null:
+		return
+	var tsize: Vector2 = Vector2(_tiles.tile_set.tile_size)
+	var pieces: Array = _find_pieces()
+	for i in range(pieces.size()):
+		var p: Dictionary = pieces[i]
+		var motion: String = PIECE_MOTION.get(i, "")
+		if motion == "":
+			motion = "static" if p["kind"] == "structure" else _default_plank_motion(i)
+		var body: AnimatableBody2D = null
+		if motion != "static":
+			body = _lift_piece(p, tsize, i, motion)
+		if DEBUG_PIECE_LABELS:
+			_label_piece(p, tsize, i, body)
+
+
+# Connected components (4-connectivity) of painted cells, minus the floor/terrain
+# (one huge component). Each remaining component is a movable piece. Sorted
+# left-to-right (then top-to-bottom) so indices are stable across runs.
+func _find_pieces() -> Array:
+	var cells := {}
+	for c in _tiles.get_used_cells():
+		cells[c] = true
+	var seen := {}
+	var pieces: Array = []
+	for start in cells.keys():
+		if seen.has(start):
+			continue
+		var stack: Array = [start]
+		var group: Array = []
+		var mn := Vector2i(1 << 30, 1 << 30)
+		var mx := Vector2i(-(1 << 30), -(1 << 30))
+		while not stack.is_empty():
+			var c: Vector2i = stack.pop_back()
+			if seen.has(c) or not cells.has(c):
+				continue
+			seen[c] = true
+			group.append(c)
+			mn.x = mini(mn.x, c.x); mn.y = mini(mn.y, c.y)
+			mx.x = maxi(mx.x, c.x); mx.y = maxi(mx.y, c.y)
+			stack.append(c + Vector2i(1, 0)); stack.append(c + Vector2i(-1, 0))
+			stack.append(c + Vector2i(0, 1)); stack.append(c + Vector2i(0, -1))
+		var w: int = mx.x - mn.x + 1
+		var h: int = mx.y - mn.y + 1
+		if group.size() >= FLOOR_MIN_CELLS or w >= FLOOR_MIN_W:
+			continue   # the floor / main terrain
+		var kind: String = "plank" if (h <= PLANK_MAX_H and w >= PLANK_MIN_W) else "structure"
+		pieces.append({"cells": group, "mn": mn, "mx": mx, "kind": kind})
+	pieces.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var pa: Vector2i = a["mn"]; var pb: Vector2i = b["mn"]
+		return (pa.x * 100000 + pa.y) < (pb.x * 100000 + pb.y))
+	return pieces
+
+
+# Default motion for an un-overridden plank: cycle slide / elevator / bob so the
+# cave feels alive rather than synchronized.
+func _default_plank_motion(idx: int) -> String:
+	match idx % 3:
+		0: return "side"
+		1: return "updown"
+		_: return "bob"
+
+
+# Lift a piece's cells out of the static layer into an animated AnimatableBody2D
+# (own art + collider) and start its motion. Returns the body.
+func _lift_piece(p: Dictionary, tsize: Vector2, idx: int, motion: String) -> AnimatableBody2D:
+	var body := AnimatableBody2D.new()
+	body.sync_to_physics = true   # carry riders standing on it
+	body.name = "MovingPiece%d" % idx
+	_tiles.add_child(body)        # parent under the layer to inherit its transform
+
+	# Visual: a child layer painting just this piece's cells (same art) at their
+	# original world coords. The body starts at local (0,0), so the art lands
+	# exactly where Advika painted it; the tween offsets from there.
+	var art := TileMapLayer.new()
+	art.name = "Art"
+	art.tile_set = _tiles.tile_set
+	body.add_child(art)
+	var remaining := {}
+	for c in p["cells"]:
+		art.set_cell(c, _tiles.get_cell_source_id(c), _tiles.get_cell_atlas_coords(c),
+			_tiles.get_cell_alternative_tile(c))
+		remaining[c] = true
+
+	# Collider(s): merged rectangles over the piece, at the same world coords.
+	_emit_merged_colliders(body, remaining, tsize)
+
+	# Erase the originals so no static ghost remains (and they're not re-baked).
+	for c in p["cells"]:
+		_tiles.erase_cell(c)
+
+	_animate_piece(body, idx, tsize, motion)
+	return body
+
+
+# Drive one piece's looping motion. Per-piece timing (by index) keeps neighbours
+# out of phase. Each pattern oscillates symmetrically around the painted spot and
+# returns home, so a piece always passes back through where it started.
+func _animate_piece(body: AnimatableBody2D, idx: int, tsize: Vector2, motion: String) -> void:
+	# Alternating start direction (by index) so neighbours in a cluster sweep
+	# opposite ways — reads as "different directions".
+	var dir: float = -1.0 if (idx % 2 == 1) else 1.0
+	# Speed: global dial / per-piece speed (higher speed → shorter duration).
+	var s: float = MOTION_DURATION_SCALE / float(PIECE_SPEED.get(idx, 1.0))
+	var dst: float = float(PIECE_DIST.get(idx, 1.0))   # per-piece travel distance
+	var t: Tween = create_tween().set_loops()
+	match motion:
+		"side":          # horizontal slide — ride it across the gap
+			_ping(t, body, "position:x", tsize.x * 2.5 * dst, (2.8 + float(idx % 4) * 0.35) * s)
+		"updown":        # vertical elevator — lifts Curiosity toward higher ledges
+			_ping(t, body, "position:y", -tsize.y * 2.0 * dst, (2.4 + float(idx % 3) * 0.4) * s)
+		"side_fast":     # quick horizontal — for the harder gauntlet
+			_ping(t, body, "position:x", dir * tsize.x * 3.0 * dst, (1.05 + float(idx % 3) * 0.12) * s)
+		"updown_fast":   # quick vertical — for the harder gauntlet
+			_ping(t, body, "position:y", dir * tsize.y * 2.6 * dst, (0.95 + float(idx % 3) * 0.12) * s)
+		_:               # bob — gentle atmospheric drift
+			_ping(t, body, "position:y", tsize.y * 0.7 * dst, (3.4 + float(idx % 5) * 0.3) * s)
+
+
+# Append a symmetric 0 → +amp → -amp → 0 oscillation on `prop` to a looping tween.
+func _ping(t: Tween, body: AnimatableBody2D, prop: String, amp: float, d: float) -> void:
+	t.tween_property(body, prop, amp, d) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t.tween_property(body, prop, -amp, d * 2.0) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t.tween_property(body, prop, 0.0, d) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+# DEBUG: float the piece's index above it. Rides a moving body; pinned for static.
+func _label_piece(p: Dictionary, tsize: Vector2, idx: int, body: AnimatableBody2D) -> void:
+	var lbl := Label.new()
+	lbl.text = "#%d" % idx
+	lbl.add_theme_font_size_override("font_size", int(maxf(tsize.y * 2.5, 24.0)))
+	lbl.add_theme_color_override("font_color", Color(1, 1, 0.35))
+	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	lbl.add_theme_constant_override("outline_size", 10)
+	lbl.z_index = 200
+	var mn: Vector2i = p["mn"]
+	var mx: Vector2i = p["mx"]
+	lbl.position = Vector2((float(mn.x) + float(mx.x) + 1.0) * 0.5 * tsize.x - tsize.x * 1.6,
+		float(mn.y) * tsize.y - tsize.y * 2.2)
+	if body != null:
+		body.add_child(lbl)
+	else:
+		_tiles.add_child(lbl)
 
 
 # ─── boundary walls ──────────────────────────────────────────────────────
