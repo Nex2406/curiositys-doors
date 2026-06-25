@@ -9,6 +9,22 @@ Rules:
 
 ---
 
+## 2026-06-25
+
+- **Jade pieces = collectibles on the moving platforms, guarded by golems.**
+  Sharpens the 2026-06-22 jade-hunt vision now that moving platforms are live.
+  - Jade pieces sit **on the moving platforms** — you ride a platform to reach
+    one and collect it (walk/jump into it). Count tracked + saved (SaveManager).
+  - **Golems guard them** — the realm's first real enemy. Advika has golem
+    sprites (and will provide the jade art). This is M2's enemy framework landing
+    *inside* Realm 1: build a reusable `Enemy` base on the golem (patrol / detect /
+    attack / take damage / die), reusing the slash/dash combat already on
+    Curiosity.
+  - Still feeds the long arc: collected jade → assembles the key → unlocks Door 2.
+  - Open: how many jade total? golem behaviour (stationary sentinel vs patrol)?
+    does a golem block the jade until killed, or just threaten? — settle when the
+    art's in and we prototype.
+
 ## 2026-06-22
 
 - **Realm 1 becomes a real platformer (the full vision).** Advika nailed down

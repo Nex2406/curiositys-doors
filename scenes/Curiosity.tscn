@@ -206,7 +206,7 @@ scale_max = 0.6
 scale_curve = SubResource("CurveTexture_halo_scale")
 color_ramp = SubResource("GradientTexture1D_halo_alpha")
 
-[node name="Curiosity" type="CharacterBody2D"]
+[node name="Curiosity" type="CharacterBody2D" groups=["player"]]
 script = ExtResource("1_curiosity")
 
 [node name="LanternFlame" type="Sprite2D" parent="."]
