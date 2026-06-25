@@ -96,13 +96,43 @@ func _make_painted_tiles_solid() -> void:
 	var body: StaticBody2D = StaticBody2D.new()
 	body.name = "PaintedCollision"
 	_tiles.add_child(body)
+	# Merge painted cells into maximal rectangles. One box PER CELL left internal
+	# seams between neighbouring boxes that Curiosity's collider caught on — it
+	# jittered and is_on_floor() failed, freezing her in the air pose. Greedy
+	# merge (grow each rect right, then down) yields seamless colliders.
+	var remaining := {}
 	for cell in _tiles.get_used_cells():
+		remaining[cell] = true
+	var keys: Array = remaining.keys()
+	keys.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return (a.y * 100000 + a.x) < (b.y * 100000 + b.x))
+	for start in keys:
+		if not remaining.has(start):
+			continue
+		# Grow width along the row.
+		var w: int = 1
+		while remaining.has(Vector2i(start.x + w, start.y)):
+			w += 1
+		# Grow height while the full-width row below is present.
+		var h: int = 1
+		while true:
+			var row_ok: bool = true
+			for dx in range(w):
+				if not remaining.has(Vector2i(start.x + dx, start.y + h)):
+					row_ok = false
+					break
+			if not row_ok:
+				break
+			h += 1
+		# Consume the rectangle's cells and emit one collider for it.
+		for dy in range(h):
+			for dx in range(w):
+				remaining.erase(Vector2i(start.x + dx, start.y + dy))
 		var cs: CollisionShape2D = CollisionShape2D.new()
 		var rect: RectangleShape2D = RectangleShape2D.new()
-		rect.size = tsize
+		rect.size = Vector2(w, h) * tsize
 		cs.shape = rect
-		# Cell center in TileMapLayer-local space.
-		cs.position = (Vector2(cell) + Vector2(0.5, 0.5)) * tsize
+		cs.position = (Vector2(start) + Vector2(w, h) * 0.5) * tsize
 		body.add_child(cs)
 
 
@@ -143,11 +173,21 @@ func _place_curiosity_on_floor() -> void:
 	_curiosity.scale = Vector2(CURIOSITY_SCALE, CURIOSITY_SCALE)
 	var ur: Rect2i = _tiles.get_used_rect()
 	var tsize: Vector2 = Vector2(_tiles.tile_set.tile_size)
-	# Top edge of the painted area, in world space.
-	var floor_top: float = _tiles.to_global(Vector2(ur.position) * tsize).y
-	var left_x: float = _tiles.to_global(Vector2(ur.position) * tsize).x
+	# Spawn a few tiles in from the left, on the MAIN FLOOR — find the top of the
+	# contiguous solid band at the bottom (scan up from the bottom row), so we
+	# skip any floating platform above and Curiosity always starts grounded.
+	var spawn_col: int = ur.position.x + 6
+	var bottom_row: int = ur.position.y + ur.size.y - 1
+	var surface_row: int = bottom_row
+	for r in range(bottom_row, ur.position.y - 1, -1):
+		if _tiles.get_cell_source_id(Vector2i(spawn_col, r)) != -1:
+			surface_row = r
+		else:
+			break
+	var floor_top: float = _tiles.to_global(Vector2(spawn_col, surface_row) * tsize).y
+	var left_x: float = _tiles.to_global(Vector2(spawn_col, surface_row) * tsize).x
 	_curiosity.position = Vector2(
-		left_x + tsize.x * 6.0,                       # a few tiles in from the left
+		left_x,
 		floor_top - _curiosity_half_height()          # feet rest on the floor top
 	)
 	_spawn_pos = _curiosity.position
