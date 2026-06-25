@@ -101,7 +101,11 @@ const BAND_TINTS: Array[Color] = [
 	Color(0.40, 0.44, 0.60),   # BG4 nearest bg — darkest
 ]
 
-const VIGNETTE_STRENGTH: float = 0.6   # 0..1 edge darkness
+# Ambient light level (overrides the scene's CanvasModulate). Higher = brighter
+# base; the lantern/glows still read as the focal warmth on top of this.
+const AMBIENT_LIGHT: Color = Color(0.64, 0.66, 0.82)
+
+const VIGNETTE_STRENGTH: float = 0.48   # 0..1 edge darkness
 const VIGNETTE_INNER: float = 0.48     # where the darkening starts (smaller = more)
 const VIGNETTE_COLOR: Color = Color(0.02, 0.01, 0.05, 1.0)
 
@@ -118,6 +122,9 @@ void fragment() {
 "
 
 func _setup_atmosphere() -> void:
+	var cm: CanvasModulate = get_node_or_null("CanvasModulate") as CanvasModulate
+	if cm != null:
+		cm.color = AMBIENT_LIGHT
 	_tint_parallax_bands()
 	_add_vignette()
 
