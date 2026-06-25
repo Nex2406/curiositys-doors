@@ -1,0 +1,20 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/Jade.tscn" id="1_jade"]
+
+[node name="JadeTest" type="Node2D"]
+
+[node name="BG" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="Fill" type="ColorRect" parent="BG"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.06, 0.08, 0.09, 1)
+
+[node name="Jade" parent="." instance=ExtResource("1_jade")]
+position = Vector2(960, 540)
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(960, 540)
+zoom = Vector2(3, 3)

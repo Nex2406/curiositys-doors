@@ -1,0 +1,39 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/Jade.gd" id="1_jade"]
+[ext_resource type="Texture2D" path="res://assets/collectables/jade/jade_1.png" id="2_j1"]
+[ext_resource type="Texture2D" path="res://assets/collectables/jade/jade_2.png" id="3_j2"]
+[ext_resource type="Texture2D" path="res://assets/collectables/jade/jade_3.png" id="4_j3"]
+[ext_resource type="Texture2D" path="res://assets/collectables/jade/jade_4.png" id="5_j4"]
+[ext_resource type="Texture2D" path="res://assets/collectables/jade/jade_5.png" id="6_j5"]
+[ext_resource type="Texture2D" path="res://assets/collectables/jade/jade_6.png" id="7_j6"]
+[ext_resource type="Texture2D" path="res://assets/collectables/jade/jade_7.png" id="8_j7"]
+[ext_resource type="Texture2D" path="res://assets/collectables/jade/jade_8.png" id="9_j8"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_jade"]
+animations = [{
+"frames": [{"duration": 1.0, "texture": ExtResource("2_j1")},
+{"duration": 1.0, "texture": ExtResource("3_j2")},
+{"duration": 1.0, "texture": ExtResource("4_j3")},
+{"duration": 1.0, "texture": ExtResource("5_j4")},
+{"duration": 1.0, "texture": ExtResource("6_j5")},
+{"duration": 1.0, "texture": ExtResource("7_j6")},
+{"duration": 1.0, "texture": ExtResource("8_j7")},
+{"duration": 1.0, "texture": ExtResource("9_j8")}],
+"loop": true,
+"name": &"spin",
+"speed": 5.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_jade"]
+size = Vector2(130, 240)
+
+[node name="Jade" type="Area2D"]
+script = ExtResource("1_jade")
+
+[node name="Visual" type="AnimatedSprite2D" parent="."]
+sprite_frames = SubResource("SpriteFrames_jade")
+animation = &"spin"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_jade")
