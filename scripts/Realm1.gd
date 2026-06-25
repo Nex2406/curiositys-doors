@@ -27,6 +27,9 @@ extends Node2D
 # Vertical offset from the camera's view-center up to where motes spawn.
 const MOTE_SPAWN_ABOVE_CENTER: float = 400.0
 
+# Curiosity's size in this realm (overrides the scene value at runtime).
+const CURIOSITY_SCALE: float = 0.19
+
 # Eyes-as-lives HUD: 3 eyes, one closes per death (constant rule every realm).
 const LIVES_HUD := preload("res://scenes/UI/LivesHUD.tscn")
 const STARTING_LIVES: int = 3
@@ -40,8 +43,8 @@ var _kill_y: float = INF      # fall below this (a pit) and you die
 var _dying: bool = false      # guards the death/respawn sequence
 
 
-# How far to zoom (the camera inherits Curiosity's 0.4 scale, so this is the
-# counter-zoom). Lower = more of the world on screen. Tuned by eye.
+# Camera zoom (the camera inherits Curiosity's scale, so this counter-zooms to
+# frame the cave). Lower = more world on screen.
 const CAMERA_ZOOM: float = 1.6
 
 # Cave-art sizing. The parallax layers render smaller as we zoom out, which
@@ -137,6 +140,7 @@ func _add_boundary_walls() -> void:
 func _place_curiosity_on_floor() -> void:
 	if _curiosity == null or _tiles == null or _tiles.tile_set == null:
 		return
+	_curiosity.scale = Vector2(CURIOSITY_SCALE, CURIOSITY_SCALE)
 	var ur: Rect2i = _tiles.get_used_rect()
 	var tsize: Vector2 = Vector2(_tiles.tile_set.tile_size)
 	# Top edge of the painted area, in world space.
@@ -159,6 +163,8 @@ func _curiosity_half_height() -> float:
 	return 100.0 * _curiosity.scale.y
 
 
+const DOOR_SPRITE_HALF_H: float = 90.0   # door_arch.png is 180px tall, centred
+
 func _place_exit_door() -> void:
 	var door: Node2D = get_node_or_null("ExitDoor") as Node2D
 	if door == null or _tiles == null or _tiles.tile_set == null:
@@ -166,10 +172,18 @@ func _place_exit_door() -> void:
 	var ur: Rect2i = _tiles.get_used_rect()
 	var tsize: Vector2 = Vector2(_tiles.tile_set.tile_size)
 	var right_x: float = _tiles.to_global(Vector2(ur.position + ur.size) * tsize).x
-	var floor_top: float = _tiles.to_global(Vector2(ur.position) * tsize).y
-	# Anchor just inside the right edge, lifted so the door's Area2D overlaps
-	# Curiosity standing on the floor.
-	door.position = Vector2(right_x - tsize.x * 4.0, floor_top - 100.0)
+	# Find the FLOOR SURFACE at the door's column (scan down to the first solid
+	# cell) — not ur.position.y, which is the top of the highest platform and
+	# left the door floating high in the air.
+	var door_col: int = ur.position.x + ur.size.x - 4
+	var surface_row: int = ur.position.y + ur.size.y - 1
+	for r in range(ur.position.y, ur.position.y + ur.size.y):
+		if _tiles.get_cell_source_id(Vector2i(door_col, r)) != -1:
+			surface_row = r
+			break
+	var surface_y: float = _tiles.to_global(Vector2(door_col, surface_row) * tsize).y
+	# Lift the door half its sprite height so its base rests on the floor.
+	door.position = Vector2(right_x - tsize.x * 4.0, surface_y - DOOR_SPRITE_HALF_H)
 
 
 # ─── exit interaction ──────────────────────────────────────────────────────
@@ -193,20 +207,17 @@ func _setup_camera_limits() -> void:
 	var tsize: Vector2 = Vector2(_tiles.tile_set.tile_size)
 	var top_left: Vector2 = _tiles.to_global(Vector2(ur.position) * tsize)
 	var bot_right: Vector2 = _tiles.to_global(Vector2(ur.position + ur.size) * tsize)
-	# Curiosity (and so the camera) is scaled 0.4. Counter most of that so the
-	# view frames the cave nicely without being right up in her face.
 	cam.zoom = Vector2(CAMERA_ZOOM, CAMERA_ZOOM)
-	# How much world the camera shows vertically at this zoom.
-	var view_h: float = get_viewport().get_visible_rect().size.y / (CAMERA_ZOOM * absf(cam.global_scale.y))
+	var view_h: float = get_viewport().get_visible_rect().size.y / (CAMERA_ZOOM * maxf(absf(cam.global_scale.y), 0.001))
 	# Horizontal: clamp to the painted level width.
 	cam.limit_left = int(top_left.x)
 	cam.limit_right = int(bot_right.x)
-	# Vertical: LOCK it. Setting the limit band exactly equal to the view height
-	# pins the camera's Y — it can only scroll sideways. Jumping never reveals
-	# anything below the floor, so the dark void can't appear. Floor sits at the
-	# bottom of the frame.
+	# Vertical: keep the band AT LEAST one view tall so the floor is always pinned
+	# to the bottom (never reveals the void below it). When the level is taller
+	# than the view, the top limit rises above the floor so the camera SCROLLS UP
+	# as Curiosity climbs; when short, it stays locked with the floor at bottom.
 	cam.limit_bottom = int(bot_right.y)
-	cam.limit_top = int(bot_right.y - view_h)
+	cam.limit_top = int(minf(top_left.y - tsize.y * 4.0, bot_right.y - view_h))
 	cam.position_smoothing_enabled = true
 	_cam = cam
 
