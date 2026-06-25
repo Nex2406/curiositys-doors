@@ -11,7 +11,7 @@ enum State { IDLE, WALK, RUN, JUMP_START, AIR, LAND, ATTACK, DASH, HURT }
 @export var walk_speed: float = 265.0
 @export var run_speed: float = 420.0
 @export var gravity: float = 700.0
-@export var jump_velocity: float = -450.0
+@export var jump_velocity: float = -420.0
 @export var accel_time: float = 0.15
 @export var lantern_sway_time: float = 0.2
 

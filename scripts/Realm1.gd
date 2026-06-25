@@ -28,7 +28,7 @@ extends Node2D
 const MOTE_SPAWN_ABOVE_CENTER: float = 400.0
 
 # Curiosity's size in this realm (overrides the scene value at runtime).
-const CURIOSITY_SCALE: float = 0.19
+const CURIOSITY_SCALE: float = 0.17
 
 # Eyes-as-lives HUD: 3 eyes, one closes per death (constant rule every realm).
 const LIVES_HUD := preload("res://scenes/UI/LivesHUD.tscn")
