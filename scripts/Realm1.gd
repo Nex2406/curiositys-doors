@@ -45,7 +45,7 @@ var _dying: bool = false      # guards the death/respawn sequence
 
 # Camera zoom (the camera inherits Curiosity's scale, so this counter-zooms to
 # frame the cave). Lower = more world on screen.
-const CAMERA_ZOOM: float = 1.6
+const CAMERA_ZOOM: float = 2.0
 
 # Cave-art sizing. The parallax layers render smaller as we zoom out, which
 # opens a dark void below the art. Scale them up so the cave fills the frame
@@ -60,6 +60,7 @@ func _ready() -> void:
 	# Ambient bed for the Crimson Hollow (placeholder drone until a real track).
 	AudioManager.play_placeholder("realm1")
 	_align_background()
+	_setup_atmosphere()
 	_setup_pieces()
 	_make_painted_tiles_solid()
 	_add_boundary_walls()
@@ -83,6 +84,75 @@ func _align_background() -> void:
 		# seams as the camera scrolls.
 		if layer is ParallaxLayer:
 			(layer as ParallaxLayer).motion_mirroring = Vector2(BG_IMG_WIDTH * BG_SCALE, 0)
+
+
+# ─── atmosphere (depth pass) ───────────────────────────────────────────────
+# Hollow-Knight depth = VALUE SEPARATION (far layers brighter/cooler, near layers
+# pushed dark) + a VIGNETTE that frames the view. Done in code so it stays tunable
+# and reversible. (Foreground silhouette frame + camera headroom are later passes.)
+
+# Multiply tint per parallax band, BG1 (farthest) → BG4 (nearest). Far = light &
+# cool (reads as hazy distance); near = dark. This bright→dark gradient is the
+# core depth cue.
+const BAND_TINTS: Array[Color] = [
+	Color(0.98, 1.04, 1.20),   # BG1 farthest — slight cool brighten, hazy
+	Color(0.74, 0.80, 0.98),   # BG2
+	Color(0.55, 0.60, 0.78),   # BG3
+	Color(0.40, 0.44, 0.60),   # BG4 nearest bg — darkest
+]
+
+const VIGNETTE_STRENGTH: float = 0.6   # 0..1 edge darkness
+const VIGNETTE_INNER: float = 0.48     # where the darkening starts (smaller = more)
+const VIGNETTE_COLOR: Color = Color(0.02, 0.01, 0.05, 1.0)
+
+const VIGNETTE_SHADER := "
+shader_type canvas_item;
+uniform float strength = 0.6;
+uniform float inner = 0.48;
+uniform vec4 vcolor : source_color = vec4(0.02, 0.01, 0.05, 1.0);
+void fragment() {
+	float d = distance(UV, vec2(0.5));
+	float v = smoothstep(inner, 0.96, d) * strength;
+	COLOR = vec4(vcolor.rgb, v);
+}
+"
+
+func _setup_atmosphere() -> void:
+	_tint_parallax_bands()
+	_add_vignette()
+
+
+func _tint_parallax_bands() -> void:
+	var pbg: Node = get_node_or_null("ParallaxBackground")
+	if pbg == null:
+		return
+	var bands: Array[String] = ["BG1", "BG2", "BG3", "BG4"]
+	for i in range(bands.size()):
+		var layer: Node = pbg.get_node_or_null(bands[i])
+		if layer == null:
+			continue
+		var spr: CanvasItem = layer.get_node_or_null("Sprite") as CanvasItem
+		if spr != null and i < BAND_TINTS.size():
+			spr.self_modulate = BAND_TINTS[i]
+
+
+func _add_vignette() -> void:
+	var cl := CanvasLayer.new()
+	cl.name = "Vignette"
+	cl.layer = 2   # above the world, below the lives HUD
+	add_child(cl)
+	var rect := ColorRect.new()
+	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = VIGNETTE_SHADER
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	mat.set_shader_parameter("strength", VIGNETTE_STRENGTH)
+	mat.set_shader_parameter("inner", VIGNETTE_INNER)
+	mat.set_shader_parameter("vcolor", VIGNETTE_COLOR)
+	rect.material = mat
+	cl.add_child(rect)
 
 
 # ─── collision ───────────────────────────────────────────────────────────
