@@ -306,12 +306,69 @@ const PIECE_DIST := {
 	27: 1.5,
 }
 
-# Jade collectibles: one floats just above (most) pieces, riding it if it moves.
-# Skip every Nth piece so the total lands around 25 across the level.
+# Jade collectibles: hand-picked pieces get one floating just above them, riding
+# the piece if it moves. Keyed by the piece index shown by DEBUG_PIECE_LABELS.
+# Value is the horizontal anchor along the piece: "end" (right edge, the side you
+# exit toward), "start" (left edge), "middle" (centre), or a float fraction
+# 0.0..1.0 (0 = left edge, 0.5 = centre, 1 = right edge) for fine placement.
 const JADE_SCENE := preload("res://scenes/Jade.tscn")
-const JADE_SCALE: float = 0.15
+const JADE_SCALE: float = 0.11
 const JADE_FLOAT_GAP: float = 30.0   # px the jade hovers above the piece's top
-const JADE_SKIP_EVERY: int = 4       # skip every 4th piece (~25 of ~34)
+const JADE_END_INSET: float = 1.5    # tiles an "end" jade sits back from the edge
+const PIECE_JADE := {
+	1: "middle",
+	2: "end",
+	3: [0.3, 0.7],   # two jades, spread across the plank
+	4: "middle",
+	5: "middle",
+	6: "middle",
+	7: "middle",
+	8: "middle",
+	11: [0.25, 0.72],   # two jades, spread across the plank
+	12: "middle", 13: "middle", 14: "middle", 15: "middle", 16: "middle",
+	17: "middle",
+	18: "middle",
+	19: "middle",
+	20: ["start", "end"],   # two jades, one at each end
+	21: "middle",
+	22: "middle",
+	23: "end",
+	24: "middle",
+	25: "middle",
+	26: "middle",
+	27: 0.65,   # a bit right of middle
+	28: "middle",
+	29: "middle", 30: "middle", 31: "middle", 32: "middle", 33: "middle",
+}
+
+# Floor-fused piles break into individual sub-elements: 3x3 crate "boxes" (B#) and
+# the plank boards that cap them (P#) — shown by DEBUG_PIECE_LABELS, numbered
+# left-to-right. Jade is addressed per element index, same anchor values as
+# PIECE_JADE ("start"/"middle"/"end" or a 0..1 fraction).
+const CRATE_CORNER := Vector2i(47, 6)   # top-left tile of the 3x3 crate sprite
+const PLANK_ROW: int = 3                 # atlas row of the horizontal plank board
+const BOX_JADE := {
+	5: "middle",
+	8: "middle",
+	19: "middle",
+	22: "middle",
+}
+const PLANK_JADE := {
+	0: "middle",   # P0 is the spawn platform; jade arms after spawn so it isn't auto-grabbed
+	1: "middle",   # plank capping the pile between #4 and #5
+	2: "middle",
+	3: "middle",
+	4: "middle",   # plank capping the pile between #21 and #22 (mirror)
+}
+
+# One-off jade on floor spots not captured by the box/plank scan. Each entry is a
+# top-surface span (column range + top row) + anchor; placed on the static layer.
+const EXTRA_JADE := [
+	# deck plank under the #2 gateway (atlas-row-12 board, just right of P0)
+	{"mn_x": 66, "mx_x": 80, "top_y": 39, "anchor": "middle"},
+	# deck plank under the #19 gateway (mirror; atlas-row-12 board above B17/B18)
+	{"mn_x": 538, "mx_x": 552, "top_y": 39, "anchor": "middle"},
+]
 
 var _jade_total: int = 0
 var _jade_got: int = 0
@@ -329,18 +386,114 @@ func _setup_pieces() -> void:
 		var body: AnimatableBody2D = null
 		if motion != "static":
 			body = _lift_piece(p, tsize, i, motion)
-		if (i % JADE_SKIP_EVERY) != (JADE_SKIP_EVERY - 1):
-			_place_jade_on_piece(p, tsize, body)
+		if PIECE_JADE.has(i):
+			var v = PIECE_JADE[i]
+			for anchor in (v if v is Array else [v]):
+				_place_jade_on_piece(p, tsize, body, anchor)
 		if DEBUG_PIECE_LABELS:
 			_label_piece(p, tsize, i, body)
+	# Floor-fused piles break into individual boxes (B#) and planks (P#).
+	var fe: Dictionary = _find_floor_elements()
+	for series in [["B", fe["boxes"], BOX_JADE], ["P", fe["planks"], PLANK_JADE]]:
+		var prefix: String = series[0]
+		var list: Array = series[1]
+		var jade: Dictionary = series[2]
+		for ei in range(list.size()):
+			var e: Dictionary = list[ei]
+			if jade.has(ei):
+				var pseudo := {"mn": Vector2i(e["mn_x"], e["top_y"]), "mx": Vector2i(e["mx_x"], e["top_y"])}
+				_place_jade_on_piece(pseudo, tsize, null, jade[ei])
+			if DEBUG_PIECE_LABELS:
+				_label_element(e, tsize, "%s%d" % [prefix, ei], prefix)
+	for ex in EXTRA_JADE:
+		var pseudo := {"mn": Vector2i(ex["mn_x"], ex["top_y"]), "mx": Vector2i(ex["mx_x"], ex["top_y"])}
+		_place_jade_on_piece(pseudo, tsize, null, ex["anchor"])
+
+
+# Cells belonging to the big floor/terrain components (everything that isn't a
+# numbered movable piece).
+func _floor_cells() -> Dictionary:
+	var cells := {}
+	for c in _tiles.get_used_cells():
+		cells[c] = true
+	var seen := {}
+	var floor_cells := {}
+	for start in cells.keys():
+		if seen.has(start):
+			continue
+		var stack: Array = [start]
+		var group: Array = []
+		var mnx: int = 1 << 30
+		var mxx: int = -(1 << 30)
+		while not stack.is_empty():
+			var c: Vector2i = stack.pop_back()
+			if seen.has(c) or not cells.has(c):
+				continue
+			seen[c] = true
+			group.append(c)
+			mnx = mini(mnx, c.x); mxx = maxi(mxx, c.x)
+			stack.append(c + Vector2i(1, 0)); stack.append(c + Vector2i(-1, 0))
+			stack.append(c + Vector2i(0, 1)); stack.append(c + Vector2i(0, -1))
+		if group.size() >= FLOOR_MIN_CELLS or (mxx - mnx + 1) >= FLOOR_MIN_W:
+			for c in group:
+				floor_cells[c] = true
+	return floor_cells
+
+
+# The individual sub-elements that make up the floor-fused piles: each 3x3 crate
+# "box" (detected by its top-left corner tile) and each plank board (a contiguous
+# horizontal run of plank-row tiles). Returned sorted left-to-right so they can be
+# numbered B0..Bn / P0..Pn and given jade by index.
+func _find_floor_elements() -> Dictionary:
+	var floor_cells := _floor_cells()
+	var boxes: Array = []
+	var plank_cells := {}
+	for c in floor_cells.keys():
+		if _tiles.get_cell_source_id(c) != 0:
+			continue
+		var a: Vector2i = _tiles.get_cell_atlas_coords(c)
+		if a == CRATE_CORNER:
+			boxes.append({"mn_x": c.x, "mx_x": c.x + 2, "top_y": c.y})
+		elif a.y == PLANK_ROW:
+			plank_cells[c] = true
+	boxes.sort_custom(func(a, b):
+		return (a["mn_x"] * 1000 + a["top_y"]) < (b["mn_x"] * 1000 + b["top_y"]))
+	# Group plank cells into contiguous horizontal runs.
+	var planks: Array = []
+	var pkeys: Array = plank_cells.keys()
+	pkeys.sort_custom(func(a, b): return (a.y * 100000 + a.x) < (b.y * 100000 + b.x))
+	var cur := {}
+	var prev := Vector2i(-999, -999)
+	for c in pkeys:
+		if c.y != prev.y or c.x != prev.x + 1:
+			if not cur.is_empty():
+				planks.append(cur)
+			cur = {"mn_x": c.x, "mx_x": c.x, "top_y": c.y}
+		cur["mx_x"] = c.x
+		prev = c
+	if not cur.is_empty():
+		planks.append(cur)
+	planks.sort_custom(func(a, b): return a["mn_x"] < b["mn_x"])
+	return {"boxes": boxes, "planks": planks}
 
 
 # Float a jade just above a piece's top-centre. Parent it to the moving body so it
 # rides the platform; for a static piece, parent to the tile layer (same space).
-func _place_jade_on_piece(p: Dictionary, tsize: Vector2, body: AnimatableBody2D) -> void:
+func _place_jade_on_piece(p: Dictionary, tsize: Vector2, body: AnimatableBody2D, anchor) -> void:
 	var mn: Vector2i = p["mn"]
 	var mx: Vector2i = p["mx"]
-	var cx: float = (float(mn.x) + float(mx.x) + 1.0) * 0.5 * tsize.x
+	var cx: float
+	if anchor is float or anchor is int:
+		# fraction across the piece: 0 = left edge, 0.5 = centre, 1 = right edge
+		cx = (float(mn.x) + float(anchor) * float(mx.x - mn.x + 1)) * tsize.x
+	else:
+		match anchor:
+			"start":
+				cx = (float(mn.x) + 0.5 + JADE_END_INSET) * tsize.x
+			"end":
+				cx = (float(mx.x) + 0.5 - JADE_END_INSET) * tsize.x
+			_:
+				cx = (float(mn.x) + float(mx.x) + 1.0) * 0.5 * tsize.x
 	var top_y: float = float(mn.y) * tsize.y
 	var j: Area2D = JADE_SCENE.instantiate()
 	j.piece_scale = JADE_SCALE
@@ -469,19 +622,37 @@ func _ping(t: Tween, body: AnimatableBody2D, prop: String, amp: float, d: float)
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
-# DEBUG: float the piece's index above it. Rides a moving body; pinned for static.
-func _label_piece(p: Dictionary, tsize: Vector2, idx: int, body: AnimatableBody2D) -> void:
+# DEBUG: tag a floor sub-element (box B# in cyan, plank P# in orange). Boxes get
+# the label on their face; planks get it just above the board.
+func _label_element(e: Dictionary, tsize: Vector2, text: String, prefix: String) -> void:
 	var lbl := Label.new()
-	lbl.text = "#%d" % idx
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", int(maxf(tsize.y * 1.6, 18.0)))
+	lbl.add_theme_color_override("font_color", Color(0.4, 0.9, 1) if prefix == "B" else Color(1, 0.62, 0.2))
+	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	lbl.add_theme_constant_override("outline_size", 8)
+	lbl.z_index = 201
+	var cx: float = (float(e["mn_x"]) + float(e["mx_x"]) + 1.0) * 0.5 * tsize.x
+	# Planks: keep the label well above the board so it doesn't cover the jade.
+	var y: float = (float(e["top_y"]) + 1.0) * tsize.y if prefix == "B" else (float(e["top_y"]) - 4.5) * tsize.y
+	lbl.position = Vector2(cx - tsize.x * 1.0, y)
+	_tiles.add_child(lbl)
+
+
+# DEBUG: float the piece's index above it. Rides a moving body; pinned for static.
+func _label_piece(p: Dictionary, tsize: Vector2, idx: int, body: AnimatableBody2D, prefix: String = "#") -> void:
+	var lbl := Label.new()
+	lbl.text = "%s%d" % [prefix, idx]
 	lbl.add_theme_font_size_override("font_size", int(maxf(tsize.y * 2.5, 24.0)))
-	lbl.add_theme_color_override("font_color", Color(1, 1, 0.35))
+	# Floor-pile "F#" labels in cyan so they read distinctly from piece numbers.
+	lbl.add_theme_color_override("font_color", Color(0.4, 0.9, 1) if prefix == "F" else Color(1, 1, 0.35))
 	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	lbl.add_theme_constant_override("outline_size", 10)
 	lbl.z_index = 200
 	var mn: Vector2i = p["mn"]
 	var mx: Vector2i = p["mx"]
 	lbl.position = Vector2((float(mn.x) + float(mx.x) + 1.0) * 0.5 * tsize.x - tsize.x * 1.6,
-		float(mn.y) * tsize.y - tsize.y * 2.2)
+		float(mn.y) * tsize.y - tsize.y * 5.0)
 	if body != null:
 		body.add_child(lbl)
 	else:
