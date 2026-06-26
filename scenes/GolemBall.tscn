@@ -1,0 +1,63 @@
+[gd_scene load_steps=20 format=3]
+
+[ext_resource type="Script" path="res://scripts/GolemBall.gd" id="1_gb"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1launch1.png" id="2_l1"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1launch2.png" id="3_l2"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1launch3.png" id="4_l3"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1launch4.png" id="5_l4"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1launch5.png" id="6_l5"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1launch6.png" id="7_l6"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1launch7.png" id="8_l7"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1launch8.png" id="9_l8"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1fly1.png" id="10_f1"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1fly2.png" id="11_f2"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1fly3.png" id="12_f3"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1fly4.png" id="13_f4"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1fly5.png" id="14_f5"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1fly6.png" id="15_f6"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1hit1.png" id="16_h1"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/ball/golemr1hit2.png" id="17_h2"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_gb"]
+animations = [{
+"frames": [{"duration": 1.0, "texture": ExtResource("2_l1")},
+{"duration": 1.0, "texture": ExtResource("3_l2")},
+{"duration": 1.0, "texture": ExtResource("4_l3")},
+{"duration": 1.0, "texture": ExtResource("5_l4")},
+{"duration": 1.0, "texture": ExtResource("6_l5")},
+{"duration": 1.0, "texture": ExtResource("7_l6")},
+{"duration": 1.0, "texture": ExtResource("8_l7")},
+{"duration": 1.0, "texture": ExtResource("9_l8")}],
+"loop": false,
+"name": &"launch",
+"speed": 12.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("10_f1")},
+{"duration": 1.0, "texture": ExtResource("11_f2")},
+{"duration": 1.0, "texture": ExtResource("12_f3")},
+{"duration": 1.0, "texture": ExtResource("13_f4")},
+{"duration": 1.0, "texture": ExtResource("14_f5")},
+{"duration": 1.0, "texture": ExtResource("15_f6")}],
+"loop": true,
+"name": &"fly",
+"speed": 12.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("16_h1")},
+{"duration": 1.0, "texture": ExtResource("17_h2")}],
+"loop": false,
+"name": &"hit",
+"speed": 10.0
+}]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_gb"]
+radius = 18.0
+
+[node name="GolemBall" type="Area2D"]
+script = ExtResource("1_gb")
+
+[node name="Visual" type="AnimatedSprite2D" parent="."]
+sprite_frames = SubResource("SpriteFrames_gb")
+animation = &"fly"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_gb")
