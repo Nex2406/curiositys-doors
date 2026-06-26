@@ -26,6 +26,14 @@ func _ready() -> void:
 	_visual.sprite_frames.set_animation_speed(&"spin", spin_fps)
 	_visual.play(&"spin")
 	_start_float()
+	# Arm pickup only after spawn settles. If Curiosity drops into the level already
+	# overlapping a jade (e.g. the one on the spawn platform), connecting late means
+	# that initial overlap doesn't fire body_entered — the jade sits there visibly
+	# and is only collected on a fresh walk/jump into it.
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if not is_inside_tree():
+		return
 	body_entered.connect(_on_body_entered)
 
 
