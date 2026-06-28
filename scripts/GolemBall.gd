@@ -42,11 +42,15 @@ var _fly_time: float = 0.0
 var _floor_y: float = INF   # global y the ball bursts on at the ground
 var _target: Node2D = null
 var _dbg: bool = false      # verbose trajectory logging (set by debug harness)
+var _hit_radius: float = 30.0   # ball collision radius (read from the shape)
 
 
 func _ready() -> void:
 	_visual.animation_finished.connect(_on_anim_finished)
 	body_entered.connect(_on_body_entered)
+	var cs := get_node_or_null("CollisionShape2D")
+	if cs != null and cs.shape is CircleShape2D:
+		_hit_radius = (cs.shape as CircleShape2D).radius
 	_enter_fly()
 
 
@@ -92,11 +96,11 @@ func _solve_lob() -> Vector2:
 	# which converges cleanly within a handful of iterations.
 	var aim: Vector2 = _target.global_position
 	var vel: Vector2 = Vector2.ZERO
-	for _iter in range(8):
+	for _iter in range(16):
 		var solved: Array = _solve_to(aim)
 		vel = solved[0]
 		var predicted: Vector2 = _target.global_position + tvel * float(solved[1])
-		aim = aim.lerp(predicted, 0.6)
+		aim = aim.lerp(predicted, 0.5)
 	return vel
 
 
@@ -114,8 +118,8 @@ func _solve_to(aim: Vector2) -> Array:
 	var cos_a: float = cos(ang)
 	var sin_a: float = sin(ang)
 	var lo: float = 50.0
-	var hi: float = 6000.0
-	for _i in range(30):
+	var hi: float = 16000.0
+	for _i in range(34):
 		var mid: float = (lo + hi) * 0.5
 		# Too much drop at the target (landed below it) → need more speed; else less.
 		if _sim_drop_at(mid * cos_a, -mid * sin_a, dx) > dy:
@@ -175,11 +179,23 @@ func _physics_process(delta: float) -> void:
 	var g: float = lob_gravity
 	if absf(_velocity.y) < apex_hang_speed:
 		g *= apex_gravity_scale
+	var prev: Vector2 = global_position
 	_velocity.y += g * delta
 	global_position += _velocity * delta
 	if rotate_to_velocity:
 		_visual.rotation = _velocity.angle()
 	_fly_time += delta
+	# Continuous hit test vs Curiosity: a fast ball can move >100px per physics frame, far
+	# wider than her ~25px hitbox, so the Area2D body_entered check below can miss it between
+	# frames (tunnelling). Sweeping this frame's travel segment against her box catches it
+	# regardless of speed. (body_entered stays as a backup for odd cases.)
+	if _target != null and is_instance_valid(_target):
+		var he: Vector2 = _target_half_extents() + Vector2(_hit_radius, _hit_radius)
+		if _segment_hits_box(prev, global_position, _target.global_position, he):
+			if _dbg:
+				print("[BALL HIT swept] at=", global_position, " t=%.2f" % _fly_time)
+			_enter_hit(_target)
+			return
 	# Touches the ground while descending → burst on the spot. No bounce, no roll.
 	if _velocity.y > 0.0 and global_position.y >= _floor_y:
 		global_position.y = _floor_y
@@ -190,6 +206,49 @@ func _physics_process(delta: float) -> void:
 	if _fly_time >= max_lifetime:
 		_dbg_burst("TIMEOUT")
 		_enter_hit(null)
+
+
+# Half-extents of the target's body collider in world space (Curiosity's RectangleShape2D
+# under her scale), so the swept test matches her real hitbox. Falls back to a sane box.
+func _target_half_extents() -> Vector2:
+	if _target == null or not is_instance_valid(_target):
+		return Vector2(20.0, 60.0)
+	var s: Vector2 = _target.global_scale.abs()
+	for c in _target.get_children():
+		if c is CollisionShape2D:
+			var shape: Shape2D = (c as CollisionShape2D).shape
+			if shape is RectangleShape2D:
+				return (shape as RectangleShape2D).size * 0.5 * s
+			if shape is CircleShape2D:
+				var r: float = (shape as CircleShape2D).radius * maxf(s.x, s.y)
+				return Vector2(r, r)
+	return Vector2(20.0, 60.0)
+
+
+# Does the segment a→b intersect the axis-aligned box centred at `c` with half-extents `he`?
+# Slab method — true if the travel this frame crossed the (ball-expanded) target box.
+func _segment_hits_box(a: Vector2, b: Vector2, c: Vector2, he: Vector2) -> bool:
+	var d: Vector2 = b - a
+	var tmin: float = 0.0
+	var tmax: float = 1.0
+	for axis in 2:
+		var lo: float = c[axis] - he[axis]
+		var hi: float = c[axis] + he[axis]
+		if absf(d[axis]) < 0.000001:
+			if a[axis] < lo or a[axis] > hi:
+				return false
+		else:
+			var t1: float = (lo - a[axis]) / d[axis]
+			var t2: float = (hi - a[axis]) / d[axis]
+			if t1 > t2:
+				var tmp: float = t1
+				t1 = t2
+				t2 = tmp
+			tmin = maxf(tmin, t1)
+			tmax = minf(tmax, t2)
+			if tmin > tmax:
+				return false
+	return true
 
 
 func _dbg_burst(reason: String) -> void:

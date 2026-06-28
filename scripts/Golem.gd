@@ -95,6 +95,11 @@ func _engaged() -> void:
 
 # No player: drift back and forth around the spawn point, playing the walk cycle.
 func _patrol() -> void:
+	# Leaving range cancels any in-progress attack. Switching to the walk cycle replaces
+	# the "attack" clip, so its animation_finished would never fire to clear _attacking —
+	# left stuck true, the golem would never shoot again on re-entry. Clear it here.
+	_attacking = false
+	_fired = false
 	if _visual.animation != &"walk":
 		_visual.play(&"walk")
 	# Face the way he's walking: default art faces left, flip when heading right.
