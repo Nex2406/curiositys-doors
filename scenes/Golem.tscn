@@ -1,0 +1,81 @@
+[gd_scene load_steps=27 format=3]
+
+[ext_resource type="Script" path="res://scripts/Golem.gd" id="1_golem"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1idle1.png" id="2_i1"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1idle2.png" id="3_i2"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1idle3.png" id="4_i3"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1idle4.png" id="5_i4"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1idle5.png" id="6_i5"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1idle6.png" id="7_i6"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1idle7.png" id="8_i7"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1attack1.png" id="9_a1"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1attack2.png" id="10_a2"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1attack3.png" id="11_a3"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1attack4.png" id="12_a4"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1attack5.png" id="13_a5"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1attack6.png" id="14_a6"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1attack7.png" id="15_a7"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1attack8.png" id="16_a8"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1walk1.png" id="17_w1"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1walk2.png" id="18_w2"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1walk3.png" id="19_w3"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1walk4.png" id="20_w4"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1walk5.png" id="21_w5"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1walk6.png" id="22_w6"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1walk7.png" id="23_w7"]
+[ext_resource type="Texture2D" path="res://assets/enemies/golem/body/golemr1walk8.png" id="24_w8"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_golem"]
+animations = [{
+"frames": [{"duration": 1.0, "texture": ExtResource("9_a1")},
+{"duration": 1.0, "texture": ExtResource("10_a2")},
+{"duration": 1.0, "texture": ExtResource("11_a3")},
+{"duration": 1.0, "texture": ExtResource("12_a4")},
+{"duration": 1.0, "texture": ExtResource("13_a5")},
+{"duration": 1.0, "texture": ExtResource("14_a6")},
+{"duration": 1.0, "texture": ExtResource("15_a7")},
+{"duration": 1.0, "texture": ExtResource("16_a8")}],
+"loop": false,
+"name": &"attack",
+"speed": 12.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("2_i1")},
+{"duration": 1.0, "texture": ExtResource("3_i2")},
+{"duration": 1.0, "texture": ExtResource("4_i3")},
+{"duration": 1.0, "texture": ExtResource("5_i4")},
+{"duration": 1.0, "texture": ExtResource("6_i5")},
+{"duration": 1.0, "texture": ExtResource("7_i6")},
+{"duration": 1.0, "texture": ExtResource("8_i7")}],
+"loop": true,
+"name": &"idle",
+"speed": 7.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("17_w1")},
+{"duration": 1.0, "texture": ExtResource("18_w2")},
+{"duration": 1.0, "texture": ExtResource("19_w3")},
+{"duration": 1.0, "texture": ExtResource("20_w4")},
+{"duration": 1.0, "texture": ExtResource("21_w5")},
+{"duration": 1.0, "texture": ExtResource("22_w6")},
+{"duration": 1.0, "texture": ExtResource("23_w7")},
+{"duration": 1.0, "texture": ExtResource("24_w8")}],
+"loop": true,
+"name": &"walk",
+"speed": 6.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(70, 210)
+
+[node name="Golem" type="CharacterBody2D" groups=["enemies"]]
+script = ExtResource("1_golem")
+
+[node name="Visual" type="AnimatedSprite2D" parent="."]
+sprite_frames = SubResource("SpriteFrames_golem")
+animation = &"idle"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 19)
+shape = SubResource("RectangleShape2D_body")
+
+[node name="LaunchPoint" type="Marker2D" parent="."]
+position = Vector2(0, -110)
