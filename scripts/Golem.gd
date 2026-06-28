@@ -15,6 +15,7 @@ class_name Golem
 @export var detect_range: float = 480.0     # px; Curiosity within this → stop & attack
 @export var shoot_interval: float = 1.4     # seconds between shots while engaged
 @export var alert_delay: float = 0.15       # tiny telegraph between spotting her and the first throw
+@export var debug_balls: bool = false       # verbose trajectory logging on each ball it fires
 
 # 0-indexed frame of the "attack" animation where the ball erupts (golemr1attack5).
 const ATTACK_LAUNCH_FRAME: int = 4
@@ -126,12 +127,16 @@ func _on_frame_changed() -> void:
 func _fire_ball() -> void:
 	if ball_scene == null or _player == null or not is_instance_valid(_player):
 		return
-	var b: Area2D = ball_scene.instantiate()
-	get_tree().current_scene.add_child(b)
 	# Pass the floor level (golem's feet) so the ball arcs down from the head and
 	# then travels along the floor toward Curiosity.
 	var floor_y: float = global_position.y + _feet_offset()
+	var b: Area2D = ball_scene.instantiate()
+	# Capture the target BEFORE adding to the tree: add_child() runs the ball's
+	# _ready() (which solves its arc) synchronously, so setup() must happen first
+	# or the solve falls back to a blind forward lob instead of aiming at Curiosity.
 	b.setup(_launch_point.global_position, _player, floor_y)
+	b._dbg = debug_balls
+	get_tree().current_scene.add_child(b)
 
 
 # Global-space y of the golem's feet (bottom of the body collider) ≈ the floor.

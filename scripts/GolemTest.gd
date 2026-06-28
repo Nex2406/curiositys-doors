@@ -15,6 +15,7 @@ var _hero: Node2D = null
 var _golem: Node2D = null
 var _cam: Camera2D = null
 var _state_label: Label = null
+var _hp_label: Label = null
 
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(Color(0.06, 0.07, 0.10))
@@ -46,6 +47,15 @@ func _ready() -> void:
 	if hcam != null:
 		hcam.enabled = false
 
+	# Health read-out — updates each time a ball damages her, so the hit registers visibly.
+	_hp_label = Label.new()
+	_hp_label.position = Vector2(-560, FLOOR_Y - 430)
+	_hp_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
+	add_child(_hp_label)
+	_refresh_hp(hero.health, hero.max_health)
+	hero.health_changed.connect(_refresh_hp)
+	hero.died.connect(func() -> void: _hp_label.text = "Curiosity HP: 0 — DOWN")
+
 	# Golem on the right, wired with the ball projectile.
 	var golem: Node2D = GOLEM.instantiate()
 	golem.ball_scene = BALL
@@ -70,6 +80,10 @@ func _ready() -> void:
 	label.position = Vector2(-560, FLOOR_Y - 460)
 	label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
 	add_child(label)
+
+
+func _refresh_hp(h: int, m: int) -> void:
+	_hp_label.text = "Curiosity HP: %d / %d" % [h, m]
 
 
 func _process(_delta: float) -> void:

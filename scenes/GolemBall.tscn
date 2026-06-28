@@ -50,7 +50,7 @@ animations = [{
 }]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_gb"]
-radius = 18.0
+radius = 30.0
 
 [node name="GolemBall" type="Area2D"]
 script = ExtResource("1_gb")

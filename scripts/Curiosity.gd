@@ -21,6 +21,15 @@ enum State { IDLE, WALK, RUN, JUMP_START, AIR, LAND, ATTACK, DASH, HURT }
 @export var dash_time: float = 0.22
 @export var dash_cooldown: float = 0.45
 
+# Health. Damage sources call take_damage(); a short invulnerability window after a
+# hit prevents a single lingering hazard from draining several hits in a few frames,
+# and Curiosity blinks while it's active.
+@export var max_health: int = 100
+@export var invuln_time: float = 0.9
+
+signal health_changed(health: int, max_health: int)
+signal died()
+
 const MOVE_EPSILON: float = 8.0
 
 @onready var visual: AnimatedSprite2D = $Visual
@@ -61,6 +70,10 @@ var _dash_cooldown_timer: float = 0.0
 var _attack_combo: int = 0       # 0 = first swing (attack1), 1 = combo (attack2)
 var _attack_queued: bool = false # pressed attack again mid-swing → chain to attack2
 
+# Health runtime state.
+var health: int
+var _invuln_timer: float = 0.0
+
 
 func _ready() -> void:
 	_lantern_offset_x = abs(lantern.position.x)
@@ -73,6 +86,8 @@ func _ready() -> void:
 	_lantern_base_y = lantern.position.y
 	visual.animation_finished.connect(_on_animation_finished)
 	visual.play(&"idle")
+	health = max_health
+	health_changed.emit(health, max_health)
 
 
 func _process(delta: float) -> void:
@@ -84,6 +99,13 @@ func _process(delta: float) -> void:
 		sin(_flame_time * TAU / LIGHT_FLICKER_FAST) * LIGHT_FLICKER_FAST_AMP \
 		+ sin(_flame_time * TAU / LIGHT_FLICKER_SLOW) * LIGHT_FLICKER_SLOW_AMP
 	lantern.energy = _lantern_base_energy * (1.0 + energy_flicker)
+
+	# Blink while invulnerable after a hit, then snap back to fully opaque.
+	if _invuln_timer > 0.0:
+		_invuln_timer -= delta
+		visual.modulate.a = 0.35 if int(_invuln_timer * 20.0) % 2 == 0 else 1.0
+		if _invuln_timer <= 0.0:
+			visual.modulate.a = 1.0
 
 	# Lift the orb up with the body while airborne so it stays in the lantern.
 	var airborne: bool = _state == State.AIR or _state == State.JUMP_START
@@ -188,6 +210,19 @@ func _process_attack(delta: float) -> void:
 	if Input.is_action_just_pressed("attack"):
 		_attack_queued = true
 	move_and_slide()
+
+
+# Public: take a hit from a hazard/enemy. Ignored during the post-hit invulnerability
+# window. Subtracts health, flinches, and announces the change; emits `died` at zero.
+func take_damage(amount: int, knockback: Vector2 = Vector2.ZERO) -> void:
+	if _invuln_timer > 0.0 or health <= 0:
+		return
+	health = max(0, health - amount)
+	health_changed.emit(health, max_health)
+	_invuln_timer = invuln_time
+	hurt(knockback)
+	if health <= 0:
+		died.emit()
 
 
 # Public: play the hurt flinch (called by the realm when a life is lost). An
