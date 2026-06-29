@@ -18,10 +18,10 @@ const FRAMES: Array[Texture2D] = [
 ]
 
 @export var max_lives: int = 3
-## Scale applied to the 426x294 source art. ~0.18 → ~76px-wide eyes.
-@export var eye_scale: float = 0.18
+## Scale applied to the 426x294 source art. ~0.15 → ~64px-wide eyes.
+@export var eye_scale: float = 0.15
 ## Distance between eye centers (keep > eye width so they don't overlap).
-@export var eye_spacing: float = 92.0
+@export var eye_spacing: float = 78.0
 ## Top-left position of the first eye's center.
 @export var corner_margin: Vector2 = Vector2(58, 54)
 ## Time for one eye to play through the close sequence.

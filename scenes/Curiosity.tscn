@@ -1,178 +1,10 @@
-[gd_scene load_steps=65 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/Curiosity.gd" id="1_curiosity"]
+[ext_resource type="SpriteFrames" path="res://assets/player/curiosity/curiosity_frames.tres" id="2_frames"]
 [ext_resource type="Texture2D" path="res://assets/effects/lantern_flame.png" id="55_lantern_flame"]
 [ext_resource type="Texture2D" path="res://assets/effects/lantern_halo.png" id="56_lantern_halo"]
 [ext_resource type="Texture2D" path="res://assets/effects/firefly.png" id="57_firefly"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/idle_01.png" id="2_idle_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/idle_02.png" id="3_idle_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/idle_03.png" id="4_idle_03"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/idle_04.png" id="5_idle_04"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/walk_01.png" id="6_walk_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/walk_02.png" id="7_walk_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/walk_03.png" id="8_walk_03"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/walk_04.png" id="9_walk_04"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/walk_05.png" id="10_walk_05"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/walk_06.png" id="11_walk_06"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_01.png" id="12_run_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_02.png" id="13_run_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_03.png" id="14_run_03"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_04.png" id="15_run_04"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/run_05.png" id="16_run_05"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/jump_start_01.png" id="17_jump_start_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/jump_start_02.png" id="18_jump_start_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/jump_start_03.png" id="19_jump_start_03"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/air_01.png" id="20_air_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/air_02.png" id="21_air_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/land_01.png" id="22_land_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/land_02.png" id="23_land_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/attack1_01.png" id="24_attack1_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/attack1_02.png" id="25_attack1_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/attack1_03.png" id="26_attack1_03"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/attack1_04.png" id="27_attack1_04"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/attack2_01.png" id="28_attack2_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/attack2_02.png" id="29_attack2_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/attack2_03.png" id="30_attack2_03"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/attack2_04.png" id="31_attack2_04"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/charged_01.png" id="32_charged_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/charged_02.png" id="33_charged_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/charged_03.png" id="34_charged_03"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/charged_04.png" id="35_charged_04"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/charged_05.png" id="36_charged_05"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/dash_01.png" id="37_dash_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/dash_02.png" id="38_dash_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/dash_03.png" id="39_dash_03"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/dash_04.png" id="40_dash_04"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/hurt_01.png" id="41_hurt_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/hurt_02.png" id="42_hurt_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/approach_01.png" id="43_approach_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/approach_02.png" id="44_approach_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/lever_pull_01.png" id="45_lever_pull_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/lever_pull_02.png" id="46_lever_pull_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/lever_pull_03.png" id="47_lever_pull_03"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/lever_pull_04.png" id="48_lever_pull_04"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/lever_pull_05.png" id="49_lever_pull_05"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/lever_hold_01.png" id="50_lever_hold_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/lever_hold_02.png" id="51_lever_hold_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/celebrate_01.png" id="52_celebrate_01"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/celebrate_02.png" id="53_celebrate_02"]
-[ext_resource type="Texture2D" path="res://assets/characters/hero/frames/celebrate_03.png" id="54_celebrate_03"]
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_curiosity"]
-animations = [{
-"frames": [{"duration": 1.0, "texture": ExtResource("2_idle_01")},
-{"duration": 1.0, "texture": ExtResource("3_idle_02")},
-{"duration": 1.0, "texture": ExtResource("4_idle_03")},
-{"duration": 1.0, "texture": ExtResource("5_idle_04")}],
-"loop": true,
-"name": &"idle",
-"speed": 3.0
-}, {
-"frames": [{"duration": 1.0, "texture": ExtResource("6_walk_01")},
-{"duration": 1.0, "texture": ExtResource("7_walk_02")},
-{"duration": 1.0, "texture": ExtResource("8_walk_03")},
-{"duration": 1.0, "texture": ExtResource("9_walk_04")},
-{"duration": 1.0, "texture": ExtResource("10_walk_05")},
-{"duration": 1.0, "texture": ExtResource("11_walk_06")}],
-"loop": true,
-"name": &"walk",
-"speed": 10.0
-}, {
-"frames": [{"duration": 1.0, "texture": ExtResource("12_run_01")},
-{"duration": 1.0, "texture": ExtResource("13_run_02")},
-{"duration": 1.0, "texture": ExtResource("14_run_03")},
-{"duration": 1.0, "texture": ExtResource("15_run_04")},
-{"duration": 1.0, "texture": ExtResource("16_run_05")}],
-"loop": true,
-"name": &"run",
-"speed": 14.0
-}, {
-"frames": [{"duration": 1.0, "texture": ExtResource("17_jump_start_01")},
-{"duration": 1.0, "texture": ExtResource("18_jump_start_02")},
-{"duration": 1.0, "texture": ExtResource("19_jump_start_03")}],
-"loop": false,
-"name": &"jump_start",
-"speed": 14.0
-}, {
-"frames": [{"duration": 1.0, "texture": ExtResource("20_air_01")},
-{"duration": 1.0, "texture": ExtResource("21_air_02")}],
-"loop": true,
-"name": &"air",
-"speed": 6.0
-}, {
-"frames": [{"duration": 1.0, "texture": ExtResource("22_land_01")},
-{"duration": 1.0, "texture": ExtResource("23_land_02")}],
-"loop": false,
-"name": &"land",
-"speed": 12.0
-}, {
-"frames": [{"duration": 1.0, "texture": ExtResource("24_attack1_01")},
-{"duration": 1.0, "texture": ExtResource("25_attack1_02")},
-{"duration": 1.0, "texture": ExtResource("26_attack1_03")},
-{"duration": 1.0, "texture": ExtResource("27_attack1_04")}],
-"loop": false,
-"name": &"attack1",
-"speed": 12.0
-}, {
-"frames": [{"duration": 1.0, "texture": ExtResource("28_attack2_01")},
-{"duration": 1.0, "texture": ExtResource("29_attack2_02")},
-{"duration": 1.0, "texture": ExtResource("30_attack2_03")},
-{"duration": 1.0, "texture": ExtResource("31_attack2_04")}],
-"loop": false,
-"name": &"attack2",
-"speed": 12.0
-}, {
-"frames": [{"duration": 1.0, "texture": ExtResource("32_charged_01")},
-{"duration": 1.0, "texture": ExtResource("33_charged_02")},
-{"duration": 1.0, "texture": ExtResource("34_charged_03")},
-{"duration": 1.0, "texture": ExtResource("35_charged_04")},
-{"duration": 1.0, "texture": ExtResource("36_charged_05")}],
-"loop": false,
-"name": &"charged",
-"speed": 8.0
-}, {
-"frames": [{"duration": 1.0, "texture": ExtResource("37_dash_01")},
-{"duration": 1.0, "texture": ExtResource("38_dash_02")},
-{"duration": 1.0, "texture": ExtResource("39_dash_03")},
-{"duration": 1.0, "texture": ExtResource("40_dash_04")}],
-"loop": false,
-"name": &"dash",
-"speed": 16.0
-}, {
-"frames": [{"duration": 1.0, "texture": ExtResource("41_hurt_01")},
-{"duration": 1.0, "texture": ExtResource("42_hurt_02")}],
-"loop": false,
-"name": &"hurt",
-"speed": 8.0
-}, {
-"frames": [{"duration": 1.0, "texture": ExtResource("43_approach_01")},
-{"duration": 1.0, "texture": ExtResource("44_approach_02")}],
-"loop": false,
-"name": &"approach",
-"speed": 6.0
-}, {
-"frames": [{"duration": 1.0, "texture": ExtResource("45_lever_pull_01")},
-{"duration": 1.0, "texture": ExtResource("46_lever_pull_02")},
-{"duration": 1.0, "texture": ExtResource("47_lever_pull_03")},
-{"duration": 1.0, "texture": ExtResource("48_lever_pull_04")},
-{"duration": 1.0, "texture": ExtResource("49_lever_pull_05")}],
-"loop": false,
-"name": &"lever_pull",
-"speed": 10.0
-}, {
-"frames": [{"duration": 1.0, "texture": ExtResource("50_lever_hold_01")},
-{"duration": 1.0, "texture": ExtResource("51_lever_hold_02")}],
-"loop": true,
-"name": &"lever_hold",
-"speed": 4.0
-}, {
-"frames": [{"duration": 1.0, "texture": ExtResource("52_celebrate_01")},
-{"duration": 1.0, "texture": ExtResource("53_celebrate_02")},
-{"duration": 1.0, "texture": ExtResource("54_celebrate_03")}],
-"loop": false,
-"name": &"celebrate",
-"speed": 8.0
-}]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
 size = Vector2(88, 432)
@@ -210,25 +42,26 @@ color_ramp = SubResource("GradientTexture1D_halo_alpha")
 script = ExtResource("1_curiosity")
 
 [node name="LanternFlame" type="Sprite2D" parent="."]
-position = Vector2(-160, 115)
-scale = Vector2(1.5, 1.5)
+position = Vector2(-138, 136)
+scale = Vector2(1.25, 1.25)
 texture = ExtResource("55_lantern_flame")
 
 [node name="Visual" type="AnimatedSprite2D" parent="."]
-scale = Vector2(3.2, 3.2)
-sprite_frames = SubResource("SpriteFrames_curiosity")
+scale = Vector2(1.62, 1.62)
+sprite_frames = ExtResource("2_frames")
 animation = &"idle"
 autoplay = "idle"
+centered = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_body")
 
 [node name="Lantern" type="PointLight2D" parent="."]
-position = Vector2(-160, 115)
-color = Color(1, 0.85, 0.4, 1)
-energy = 4.4
+position = Vector2(-138, 136)
+color = Color(1, 0.82, 0.42, 1)
+energy = 3.6
 texture = ExtResource("56_lantern_halo")
-texture_scale = 10.0
+texture_scale = 6.3
 
 [node name="Camera" type="Camera2D" parent="."]
 position = Vector2(0, -160)

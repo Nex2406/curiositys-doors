@@ -33,6 +33,8 @@ const CURIOSITY_SCALE: float = 0.17
 # Eyes-as-lives HUD: 3 eyes, one closes per death (constant rule every realm).
 const LIVES_HUD := preload("res://scenes/UI/LivesHUD.tscn")
 const STARTING_LIVES: int = 3
+# Top-right HUD: Curiosity's health bar + jade counter.
+const PLAYER_HUD := preload("res://scenes/UI/PlayerHUD.tscn")
 
 var _cam: Camera2D
 var _cam_pos: Vector2 = Vector2.ZERO   # our own smoothed camera position (parent-independent)
@@ -40,6 +42,7 @@ var _cam_target_y: float = 0.0         # vertical follow target; only updates wh
 var _at_exit: bool = false
 
 var _lives: LivesHUD
+var _hud: PlayerHUD
 var _spawn_pos: Vector2
 var _kill_y: float = INF      # fall below this (a pit) and you die
 var _dying: bool = false      # guards the death/respawn sequence
@@ -47,7 +50,7 @@ var _dying: bool = false      # guards the death/respawn sequence
 
 # Camera zoom (the camera inherits Curiosity's scale, so this counter-zooms to
 # frame the cave). Lower = more world on screen.
-const CAMERA_ZOOM: float = 2.0
+const CAMERA_ZOOM: float = 2.2
 
 # Camera follow feel (we drive the camera in _drive_camera).
 const CAM_LERP: float = 4.5      # follow responsiveness (higher = tighter / snappier)
@@ -75,6 +78,7 @@ func _ready() -> void:
 	_wire_exit_door()
 	_setup_camera_limits()
 	_setup_lives()
+	_setup_hud()
 
 
 # Horizontal parallax speed per band, BG1 (farthest) → BG4 (nearest). Wider spread
@@ -506,6 +510,8 @@ func _place_jade_on_piece(p: Dictionary, tsize: Vector2, body: AnimatableBody2D,
 
 func _on_jade_collected() -> void:
 	_jade_got += 1
+	if _hud != null:
+		_hud.set_jade(_jade_got, _jade_total)
 	print("jade %d/%d" % [_jade_got, _jade_total])
 
 
@@ -817,6 +823,19 @@ func _setup_lives() -> void:
 	_lives.reset(STARTING_LIVES)
 
 
+# Health bar + jade counter (top-right). Health depletion (golem hits, etc.) routes
+# through the same death beat as a pit fall — one life lost, then a full refill.
+func _setup_hud() -> void:
+	_hud = PLAYER_HUD.instantiate() as PlayerHUD
+	add_child(_hud)
+	if _curiosity != null:
+		_curiosity.health_changed.connect(_hud.set_health)
+		_hud.set_health(_curiosity.health, _curiosity.max_health)
+		if not _curiosity.died.is_connected(_die):
+			_curiosity.died.connect(_die)
+	_hud.set_jade(_jade_got, _jade_total)
+
+
 # Run the death beat: flinch, close an eye, respawn at the start. When the last
 # eye closes, refill to full (soft reset) so the realm is always playable.
 func _die() -> void:
@@ -829,6 +848,7 @@ func _die() -> void:
 	if remaining <= 0:
 		_lives.reset(STARTING_LIVES)
 	_respawn()
+	_curiosity.refill_health()   # each fresh life starts at full health
 	_dying = false
 
 
