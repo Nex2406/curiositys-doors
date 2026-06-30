@@ -13,9 +13,21 @@ class_name Golem
 @export var patrol_speed: float = 90.0      # px/s shove during the push frames (see STRIDE_FRAMES)
 @export var patrol_range: float = 170.0     # px to each side of the spawn point
 @export var detect_range: float = 480.0     # px; Curiosity within this → stop & attack
-@export var shoot_interval: float = 1.4     # seconds between shots while engaged
+@export var shoot_interval: float = 2.8     # seconds between shots while engaged
 @export var alert_delay: float = 0.15       # tiny telegraph between spotting her and the first throw
 @export var debug_balls: bool = false       # verbose trajectory logging on each ball it fires
+
+# Health. Curiosity's swing calls take_damage(); ~2-3 blows destroy him. Each hit kicks
+# off a brief visibility flicker (blinks off then back) + a little knockback stagger; at
+# zero health he flickers out and vanishes for good — no corpse, no fade.
+@export var max_health: int = 100
+@export var hit_stagger_time: float = 0.16   # seconds his logic pauses + knockback bleeds after a hit
+
+# Hit flicker: rapidly toggle the sprite off/on for this long after each blow so the hit
+# reads as a jolt. Death uses the same flicker, briefly, then he's freed.
+const FLICKER_TIME: float = 0.16
+const FLICKER_INTERVAL: float = 0.03   # how fast he blinks off/on while flickering
+const DEATH_FLICKER_TIME: float = 0.22  # flicker this long on death, then disappear
 
 # 0-indexed frame of the "attack" animation where the ball erupts (golemr1attack5).
 const ATTACK_LAUNCH_FRAME: int = 4
@@ -24,6 +36,9 @@ const ATTACK_LAUNCH_FRAME: int = 4
 # translates on these — between them he's gathering up for the next step and holds
 # still, so the movement reads as a heavy lurching trudge instead of a smooth glide.
 const STRIDE_FRAMES: Array[int] = [1, 2, 3, 4]
+
+signal health_changed(health: int, max_health: int)
+signal died()
 
 @onready var _visual: AnimatedSprite2D = $Visual
 @onready var _launch_point: Marker2D = $LaunchPoint
@@ -36,6 +51,13 @@ var _shoot_timer: float = 0.0
 var _origin_x: float = 0.0
 var _patrol_dir: float = 1.0
 
+# Health / hit-reaction runtime state.
+var health: int = 0
+var _dead: bool = false
+var _flicker_timer: float = 0.0    # >0 → blinking off/on after a hit
+var _stagger_timer: float = 0.0    # >0 → logic paused, knockback bleeding off
+var _death_timer: float = 0.0      # >0 → final flicker before he's freed
+
 
 func _ready() -> void:
 	_origin_x = global_position.x
@@ -43,13 +65,73 @@ func _ready() -> void:
 	_visual.animation_finished.connect(_on_anim_finished)
 	_visual.frame_changed.connect(_on_frame_changed)
 	_visual.play(&"idle")
+	health = max_health
+	health_changed.emit(health, max_health)
+
+
+# Public: Curiosity's swing (or any hazard) calls this. Subtracts health, flickers, staggers
+# back, and destroys him at zero. Ignored once he's already dying.
+func take_damage(amount: int, knockback: Vector2 = Vector2.ZERO) -> void:
+	if _dead:
+		return
+	health = max(0, health - amount)
+	health_changed.emit(health, max_health)
+	_flicker_timer = FLICKER_TIME
+	_stagger_timer = hit_stagger_time
+	velocity.x = knockback.x
+	if knockback.y != 0.0:
+		velocity.y = knockback.y
+	if health <= 0:
+		_die()
+
+
+# Stop fighting, switch off his collider so Curiosity walks through, and flicker out. The
+# node frees itself once _death_timer elapses (see _physics_process) — he just disappears.
+func _die() -> void:
+	if _dead:
+		return
+	_dead = true
+	_attacking = false
+	_engaged_now = false
+	velocity = Vector2.ZERO
+	_death_timer = DEATH_FLICKER_TIME
+	($CollisionShape2D as CollisionShape2D).set_deferred("disabled", true)
+	died.emit()
+
+
+# Blink the sprite off/on while a flicker (hit or death) is running; restore it when done.
+func _tick_flicker(delta: float) -> void:
+	if _dead:
+		_death_timer -= delta
+		_visual.visible = int(_death_timer / FLICKER_INTERVAL) % 2 == 0
+		if _death_timer <= 0.0:
+			queue_free()
+		return
+	if _flicker_timer > 0.0:
+		_flicker_timer -= delta
+		_visual.visible = int(_flicker_timer / FLICKER_INTERVAL) % 2 == 0
+		if _flicker_timer <= 0.0:
+			_visual.visible = true
 
 
 func _physics_process(delta: float) -> void:
+	if _dead:
+		_tick_flicker(delta)
+		return
+
 	if not is_on_floor():
 		velocity.y += gravity * delta
 	else:
 		velocity.y = 0.0
+
+	_tick_flicker(delta)
+
+	# Just took a blow: hold logic, let the knockback slide bleed off, then resume.
+	if _stagger_timer > 0.0:
+		_stagger_timer -= delta
+		velocity.x = move_toward(velocity.x, 0.0, 900.0 * delta)
+		move_and_slide()
+		return
 
 	_shoot_timer += delta
 
@@ -144,11 +226,12 @@ func _fire_ball() -> void:
 	get_tree().current_scene.add_child(b)
 
 
-# Global-space y of the golem's feet (bottom of the body collider) ≈ the floor.
+# Global-space y offset of the golem's feet (bottom of the body collider) ≈ the floor.
+# Scaled by global_scale so it stays correct when the golem node is sized down.
 func _feet_offset() -> float:
 	var cs: CollisionShape2D = $CollisionShape2D
 	var rect := cs.shape as RectangleShape2D
-	return cs.position.y + rect.size.y * 0.5
+	return (cs.position.y + rect.size.y * 0.5) * global_scale.y
 
 
 func _on_anim_finished() -> void:
@@ -159,6 +242,8 @@ func _on_anim_finished() -> void:
 
 # For the test HUD: which state the golem reads as right now.
 func debug_state() -> String:
+	if _dead:
+		return "DESTROYED"
 	if _attacking:
 		return "ATTACK"
 	if _engaged_now:
