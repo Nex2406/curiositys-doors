@@ -11,11 +11,15 @@ const BALL := preload("res://scenes/GolemBall.tscn")
 
 const FLOOR_Y := 320.0
 
+const GOLEM_SPAWN := Vector2(420, FLOOR_Y - 130)
+const GOLEM_RESPAWN_DELAY := 2.0
+
 var _hero: Node2D = null
 var _golem: Node2D = null
 var _cam: Camera2D = null
 var _state_label: Label = null
 var _hp_label: Label = null
+var _golem_hp_label: Label = null
 
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(Color(0.06, 0.07, 0.10))
@@ -42,6 +46,9 @@ func _ready() -> void:
 	hero.scale = Vector2(0.28, 0.28)
 	hero.position = Vector2(-360, FLOOR_Y - 120)
 	add_child(hero)
+	# Always face right toward the golem on spawn (and so every respawn looks identical).
+	hero._facing_right = true
+	hero._apply_facing()
 	_hero = hero
 	var hcam: Camera2D = hero.get_node_or_null("Camera")
 	if hcam != null:
@@ -54,19 +61,24 @@ func _ready() -> void:
 	add_child(_hp_label)
 	_refresh_hp(hero.health, hero.max_health)
 	hero.health_changed.connect(_refresh_hp)
-	hero.died.connect(func() -> void: _hp_label.text = "Curiosity HP: 0 — DOWN")
-
-	# Golem on the right, wired with the ball projectile.
-	var golem: Node2D = GOLEM.instantiate()
-	golem.ball_scene = BALL
-	golem.position = Vector2(420, FLOOR_Y - 130)
-	add_child(golem)
-	_golem = golem
+	# Death: the eye closes and the level restarts from the top.
+	hero.died.connect(func() -> void:
+		_hp_label.text = "Curiosity HP: 0 — the eye closes…"
+		Transition.death_restart())
 
 	# Floating state read-out above the golem so the patrol→alert→attack flow is legible.
 	_state_label = Label.new()
 	_state_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
 	add_child(_state_label)
+
+	# Golem health read-out — updates as Curiosity's swings land, so the kill registers.
+	_golem_hp_label = Label.new()
+	_golem_hp_label.position = Vector2(-560, FLOOR_Y - 400)
+	_golem_hp_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+	add_child(_golem_hp_label)
+
+	# Golem on the right, wired with the ball projectile.
+	_spawn_golem()
 
 	var cam := Camera2D.new()
 	cam.position = Vector2(40, FLOOR_Y - 140)
@@ -76,10 +88,31 @@ func _ready() -> void:
 	_cam = cam
 
 	var label := Label.new()
-	label.text = "Golem test — walk Curiosity right (A/D or ←/→) into range; golem attacks & fires."
+	label.text = "Golem test — A/D or ←/→ to move, J/Z to swing, K/X to dash. Close in and hit the golem (2-3 swings destroys it); it respawns to fight again."
 	label.position = Vector2(-560, FLOOR_Y - 460)
 	label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
 	add_child(label)
+
+
+# Spawn (or respawn) the golem at its post, wired to the ball + the HP read-out.
+func _spawn_golem() -> void:
+	var golem: Node2D = GOLEM.instantiate()
+	golem.ball_scene = BALL
+	golem.position = GOLEM_SPAWN
+	add_child(golem)
+	_golem = golem
+	_refresh_golem_hp(golem.max_health, golem.max_health)
+	golem.health_changed.connect(_refresh_golem_hp)
+	golem.died.connect(_on_golem_died)
+
+
+func _on_golem_died() -> void:
+	_golem_hp_label.text = "Golem HP: 0 — DESTROYED (respawning…)"
+	get_tree().create_timer(GOLEM_RESPAWN_DELAY).timeout.connect(_spawn_golem)
+
+
+func _refresh_golem_hp(h: int, m: int) -> void:
+	_golem_hp_label.text = "Golem HP: %d / %d" % [h, m]
 
 
 func _refresh_hp(h: int, m: int) -> void:

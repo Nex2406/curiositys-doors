@@ -16,8 +16,8 @@ enum State { IDLE, WALK, RUN, JUMP_START, AIR, LAND, ATTACK, DASH, HURT }
 
 # Combat / dash feel. A slash locks Curiosity in place for the swing; a dash is
 # a quick weighty burst in the facing direction (also the platforming gap-closer).
-@export var dash_speed: float = 460.0
-@export var dash_time: float = 0.32
+@export var dash_speed: float = 1110.0
+@export var dash_time: float = 0.40
 @export var dash_cooldown: float = 0.45
 
 # Health. Damage sources call take_damage(); a short invulnerability window after a
@@ -31,6 +31,14 @@ enum State { IDLE, WALK, RUN, JUMP_START, AIR, LAND, ATTACK, DASH, HURT }
 # being lethal — the dash is skipped if it would drop health to/below zero.
 @export var dash_cost: int = 5
 @export var dash_regen_time: float = 2.5
+
+# Melee. The swing opens an Area2D in front of Curiosity; any enemy (group "enemies") it
+# overlaps during the swing takes attack_damage once and is knocked back. The box is built
+# in code (see _build_attack_hitbox) so it scales with whatever scale the scene gives her.
+@export var attack_damage: int = 40
+@export var attack_knockback: Vector2 = Vector2(220.0, -120.0)
+const ATTACK_HITBOX_SIZE: Vector2 = Vector2(460.0, 760.0)  # local px (pre-scale); reaches forward + tall enough to cover a golem
+const ATTACK_HITBOX_OFFSET: Vector2 = Vector2(240.0, -120.0)  # forward (sign flips with facing) + up onto the body
 
 signal health_changed(health: int, max_health: int)
 signal died()
@@ -99,6 +107,8 @@ var _dash_timer: float = 0.0
 var _dash_cooldown_timer: float = 0.0
 var _attack_combo: int = 0       # 0 = first swing (attack1), 1 = combo (attack2)
 var _attack_queued: bool = false # pressed attack again mid-swing → chain to attack2
+var _attack_hitbox: Area2D = null
+var _hit_this_swing: Array = []  # enemies already damaged by the current swing (one hit each)
 
 # Health runtime state.
 var health: int
@@ -120,6 +130,23 @@ func _ready() -> void:
 	visual.play(&"idle")
 	health = max_health
 	health_changed.emit(health, max_health)
+	_build_attack_hitbox()
+
+
+# A forward-facing damage box, off by default. Layer 0 (nothing scans it) / mask 1 so it
+# only senses enemy bodies; we poll its overlaps during the swing rather than waiting on a
+# signal, so an enemy already inside it when the swing opens still gets hit.
+func _build_attack_hitbox() -> void:
+	_attack_hitbox = Area2D.new()
+	_attack_hitbox.monitoring = false
+	_attack_hitbox.collision_layer = 0
+	_attack_hitbox.collision_mask = 1
+	var cs := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = ATTACK_HITBOX_SIZE
+	cs.shape = rect
+	_attack_hitbox.add_child(cs)
+	add_child(_attack_hitbox)
 
 
 func _process(delta: float) -> void:
@@ -306,6 +333,11 @@ func _process_dash(delta: float) -> void:
 func _start_attack() -> void:
 	_attack_combo = 0
 	_attack_queued = false
+	_hit_this_swing.clear()
+	# Open the damage box on the side she's facing (source art faces right).
+	var dir: float = 1.0 if _facing_right else -1.0
+	_attack_hitbox.position = Vector2(ATTACK_HITBOX_OFFSET.x * dir, ATTACK_HITBOX_OFFSET.y)
+	_attack_hitbox.monitoring = true
 	_set_state(State.ATTACK)
 
 
@@ -317,7 +349,24 @@ func _process_attack(delta: float) -> void:
 	velocity.x = move_toward(velocity.x, 0.0, (run_speed / accel_time) * delta)
 	if Input.is_action_just_pressed("attack"):
 		_attack_queued = true
+	_apply_attack_hits()
 	move_and_slide()
+
+
+# Damage every enemy currently inside the swing box, once per swing. Polled each physics
+# frame the box is live so a target standing in range when the swing opens still gets hit.
+func _apply_attack_hits() -> void:
+	if _attack_hitbox == null or not _attack_hitbox.monitoring:
+		return
+	for body in _attack_hitbox.get_overlapping_bodies():
+		if body in _hit_this_swing:
+			continue
+		if body.is_in_group("enemies") and body.has_method("take_damage"):
+			_hit_this_swing.append(body)
+			var dir: float = signf(body.global_position.x - global_position.x)
+			if dir == 0.0:
+				dir = 1.0 if _facing_right else -1.0
+			body.take_damage(attack_damage, Vector2(dir * attack_knockback.x, attack_knockback.y))
 
 
 # Public: take a hit from a hazard/enemy. Ignored during the post-hit invulnerability
@@ -372,6 +421,9 @@ func _update_locomotion(direction: float, sprint: bool) -> void:
 func _set_state(new_state: State) -> void:
 	if _state == new_state:
 		return
+	# Leaving the swing (finished or interrupted by a hit) closes the damage box.
+	if new_state != State.ATTACK and _attack_hitbox != null:
+		_attack_hitbox.monitoring = false
 	_state = new_state
 	_apply_visual_scale(new_state)
 	match new_state:

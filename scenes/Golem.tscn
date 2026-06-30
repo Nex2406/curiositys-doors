@@ -64,7 +64,7 @@ animations = [{
 }]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
-size = Vector2(70, 210)
+size = Vector2(70, 116)
 
 [node name="Golem" type="CharacterBody2D" groups=["enemies"]]
 script = ExtResource("1_golem")
@@ -74,7 +74,7 @@ sprite_frames = SubResource("SpriteFrames_golem")
 animation = &"idle"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(0, 19)
+position = Vector2(0, 66)
 shape = SubResource("RectangleShape2D_body")
 
 [node name="LaunchPoint" type="Marker2D" parent="."]
