@@ -17,7 +17,7 @@ enum State { IDLE, WALK, RUN, JUMP_START, AIR, LAND, ATTACK, DASH, HURT }
 # Combat / dash feel. A slash locks Curiosity in place for the swing; a dash is
 # a quick weighty burst in the facing direction (also the platforming gap-closer).
 @export var dash_speed: float = 1110.0
-@export var dash_time: float = 0.40
+@export var dash_time: float = 0.28   # shorter dash → less range (same lunge speed)
 @export var dash_cooldown: float = 0.45
 
 # Health. Damage sources call take_damage(); a short invulnerability window after a
@@ -85,6 +85,7 @@ const LANTERN_LEAN_PER_PX: float = 0.006  # radians of flame lean per px of swin
 # fixed distance below the sprite centre in every clip) so the lunge keeps planted
 # and only grows upward toward idle height.
 const ATTACK_SCALE: float = 1.13
+const ATTACK_SPEED_SCALE: float = 1.5   # play the swing clip faster so the hit lands quicker
 const FEET_FROM_CENTRE: float = 136.0   # content feet row below canvas centre (all clips)
 
 # Source art faces RIGHT. Default unflipped = facing right; flip_h mirrors to face left.
@@ -140,7 +141,7 @@ func _build_attack_hitbox() -> void:
 	_attack_hitbox = Area2D.new()
 	_attack_hitbox.monitoring = false
 	_attack_hitbox.collision_layer = 0
-	_attack_hitbox.collision_mask = 1
+	_attack_hitbox.collision_mask = 4   # enemy layer (bit 3) — golems live here now
 	var cs := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
 	rect.size = ATTACK_HITBOX_SIZE
@@ -181,6 +182,8 @@ func _process(delta: float) -> void:
 	# authored rate.
 	if _state == State.WALK or _state == State.RUN:
 		visual.speed_scale = clampf(absf(velocity.x) / walk_speed, 0.7, 1.0)
+	elif _state == State.ATTACK:
+		visual.speed_scale = ATTACK_SPEED_SCALE   # snappier swing
 	else:
 		visual.speed_scale = 1.0
 
@@ -387,6 +390,12 @@ func take_damage(amount: int, knockback: Vector2 = Vector2.ZERO) -> void:
 func hurt(knockback: Vector2 = Vector2.ZERO) -> void:
 	velocity = knockback
 	_set_state(State.HURT)
+
+
+# Public: grant a mercy invulnerability window (e.g. right after a respawn) so the hit
+# that just killed you can't immediately land again. Never shortens an active window.
+func grant_invuln(t: float) -> void:
+	_invuln_timer = maxf(_invuln_timer, t)
 
 
 func _process_hurt(delta: float) -> void:

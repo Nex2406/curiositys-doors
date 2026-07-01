@@ -39,6 +39,8 @@ scale_curve = SubResource("CurveTexture_halo_scale")
 color_ramp = SubResource("GradientTexture1D_halo_alpha")
 
 [node name="Curiosity" type="CharacterBody2D" groups=["player"]]
+collision_layer = 1
+collision_mask = 3
 script = ExtResource("1_curiosity")
 
 [node name="LanternFlame" type="Sprite2D" parent="."]

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cshiftground1"]
+
+[ext_resource type="Script" path="res://tools/shift_ground.gd" id="1_sg"]
+
+[node name="ShiftGround" type="Node"]
+script = ExtResource("1_sg")

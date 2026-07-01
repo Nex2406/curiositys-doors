@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://ctrimground1"]
+
+[ext_resource type="Script" path="res://tools/trim_ground.gd" id="1_tg"]
+
+[node name="TrimGround" type="Node"]
+script = ExtResource("1_tg")

@@ -94,12 +94,15 @@ func _solve_lob() -> Vector2:
 	# Fixed-point lead: aim → flight time → new aim. For a fast-approaching target the
 	# feedback can oscillate, so damp toward the new estimate rather than jumping to it,
 	# which converges cleanly within a handful of iterations.
-	var aim: Vector2 = _target.global_position
+	# Aim at her cloak/body, not her origin (which sits high) — a downward bias so the ball
+	# strikes her middle instead of sailing just over her head.
+	var body_off := Vector2(0.0, 45.0)
+	var aim: Vector2 = _target.global_position + body_off
 	var vel: Vector2 = Vector2.ZERO
 	for _iter in range(16):
 		var solved: Array = _solve_to(aim)
 		vel = solved[0]
-		var predicted: Vector2 = _target.global_position + tvel * float(solved[1])
+		var predicted: Vector2 = _target.global_position + body_off + tvel * float(solved[1])
 		aim = aim.lerp(predicted, 0.5)
 	return vel
 

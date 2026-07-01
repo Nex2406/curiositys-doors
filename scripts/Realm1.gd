@@ -28,7 +28,7 @@ extends Node2D
 const MOTE_SPAWN_ABOVE_CENTER: float = 400.0
 
 # Curiosity's size in this realm (overrides the scene value at runtime).
-const CURIOSITY_SCALE: float = 0.17
+const CURIOSITY_SCALE: float = 0.19
 
 # Eyes-as-lives HUD: 3 eyes, one closes per death (constant rule every realm).
 const LIVES_HUD := preload("res://scenes/UI/LivesHUD.tscn")
@@ -44,17 +44,21 @@ var _at_exit: bool = false
 var _lives: LivesHUD
 var _hud: PlayerHUD
 var _spawn_pos: Vector2
+var _checkpoint_pos: Vector2  # rolling safe respawn point; death sends you here, not level start
+var _death_pos: Vector2       # where Curiosity died — respawn lands at this x
 var _kill_y: float = INF      # fall below this (a pit) and you die
 var _dying: bool = false      # guards the death/respawn sequence
 
 
 # Camera zoom (the camera inherits Curiosity's scale, so this counter-zooms to
 # frame the cave). Lower = more world on screen.
-const CAMERA_ZOOM: float = 2.2
+const CAMERA_ZOOM: float = 2.0
 
 # Camera follow feel (we drive the camera in _drive_camera).
 const CAM_LERP: float = 4.5      # follow responsiveness (higher = tighter / snappier)
-const CAM_Y_LOOK: float = -50.0  # bias the view slightly above Curiosity
+const CAM_Y_LOOK: float = -100.0  # bias the view above Curiosity (less ground on screen) but
+                                  # not so high that golems below her go off-frame when she's
+                                  # up on a platform
 
 # Cave-art sizing. The parallax layers render smaller as we zoom out, which
 # opens a dark void below the art. Scale them up so the cave fills the frame
@@ -75,10 +79,13 @@ func _ready() -> void:
 	_add_boundary_walls()
 	_place_curiosity_on_floor()
 	_place_exit_door()
+	_setup_end_door_spirit()
 	_wire_exit_door()
 	_setup_camera_limits()
 	_setup_lives()
 	_setup_hud()
+	_setup_boss_bar()
+	_setup_golems()
 
 
 # Horizontal parallax speed per band, BG1 (farthest) → BG4 (nearest). Wider spread
@@ -206,7 +213,7 @@ func _make_painted_tiles_solid() -> void:
 # internal seams that Curiosity's collider caught on — she jittered and
 # is_on_floor() failed, freezing her in the air pose. Merging (grow each rect
 # right, then down) yields seamless colliders. Consumes `remaining`.
-func _emit_merged_colliders(body: CollisionObject2D, remaining: Dictionary, tsize: Vector2) -> void:
+func _emit_merged_colliders(body: CollisionObject2D, remaining: Dictionary, tsize: Vector2, one_way: bool = false) -> void:
 	var keys: Array = remaining.keys()
 	keys.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
 		return (a.y * 100000 + a.x) < (b.y * 100000 + b.x))
@@ -237,6 +244,12 @@ func _emit_merged_colliders(body: CollisionObject2D, remaining: Dictionary, tsiz
 		rect.size = Vector2(w, h) * tsize
 		cs.shape = rect
 		cs.position = (Vector2(start) + Vector2(w, h) * 0.5) * tsize
+		# Moving platforms are one-way (solid only from on top): a rider stands on and
+		# rides them, but a descending plank never shoves Curiosity/golems below it down
+		# into the ground. The static terrain stays fully solid (one_way = false).
+		cs.one_way_collision = one_way
+		if one_way:
+			cs.one_way_collision_margin = 8.0
 		body.add_child(cs)
 
 
@@ -376,6 +389,204 @@ const EXTRA_JADE := [
 
 var _jade_total: int = 0
 var _jade_got: int = 0
+
+# --- Golem guards ---------------------------------------------------------
+const GOLEM_SCENE := preload("res://scenes/Golem.tscn")
+const GOLEM_BALL_SCENE := preload("res://scenes/GolemBall.tscn")
+# Golem size relative to the cave. Matches the golem:Curiosity height ratio proven
+# in GolemTest (golem 1.0 vs hero 0.28) carried to this realm's hero scale (0.17).
+const GOLEM_SCALE: float = 0.4
+# Detection radius (px) for this realm's guards — tighter than the isolated-test
+# default (480) so a golem only wakes when Curiosity is genuinely close.
+const GOLEM_DETECT_RANGE: float = 220.0
+
+# FIRST-PASS golem placement — world-x (px) of each floor-standing guard. Each one
+# settles on the main floor beneath its x and patrols ±patrol_range there, throwing
+# a ball when Curiosity closes in. Spread as guards near the jade clusters /
+# chokepoints across the ~14.5k-wide level (see the labelled placement map).
+# Tune live: add, remove, or shift an x to move a guard. All ride the same ground.
+const GOLEM_SPAWN_X: Array[float] = [
+	700, 1400, 2650,                   # section 1
+	4250, 6800,                        # section 2
+	8300, 10600,                       # section 3  (8300 = relocated off the jamming floor element)
+]
+
+# A few guards ride the MOVING PLATFORMS instead of the floor — top-center world pos of
+# the plank each stands on. They're elevated sentries you fight at platform height, so
+# the level doesn't read as "all threats on the ground". (See tools/dump_movers.gd for
+# the plank positions; these are MP3 / MP11 / MP20 / MP25 / MP28.)
+# Each x is nudged off the plank's centre so the guard doesn't overlap that plank's jade.
+const GOLEM_PLATFORM_SPAWN: Array[Vector2] = [
+	# y values include the net +64px (4-tile) plank drop that keeps the planks reachable.
+	Vector2(1894, 532),    # MP3
+	Vector2(3767, 483),    # MP6  up/down
+	Vector2(5950, 532),    # MP11  ─┐ two guards share this wider plank
+	Vector2(6110, 532),    # MP11  ─┘
+	Vector2(9447, 532),    # MP20  (G10 shifted one plank left)
+	Vector2(11319, 483),   # MP23  (G12 moved onto this floating plank)
+	Vector2(11975, 515),   # MP25
+	Vector2(12860, 484),   # MP27  ─┐ two guards share this wider plank
+	Vector2(13000, 484),   # MP27  ─┘
+	Vector2(13659, 531),   # MP28  up/down plank with a jade
+	Vector2(14246, 507),   # MP30  (G18 on a different near-exit plank)
+	Vector2(14368, 420),   # MP31  near the exit door
+]
+
+
+# TEMP: golems hold fire so Advika can walk the whole map and study placement. Flip off
+# to arm them again.
+const DEBUG_GOLEMS_NO_SHOOT: bool = false
+
+# Boss health bar (top-right HUD). It reveals + drains for the golem you're currently
+# hitting, so the bar is visible in-game. For a real single-boss fight, bind it to just
+# that boss instead of every golem.
+const GOLEM_HEALTH_BAR := preload("res://ui/GolemHealthBar.gd")
+var _boss_bar: GolemHealthBar
+var _boss_target: Node = null
+var _boss_prev_hp: float = 0.0
+
+func _setup_boss_bar() -> void:
+	var cl := CanvasLayer.new()
+	add_child(cl)
+	_boss_bar = GOLEM_HEALTH_BAR.new()
+	_boss_bar.boss_name = "CRYSTAL GOLEM"
+	_boss_bar.bar_width = 320.0
+	_boss_bar.bar_height = 28.0
+	_boss_bar.anchor_left = 1.0
+	_boss_bar.anchor_right = 1.0
+	_boss_bar.offset_left = -380.0
+	_boss_bar.offset_right = -40.0
+	_boss_bar.offset_top = 92.0     # sit below the jade counter (top-right)
+	_boss_bar.offset_bottom = 180.0
+	cl.add_child(_boss_bar)
+
+
+func _on_boss_damage(h: int, m: int, golem: Node) -> void:
+	if _boss_bar == null:
+		return
+	if golem != _boss_target:
+		_boss_target = golem
+		_boss_bar.reset(float(m))   # re-arm so it shows for every golem, not just the first
+		_boss_prev_hp = float(m)
+	var dmg: float = _boss_prev_hp - float(h)
+	_boss_prev_hp = float(h)
+	if dmg > 0.0:
+		_boss_bar.take_damage(dmg)
+	if h <= 0:
+		_boss_target = null
+
+
+# The moving-plank body whose span covers world-x `x` (or null). Used to spawn a golem on
+# the plank's current (phased) height.
+func _plank_body_at(x: float) -> Node2D:
+	if _tiles == null or _tiles.tile_set == null:
+		return null
+	var tsize: Vector2 = Vector2(_tiles.tile_set.tile_size)
+	for child in _tiles.get_children():
+		if child is AnimatableBody2D and String(child.name).begins_with("MovingPiece"):
+			var art := child.get_node_or_null("Art") as TileMapLayer
+			if art == null:
+				continue
+			var ur := art.get_used_rect()
+			var lx: float = art.to_global(Vector2(float(ur.position.x) * tsize.x, 0)).x
+			var rx: float = art.to_global(Vector2(float(ur.position.x + ur.size.x) * tsize.x, 0)).x
+			if x >= lx and x <= rx:
+				return child
+	return null
+
+
+func _make_golem() -> CharacterBody2D:
+	var g: CharacterBody2D = GOLEM_SCENE.instantiate()
+	g.ball_scene = GOLEM_BALL_SCENE
+	g.scale = Vector2(GOLEM_SCALE, GOLEM_SCALE)
+	g.detect_range = GOLEM_DETECT_RANGE
+	g.can_shoot = not DEBUG_GOLEMS_NO_SHOOT
+	g.z_index = 5   # draw over the ground tiles so his feet aren't hidden behind the terrain
+	return g
+
+
+# Spawn the golem guards: most on the level's MAIN floor row, a few riding moving planks.
+func _setup_golems() -> void:
+	if _tiles == null or _tiles.tile_set == null:
+		return
+	var floor_top: float = _main_floor_top_world()
+	if floor_top == INF:
+		return
+	var all: Array = []
+	# Ground guards — settle on the main floor row.
+	for wx in GOLEM_SPAWN_X:
+		var g := _make_golem()
+		add_child(g)
+		# _feet_offset() needs global_scale, valid only after the node is in the tree.
+		var pos := Vector2(float(wx), floor_top - g._feet_offset())
+		g.global_position = pos
+		g.set_home(pos.x)          # re-anchor his patrol home (see Golem.set_home)
+		all.append(g)
+	# Platform guards — stand on a moving plank and ride it. They mask the platform layer
+	# (bit 2) so the plank carries them, and don't pace (patrol_range 0) so they can't
+	# wander off the edge.
+	for pv in GOLEM_PLATFORM_SPAWN:
+		var g := _make_golem()
+		g.collision_mask = 3       # terrain (1) + moving platforms (2)
+		# Pace the plank. A wide range disables the fixed-world-x range check (so he doesn't
+		# fight a side-moving plank); his ledge sense turns him at the plank's edges instead.
+		g.patrol_range = 1000.0
+		g.patrol_speed = 50.0
+		g.patrol_ledge_only = true   # pace the whole plank; ignore the plank-motion "no headway"
+		add_child(g)
+		# Spawn onto the plank's CURRENT top (planks start at a random phase now), so he
+		# lands on the plank instead of dropping to where its home used to be.
+		var plank := _plank_body_at(pv.x)
+		var plank_off: float = plank.position.y if plank != null else 0.0
+		g.global_position = Vector2(pv.x, pv.y + plank_off - g._feet_offset() - 2.0)
+		g.set_home(pv.x)
+		all.append(g)
+	# Drive the top-right boss bar off whichever golem is currently being hit.
+	for g in all:
+		g.health_changed.connect(_on_boss_damage.bind(g))
+	if DEBUG_GOLEM_LABELS:
+		all.sort_custom(func(a, b): return a.global_position.x < b.global_position.x)
+		for i in range(all.size()):
+			_label_golem(all[i], i)
+
+
+# TEMP picking aid: float each golem's index (G0..Gn, matching GOLEM_SPAWN_X order) over
+# his head so Advika can call out which to remove while playing. Flip the const off after.
+const DEBUG_GOLEM_LABELS: bool = false
+
+func _label_golem(g: Node2D, idx: int) -> void:
+	var lbl := Label.new()
+	lbl.text = "G%d" % idx
+	lbl.add_theme_font_size_override("font_size", 110)
+	lbl.add_theme_color_override("font_color", Color(1, 0.55, 0.95))
+	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	lbl.add_theme_constant_override("outline_size", 14)
+	lbl.z_index = 60
+	lbl.position = Vector2(-70, -360)   # golem-local (pre-scale); sits above his head
+	g.add_child(lbl)
+
+
+# World-y of the level's main ground surface: the most common top row across the
+# floor component's columns (brick towers rise above it and are ignored).
+func _main_floor_top_world() -> float:
+	var fc: Dictionary = _floor_cells()
+	if fc.is_empty():
+		return INF
+	var top := {}   # column x -> highest (smallest y) floor cell in that column
+	for c in fc.keys():
+		if not top.has(c.x) or c.y < top[c.x]:
+			top[c.x] = c.y
+	var freq := {}
+	for x in top.keys():
+		freq[top[x]] = freq.get(top[x], 0) + 1
+	var ground_row: int = 0
+	var best: int = -1
+	for y in freq.keys():
+		if freq[y] > best:
+			best = freq[y]; ground_row = y
+	var tsize: Vector2 = Vector2(_tiles.tile_set.tile_size)
+	return _tiles.to_global(Vector2(0, ground_row) * tsize).y
+
 
 func _setup_pieces() -> void:
 	if _tiles == null or _tiles.tile_set == null:
@@ -565,8 +776,15 @@ func _default_plank_motion(idx: int) -> String:
 # Lift a piece's cells out of the static layer into an animated AnimatableBody2D
 # (own art + collider) and start its motion. Returns the body.
 func _lift_piece(p: Dictionary, tsize: Vector2, idx: int, motion: String) -> AnimatableBody2D:
-	var body := AnimatableBody2D.new()
+	# Vertical planks reverse when their descent meets Curiosity (BouncePlank); the rest
+	# ride the shared looping tween.
+	var is_vertical: bool = motion in ["updown", "bob", "updown_fast"]
+	var body: AnimatableBody2D = BouncePlank.new() if is_vertical else AnimatableBody2D.new()
 	body.sync_to_physics = true   # carry riders standing on it
+	# Platforms live on their own layer (bit 2) so only Curiosity (who masks it) is
+	# carried/affected — golems mask only the static terrain, so a descending plank
+	# passes through them instead of shoving them down.
+	body.collision_layer = 2
 	body.name = "MovingPiece%d" % idx
 	_tiles.add_child(body)        # parent under the layer to inherit its transform
 
@@ -583,14 +801,40 @@ func _lift_piece(p: Dictionary, tsize: Vector2, idx: int, motion: String) -> Ani
 			_tiles.get_cell_alternative_tile(c))
 		remaining[c] = true
 
-	# Collider(s): merged rectangles over the piece, at the same world coords.
-	_emit_merged_colliders(body, remaining, tsize)
+	# Collider(s): merged rectangles over the piece, at the same world coords. Side planks
+	# stay one-way (ride on top, no side-crush); vertical planks are solid so they can
+	# actually "hit" Curiosity and reverse (see BouncePlank).
+	_emit_merged_colliders(body, remaining, tsize, not is_vertical)
 
 	# Erase the originals so no static ghost remains (and they're not re-baked).
 	for c in p["cells"]:
 		_tiles.erase_cell(c)
 
-	_animate_piece(body, idx, tsize, motion)
+	if is_vertical:
+		var mn: Vector2i = p["mn"]
+		var mx: Vector2i = p["mx"]
+		var left_x: float = float(mn.x) * tsize.x
+		var right_x: float = float(mx.x + 1) * tsize.x
+		var bottom_y: float = float(mx.y + 1) * tsize.y
+		var dst: float = float(PIECE_DIST.get(idx, 1.0))
+		# ORIGINAL per-plank timing (amplitude + period from _animate_piece), symmetric
+		# around home, so the pre-shift rhythm is restored. speed = amp / half-period.
+		var s: float = MOTION_DURATION_SCALE / float(PIECE_SPEED.get(idx, 1.0))
+		var amp: float
+		var d: float
+		match motion:
+			"updown":
+				amp = tsize.y * 2.0 * dst; d = (2.4 + float(idx % 3) * 0.4) * s
+			"updown_fast":
+				amp = tsize.y * 2.6 * dst; d = (0.95 + float(idx % 3) * 0.12) * s
+			_:  # bob
+				amp = tsize.y * 0.7 * dst; d = (3.4 + float(idx % 5) * 0.3) * s
+		var spd: float = amp / maxf(d, 0.1)
+		(body as BouncePlank).setup(amp, amp, spd,
+			Vector2((left_x + right_x) * 0.5, bottom_y + 6.0),
+			Vector2(right_x - left_x, 12.0))
+	else:
+		_animate_piece(body, idx, tsize, motion)
 	return body
 
 
@@ -720,6 +964,7 @@ func _place_curiosity_on_floor() -> void:
 		floor_top - _curiosity_half_height()          # feet rest on the floor top
 	)
 	_spawn_pos = _curiosity.position
+	_checkpoint_pos = _spawn_pos
 	# A "pit" kill plane well below the floor — falling past it counts as a death.
 	var bottom: float = _tiles.to_global(Vector2(ur.position + ur.size) * tsize).y
 	_kill_y = bottom + tsize.y * 30.0
@@ -733,6 +978,21 @@ func _curiosity_half_height() -> float:
 
 
 const DOOR_SPRITE_HALF_H: float = 90.0   # door_arch.png is 180px tall, centred
+
+const END_DOOR_SPIRIT := preload("res://scripts/EndDoorSpirit.gd")
+
+# Float the prologue's smoke-spirit beside the exit door — a quiet apparition guarding
+# the way out. Parented to the door so it rides wherever the door is anchored.
+func _setup_end_door_spirit() -> void:
+	var door: Node2D = get_node_or_null("ExitDoor") as Node2D
+	if door == null:
+		return
+	var spirit: EndDoorSpirit = END_DOOR_SPIRIT.new()
+	spirit.body_scale = 0.34
+	spirit.position = Vector2(10.0, -70.0)   # centred on the doorway so it circles it
+	spirit.z_index = 6
+	door.add_child(spirit)
+
 
 func _place_exit_door() -> void:
 	var door: Node2D = get_node_or_null("ExitDoor") as Node2D
@@ -842,11 +1102,16 @@ func _die() -> void:
 	if _dying:
 		return
 	_dying = true
+	_death_pos = _curiosity.position   # where he actually died (before the death flinch moves him)
 	_curiosity.hurt()
 	var remaining: int = _lives.lose_eye()
 	await get_tree().create_timer(0.45).timeout
+	# Last eye closed → hard reset: reload the whole realm so everything (jades, golems,
+	# position) is back to square one.
 	if remaining <= 0:
-		_lives.reset(STARTING_LIVES)
+		await Transition.death_restart()
+		return   # the scene is being reloaded; this instance is on its way out
+	# Otherwise just a life lost — respawn at the last checkpoint and keep all progress.
 	_respawn()
 	_curiosity.refill_health()   # each fresh life starts at full health
 	_dying = false
@@ -854,7 +1119,25 @@ func _die() -> void:
 
 func _respawn() -> void:
 	_curiosity.velocity = Vector2.ZERO
-	_curiosity.position = _spawn_pos
+	# Respawn right where he died (same x), planted on the main floor — not at a stale
+	# checkpoint behind him. Falls back to the checkpoint if the floor can't be found.
+	var floor_top: float = _main_floor_top_world()
+	if floor_top != INF:
+		_curiosity.position = Vector2(_death_pos.x, floor_top - _curiosity_half_height())
+	else:
+		_curiosity.position = _checkpoint_pos
+	# A mercy window so the hit (or ball) that just killed you can't land again the
+	# instant you reappear next to the same golem.
+	_curiosity.grant_invuln(1.2)
+
+
+# A rolling checkpoint so death doesn't throw you back to the level start. We snapshot
+# Curiosity's spot every time she's standing on the ground — so a respawn drops her right
+# where she last had her footing, keeping every jade she'd already collected.
+func _update_checkpoint() -> void:
+	if _curiosity == null or _dying or not _curiosity.is_on_floor():
+		return
+	_checkpoint_pos = _curiosity.position
 
 
 func _input(event: InputEvent) -> void:
@@ -867,6 +1150,7 @@ func _input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	_drive_camera(delta)
+	_update_checkpoint()
 	if _at_exit and Input.is_action_just_pressed("interact"):
 		_exit_door.trigger()
 	# Fall into a pit (below the kill plane) → death.

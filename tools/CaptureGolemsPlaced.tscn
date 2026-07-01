@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cgolemsplaced1"]
+
+[ext_resource type="Script" path="res://tools/capture_golems_placed.gd" id="1_capgp"]
+
+[node name="CaptureGolemsPlaced" type="Node2D"]
+script = ExtResource("1_capgp")

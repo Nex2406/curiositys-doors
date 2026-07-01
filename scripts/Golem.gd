@@ -12,9 +12,11 @@ class_name Golem
 @export var gravity: float = 1400.0
 @export var patrol_speed: float = 90.0      # px/s shove during the push frames (see STRIDE_FRAMES)
 @export var patrol_range: float = 170.0     # px to each side of the spawn point
+@export var patrol_ledge_only: bool = false # plank riders: turn only at walls/ledges, not "no headway"
 @export var detect_range: float = 480.0     # px; Curiosity within this → stop & attack
 @export var shoot_interval: float = 2.8     # seconds between shots while engaged
-@export var alert_delay: float = 0.15       # tiny telegraph between spotting her and the first throw
+@export var alert_delay: float = 0.6        # telegraph between spotting her and the first throw
+@export var can_shoot: bool = true          # false → he tracks/faces her but never throws (walkthrough mode)
 @export var debug_balls: bool = false       # verbose trajectory logging on each ball it fires
 
 # Health. Curiosity's swing calls take_damage(); ~2-3 blows destroy him. Each hit kicks
@@ -28,9 +30,19 @@ class_name Golem
 const FLICKER_TIME: float = 0.16
 const FLICKER_INTERVAL: float = 0.03   # how fast he blinks off/on while flickering
 const DEATH_FLICKER_TIME: float = 0.22  # flicker this long on death, then disappear
+# Bright over-white flash laid on the sprite the instant a blow lands, decaying across
+# the hit window — a much clearer "he got hit" read than the fast blink alone.
+const HIT_FLASH: Color = Color(2.6, 2.0, 2.0)
+
+# Floating damage bar (hidden until first hit).
+const HP_BAR := preload("res://scripts/EnemyHealthBar.gd")
 
 # 0-indexed frame of the "attack" animation where the ball erupts (golemr1attack5).
 const ATTACK_LAUNCH_FRAME: int = 4
+
+# Size of the lobbed ball (visual + hitbox). It's parented to the scene root, not the
+# golem, so it doesn't inherit the golem's scale — set it explicitly here.
+const BALL_SCALE: float = 0.385
 
 # Walk-cycle frames where he's sunk low, planted, and shoving forward. He only
 # translates on these — between them he's gathering up for the next step and holds
@@ -50,6 +62,8 @@ var _engaged_now: bool = false    # is Curiosity in range this frame
 var _shoot_timer: float = 0.0
 var _origin_x: float = 0.0
 var _patrol_dir: float = 1.0
+var _prev_push_x: float = 0.0    # x when the last push frame began (for no-headway detection)
+var _pushed_last: bool = false   # was the previous frame a forward-shove frame
 
 # Health / hit-reaction runtime state.
 var health: int = 0
@@ -57,6 +71,7 @@ var _dead: bool = false
 var _flicker_timer: float = 0.0    # >0 → blinking off/on after a hit
 var _stagger_timer: float = 0.0    # >0 → logic paused, knockback bleeding off
 var _death_timer: float = 0.0      # >0 → final flicker before he's freed
+var _hpbar: EnemyHealthBar = null
 
 
 func _ready() -> void:
@@ -69,6 +84,13 @@ func _ready() -> void:
 	health_changed.emit(health, max_health)
 
 
+# Re-anchor the patrol home. A spawner that positions the golem AFTER instancing must
+# call this, because _ready() captured _origin_x at the scene's default origin (0),
+# which would send him marching off toward x=0 instead of pacing his post.
+func set_home(x: float) -> void:
+	_origin_x = x
+
+
 # Public: Curiosity's swing (or any hazard) calls this. Subtracts health, flickers, staggers
 # back, and destroys him at zero. Ignored once he's already dying.
 func take_damage(amount: int, knockback: Vector2 = Vector2.ZERO) -> void:
@@ -77,6 +99,7 @@ func take_damage(amount: int, knockback: Vector2 = Vector2.ZERO) -> void:
 	health = max(0, health - amount)
 	health_changed.emit(health, max_health)
 	_flicker_timer = FLICKER_TIME
+	_visual.modulate = HIT_FLASH   # snap bright, then decay in _tick_flicker
 	_stagger_timer = hit_stagger_time
 	velocity.x = knockback.x
 	if knockback.y != 0.0:
@@ -95,6 +118,9 @@ func _die() -> void:
 	_engaged_now = false
 	velocity = Vector2.ZERO
 	_death_timer = DEATH_FLICKER_TIME
+	_visual.modulate = Color(1, 1, 1)   # drop any lingering hit-flash for the death blink
+	if _hpbar != null:
+		_hpbar.hide()
 	($CollisionShape2D as CollisionShape2D).set_deferred("disabled", true)
 	died.emit()
 
@@ -110,8 +136,11 @@ func _tick_flicker(delta: float) -> void:
 	if _flicker_timer > 0.0:
 		_flicker_timer -= delta
 		_visual.visible = int(_flicker_timer / FLICKER_INTERVAL) % 2 == 0
+		# Decay the bright hit-flash back to normal across the window.
+		_visual.modulate = Color(1, 1, 1).lerp(HIT_FLASH, clampf(_flicker_timer / FLICKER_TIME, 0.0, 1.0))
 		if _flicker_timer <= 0.0:
 			_visual.visible = true
+			_visual.modulate = Color(1, 1, 1)
 
 
 func _physics_process(delta: float) -> void:
@@ -165,6 +194,11 @@ func _engaged() -> void:
 	# Face Curiosity: default art faces left; flip when she's to the right.
 	var dx: float = _player.global_position.x - global_position.x
 	_visual.flip_h = dx > 0.0
+	# Walkthrough mode: face her but never throw.
+	if not can_shoot:
+		if _visual.animation != &"idle":
+			_visual.play(&"idle")
+		return
 	if _attacking:
 		return
 	# Hold the idle pose while planted and winding up between shots.
@@ -182,19 +216,62 @@ func _patrol() -> void:
 	# left stuck true, the golem would never shoot again on re-entry. Clear it here.
 	_attacking = false
 	_fired = false
+	# Stationary sentry (e.g. riding a moving platform): stand and idle, never pace — so
+	# he can't walk off the plank. The platform's sync_to_physics still carries him.
+	if patrol_range <= 0.0:
+		velocity.x = 0.0
+		if _visual.animation != &"idle":
+			_visual.play(&"idle")
+		return
 	if _visual.animation != &"walk":
 		_visual.play(&"walk")
+	# Turn around when he can't advance — whether that's a clean wall OR a short brick step
+	# (which registers as *floor*, not wall, so is_on_wall alone misses it and he'd shove
+	# forever). We detect "no headway": if a push frame moved him almost nowhere since the
+	# last one, something's blocking him → flip. Belt-and-suspenders with is_on_wall.
+	var blocked: bool = is_on_wall()
+	# "No headway" catches short steps he can't climb — but on a MOVING plank the plank's
+	# own motion makes headway unreliable (walking against a side-plank barely advances),
+	# so skip it for plank riders; they turn at real walls / ledges only.
+	if not patrol_ledge_only and not blocked and _pushed_last \
+			and absf(global_position.x - _prev_push_x) < patrol_speed * get_physics_process_delta_time() * 0.5:
+		blocked = true
+	# Turn at a ledge too — no ground under the next step (edge of a plank, lip of a pit).
+	# This is what keeps a plank-riding golem pacing without walking off the end.
+	if is_on_floor() and _no_ground_ahead():
+		blocked = true
+	if blocked:
+		_patrol_dir = -_patrol_dir
+	# Or when he reaches the edge of his patrol span.
+	elif global_position.x > _origin_x + patrol_range:
+		_patrol_dir = -1.0
+	elif global_position.x < _origin_x - patrol_range:
+		_patrol_dir = 1.0
 	# Face the way he's walking: default art faces left, flip when heading right.
 	_visual.flip_h = _patrol_dir > 0.0
 	# Shove forward only on the planted push frames; hold still while he gathers up.
 	if _visual.frame in STRIDE_FRAMES:
 		velocity.x = _patrol_dir * patrol_speed
+		_prev_push_x = global_position.x   # remember where this push started for the next check
+		_pushed_last = true
 	else:
 		velocity.x = 0.0
-	if global_position.x > _origin_x + patrol_range:
-		_patrol_dir = -1.0
-	elif global_position.x < _origin_x - patrol_range:
-		_patrol_dir = 1.0
+		_pushed_last = false
+
+
+# Is there no solid ground just ahead of his leading foot? (Cast a short ray down at the
+# edge he'd step onto, against whatever he collides with — terrain, and planks for the
+# platform riders.) True → he's at a ledge and should turn.
+func _no_ground_ahead() -> bool:
+	var cs := $CollisionShape2D as CollisionShape2D
+	var rect := cs.shape as RectangleShape2D
+	var half_w: float = (rect.size.x * 0.5 + 4.0) * global_scale.x
+	var feet_y: float = global_position.y + _feet_offset()
+	var ahead_x: float = global_position.x + _patrol_dir * half_w
+	var q := PhysicsRayQueryParameters2D.create(
+		Vector2(ahead_x, feet_y - 8.0), Vector2(ahead_x, feet_y + 18.0), collision_mask)
+	q.exclude = [self]
+	return get_world_2d().direct_space_state.intersect_ray(q).is_empty()
 
 
 func _start_attack() -> void:
@@ -223,6 +300,7 @@ func _fire_ball() -> void:
 	# or the solve falls back to a blind forward lob instead of aiming at Curiosity.
 	b.setup(_launch_point.global_position, _player, floor_y)
 	b._dbg = debug_balls
+	b.scale = Vector2(BALL_SCALE, BALL_SCALE)
 	get_tree().current_scene.add_child(b)
 
 
