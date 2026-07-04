@@ -9,6 +9,37 @@ Rules:
 
 ---
 
+## 2026-07-04
+
+- **Realm 2 = the Rising Chunk (vertical arena setpiece).** Advika's full pitch:
+  - Curiosity enters the realm → walks in on **flat, even ground** (reads like a
+    normal mossy forest) → **a storm hits: the ground shakes and the STORM
+    itself tears the middle-most chunk loose** and lifts it into the sky,
+    carrying them. The storm is the realm's engine — it lifts the chunk, it
+    throws the lightning, it drives everything (clarified 2026-07-04).
+  - **Survive the ascent:** enemies attack from all sides while the chunk climbs.
+    Curiosity fights with melee — or gathers **potion ingredients** on the chunk
+    and brews an **orb** to fight with (first ranged weapon).
+  - **Hazards:** dodge **lightning** (and "other stuff") during the climb.
+  - **Finale:** the chunk rises until it reaches a **door in the sky**.
+  - Contrast is the point: Realm 1 is quiet horizontal cave traversal; Realm 2 is
+    a loud vertical arena. Built in Godot with Claude Code, same as everything.
+  - **Palette (settled 2026-07-04): purple, low-lit — similar to Curiosity's own
+    cloak.** The realm is made of the same stuff as the hero. Deep violets,
+    dim base light, lantern gold stays the warm accent (per ART_DIRECTION).
+  - Open: enemy designs (need to fly or climb — golems can't reach a floating
+    chunk), whether orb-brewing is the realm's "puzzle" beat, chunk pacing
+    (continuous rise vs rise-between-waves), the realm's emotional word
+    (palette is set; the *feeling* still unnamed).
+
+- **Realm 1 leftovers (Advika's list, parked deliberately — remind every
+  session, attend later):**
+  1. Remind the player *why* they're collecting jades (motivation beat)
+  2. Build the lobby/hub (the real ornate version)
+  3. Add sound
+  4. Shorten the prologue
+  5. Replace text boxes with Advika's own animation thingy
+
 ## 2026-06-25
 
 - **Jade pieces = collectibles on the moving platforms, guarded by golems.**
