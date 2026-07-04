@@ -219,14 +219,21 @@ func _leaf(parent: Node2D, tex: String, x: float, y: float, sc: float,
 
 func _build_foreground() -> void:
 	# mid-depth strands: dim violet, hanging BEHIND the chunk among the spires
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()  # fresh canopy every launch
+
 	var mv := Node2D.new()
 	mv.name = "MidVines"
 	add_child(mv)
 	move_child(mv, 0)  # draw behind the chunk & fog
-	for p in [[-1100.0, -600.0, 0.7, 0.5, -4.0], [-150.0, -640.0, 0.85, 0.45, 3.0],
-			[750.0, -615.0, 0.65, 0.55, -2.0], [1550.0, -630.0, 0.8, 0.42, 5.0]]:
-		_leaf(mv, "cascade.png", p[0], p[1], p[2], p[3], 8.0, 0.6,
-				randf() * TAU, p[4], 2.2)
+	var mx := rng.randf_range(-1700.0, -1300.0)
+	while mx < 1900.0:
+		_leaf(mv, "cascade.png", mx, rng.randf_range(-660.0, -595.0),
+				rng.randf_range(0.55, 0.95), rng.randf_range(0.38, 0.58),
+				rng.randf_range(6.0, 10.0), rng.randf_range(0.5, 0.75),
+				rng.randf_range(0.0, TAU), rng.randf_range(-6.0, 6.0),
+				rng.randf_range(1.5, 2.8))
+		mx += rng.randf_range(520.0, 950.0)
 
 	# near-black canopy pressing in from above, swaying. Foreground parallax
 	# (>1) is faked by counter-shifting this node against the camera in _process.
@@ -234,15 +241,15 @@ func _build_foreground() -> void:
 	fg.name = "Foreground"
 	fg.z_index = 50
 	add_child(fg)
-	for p in [[-1500.0, -580.0, "cascade_dark.png", 1.05, 1.0, 13.0, 0.85, 0.6, -5.0, 3.0],
-			[-880.0, -545.0, "vine_dark.png", 0.8, 0.9, 10.0, 0.7, 0.0, 4.0, 2.5],
-			[-380.0, -600.0, "cascade_dark.png", 1.15, 1.0, 14.0, 0.9, 1.2, -2.0, 3.5],
-			[140.0, -560.0, "cascade_dark.png", 0.7, 0.8, 12.0, 0.8, 2.6, 6.0, 2.0],
-			[620.0, -540.0, "vine_dark.png", 0.55, 0.75, 9.0, 0.65, 4.0, -7.0, 2.8],
-			[1000.0, -610.0, "vine_dark.png", 1.1, 1.0, 11.0, 0.6, 3.3, 2.0, 3.2],
-			[1250.0, -555.0, "vine_dark.png", 0.75, 0.85, 11.0, 0.75, 5.2, -3.0, 2.4],
-			[1800.0, -585.0, "vine_dark.png", 0.95, 0.95, 10.0, 0.7, 2.0, 5.0, 3.0]]:
-		_leaf(fg, p[2], p[0], p[1], p[3], p[4], p[5], p[6], p[7], p[8], p[9])
+	var fx := rng.randf_range(-1800.0, -1500.0)
+	while fx < 2000.0:
+		var tex := "vine_dark.png" if rng.randf() < 0.6 else "cascade_dark.png"
+		_leaf(fg, tex, fx, rng.randf_range(-620.0, -535.0),
+				rng.randf_range(0.55, 1.2), rng.randf_range(0.72, 1.0),
+				rng.randf_range(8.0, 15.0), rng.randf_range(0.55, 0.95),
+				rng.randf_range(0.0, TAU), rng.randf_range(-7.0, 7.0),
+				rng.randf_range(2.0, 3.6))
+		fx += rng.randf_range(300.0, 560.0)
 
 
 func _build_particles() -> void:
