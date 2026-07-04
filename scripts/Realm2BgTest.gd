@@ -201,23 +201,48 @@ func _build_chunk() -> void:
 	_chunk.add_child(plant1)
 
 
+var _pendulums: Array[Dictionary] = []
+
+
+func _leaf(parent: Node2D, tex: String, x: float, y: float, sc: float,
+		bright: float, shear_amp: float, speed: float, phase: float,
+		base_rot: float, rot_amp: float) -> void:
+	var v := _hanging(tex, shear_amp, speed, phase)
+	v.position = Vector2(x, y)
+	v.scale = Vector2(sc, sc)
+	v.modulate = Color(bright, bright, bright)
+	v.rotation_degrees = base_rot
+	parent.add_child(v)
+	_pendulums.append({"node": v, "base": base_rot, "amp": rot_amp,
+			"speed": speed * 0.55, "phase": phase + 0.8})
+
+
 func _build_foreground() -> void:
+	# mid-depth strands: dim violet, hanging BEHIND the chunk among the spires
+	var mv := Node2D.new()
+	mv.name = "MidVines"
+	add_child(mv)
+	move_child(mv, 0)  # draw behind the chunk & fog
+	for p in [[-1100.0, -600.0, 0.7, 0.5, -4.0], [-150.0, -640.0, 0.85, 0.45, 3.0],
+			[750.0, -615.0, 0.65, 0.55, -2.0], [1550.0, -630.0, 0.8, 0.42, 5.0]]:
+		_leaf(mv, "cascade.png", p[0], p[1], p[2], p[3], 8.0, 0.6,
+				randf() * TAU, p[4], 2.2)
+
 	# near-black canopy pressing in from above, swaying. Foreground parallax
 	# (>1) is faked by counter-shifting this node against the camera in _process.
 	var fg := Node2D.new()
 	fg.name = "Foreground"
 	fg.z_index = 50
 	add_child(fg)
-	for p in [[-880.0, -560.0, "vine_dark.png", 10.0, 0.7, 0.0],
-			[-380.0, -572.0, "cascade_dark.png", 14.0, 0.9, 1.2],
-			[140.0, -566.0, "cascade_dark.png", 12.0, 0.8, 2.6],
-			[620.0, -558.0, "vine_dark.png", 9.0, 0.65, 4.0],
-			[1250.0, -570.0, "vine_dark.png", 11.0, 0.75, 5.2],
-			[-1500.0, -565.0, "cascade_dark.png", 13.0, 0.85, 0.6],
-			[1800.0, -562.0, "vine_dark.png", 10.0, 0.7, 2.0]]:
-		var v := _hanging(p[2], p[3], p[4], p[5])
-		v.position = Vector2(p[0], p[1])
-		fg.add_child(v)
+	for p in [[-1500.0, -580.0, "cascade_dark.png", 1.05, 1.0, 13.0, 0.85, 0.6, -5.0, 3.0],
+			[-880.0, -545.0, "vine_dark.png", 0.8, 0.9, 10.0, 0.7, 0.0, 4.0, 2.5],
+			[-380.0, -600.0, "cascade_dark.png", 1.15, 1.0, 14.0, 0.9, 1.2, -2.0, 3.5],
+			[140.0, -560.0, "cascade_dark.png", 0.7, 0.8, 12.0, 0.8, 2.6, 6.0, 2.0],
+			[620.0, -540.0, "vine_dark.png", 0.55, 0.75, 9.0, 0.65, 4.0, -7.0, 2.8],
+			[1000.0, -610.0, "vine_dark.png", 1.1, 1.0, 11.0, 0.6, 3.3, 2.0, 3.2],
+			[1250.0, -555.0, "vine_dark.png", 0.75, 0.85, 11.0, 0.75, 5.2, -3.0, 2.4],
+			[1800.0, -585.0, "vine_dark.png", 0.95, 0.95, 10.0, 0.7, 2.0, 5.0, 3.0]]:
+		_leaf(fg, p[2], p[0], p[1], p[3], p[4], p[5], p[6], p[7], p[8], p[9])
 
 
 func _build_particles() -> void:
@@ -320,8 +345,12 @@ func _process(delta: float) -> void:
 		_cam.position.x = _manual
 	else:
 		_cam.position.x = lerpf(_cam.position.x, sin(_t * 0.1) * 820.0, delta * 0.5)
-	# foreground counter-shift (fake >1 parallax)
+	# foreground counter-shift (fake >1 parallax); mid vines lag behind (depth)
 	$Foreground.position.x = _cam.position.x * -0.22
+	$MidVines.position.x = _cam.position.x * 0.55
+	# pendulum swing: each strand rotates gently around its hang point
+	for pd in _pendulums:
+		pd["node"].rotation_degrees = pd["base"] + sin(_t * pd["speed"] + pd["phase"]) * pd["amp"]
 	# the chunk floats
 	_chunk.position.y = _chunk_base_y + sin(_t * 0.5) * 10.0
 	# glow breathes (two out-of-phase sines, same trick as the lantern)
