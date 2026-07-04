@@ -93,7 +93,7 @@ GOLD = (255, 214, 140)
 yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
 d = np.sqrt(((xx - DOOR_X) / (W * 0.60)) ** 2 + ((yy - DOOR_Y) / (H * 0.95)) ** 2)
 d = np.clip(d, 0, 1) ** 1.35
-d2 = np.sqrt(((xx - DOOR_X) / (W * 0.16)) ** 2 + ((yy - DOOR_Y) / (H * 0.22)) ** 2)
+d2 = np.sqrt((xx - DOOR_X) ** 2 + (yy - DOOR_Y) ** 2) / 250.0  # circular halo
 d2 = np.clip(d2, 0, 1)
 sky = np.zeros((H, W, 3), dtype=np.float32)
 for c in range(3):
@@ -110,7 +110,18 @@ for x, hgt, flip in [(-60, 640, 0), (270, 460, 1), (620, 720, 0), (1000, 520, 1)
     if flip:
         p = p.transpose(Image.FLIP_LEFT_RIGHT)
     canvas.alpha_composite(tint_to(scale_h(p, hgt), FAR_TINT, 0.78), (x, H - hgt))
-canvas.alpha_composite(tint_to(scale_h(dome, 300), FAR_TINT, 0.8), (700, 170))
+# ---- the moon: clean spherical disc ----
+moon = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+mn = ImageDraw.Draw(moon)
+R = 92
+mn.ellipse([DOOR_X - R, DOOR_Y - R, DOOR_X + R, DOOR_Y + R], fill=(242, 234, 255, 255))
+canvas.alpha_composite(moon.filter(ImageFilter.GaussianBlur(5)))
+
+# ---- distant floating islands (foreshadow the rising chunk) ----
+isl = tint_to(scale_h(chunk_img, 110), FAR_TINT, 0.74)
+canvas.alpha_composite(isl, (int(DOOR_X) - 250, int(DOOR_Y) + 46))
+isl2 = tint_to(scale_h(chunk_img.transpose(Image.FLIP_LEFT_RIGHT), 80), FAR_TINT, 0.8)
+canvas.alpha_composite(isl2, (330, 300))
 
 # ---- mid band: medium spires + boulder domes ----
 for x, hgt, flip in [(120, 520, 1), (480, 380, 0), (1120, 600, 0), (1560, 430, 1)]:
@@ -118,52 +129,16 @@ for x, hgt, flip in [(120, 520, 1), (480, 380, 0), (1120, 600, 0), (1560, 430, 1
     if flip:
         p = p.transpose(Image.FLIP_LEFT_RIGHT)
     canvas.alpha_composite(tint_to(scale_h(p, hgt), MID_TINT, 0.52), (x, H - hgt))
-canvas.alpha_composite(tint_to(scale_h(dome, 260), MID_TINT, 0.5), (620, 200))
-canvas.alpha_composite(tint_to(scale_h(dome.transpose(Image.FLIP_LEFT_RIGHT), 220),
-                               MID_TINT, 0.55), (1240, 330))
+isl3 = tint_to(scale_h(chunk_img, 150), MID_TINT, 0.5)
+canvas.alpha_composite(isl3, (1330, 250))
 
-# ---- distant lightning vein, behind mid spires ----
-bolt = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-bd = ImageDraw.Draw(bolt)
-pts = [(280, 130)]
-for _ in range(7):
-    px, py = pts[-1]
-    pts.append((px + int(rng.integers(-46, 60)), py + int(rng.integers(40, 80))))
-bd.line(pts, fill=(235, 222, 255, 210), width=4)
-fx, fy = pts[3]
-bd.line([pts[3], (fx - 70, fy + 90), (fx - 95, fy + 160)],
-        fill=(235, 222, 255, 160), width=3)
-canvas.alpha_composite(bolt.filter(ImageFilter.GaussianBlur(3)))
-
-# ---- THE SKY DOOR: small glowing arch, the destination ----
-door = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-dd = ImageDraw.Draw(door)
-dw, dh = 46, 84
-dx0, dy0 = int(DOOR_X - dw / 2), int(DOOR_Y - dh / 2)
-dd.rounded_rectangle([dx0, dy0, dx0 + dw, dy0 + dh], radius=dw // 2,
-                     fill=(255, 240, 205, 235))
-for k, al in [(2.1, 46), (3.6, 24)]:
-    dd.rounded_rectangle(
-        [DOOR_X - dw * k / 2, DOOR_Y - dh * k / 2, DOOR_X + dw * k / 2, DOOR_Y + dh * k / 2],
-        radius=int(dw * k / 2), fill=(255, 214, 140, al))
-# faint god-rays falling from the door — whisper-subtle
-for ang_dx, ln in [(-180, 560), (170, 520)]:
-    dd.polygon([(DOOR_X - 8, DOOR_Y), (DOOR_X + 8, DOOR_Y),
-                (DOOR_X + ang_dx + 26, DOOR_Y + ln), (DOOR_X + ang_dx - 26, DOOR_Y + ln)],
-               fill=(255, 224, 160, 6))
-canvas.alpha_composite(door.filter(ImageFilter.GaussianBlur(3)))
-
-# ---- wind-streaked spores (storm motion) + gold fireflies ----
+# ---- wind-streaked spores (storm motion) ----
 motes = Image.new("RGBA", (W, H), (0, 0, 0, 0))
 md = ImageDraw.Draw(motes)
 for _ in range(34):
     mx, my = int(rng.integers(40, W - 40)), int(rng.integers(60, H - 120))
     ln = int(rng.integers(16, 38))
     md.line([mx, my, mx + ln, my + ln // 3], fill=(214, 198, 255, 165), width=3)
-for _ in range(10):
-    fx, fy = int(rng.integers(120, W - 120)), int(rng.integers(H // 2, H - 100))
-    md.ellipse([fx - 4, fy - 4, fx + 4, fy + 4], fill=(255, 208, 118, 240))
-    md.ellipse([fx - 12, fy - 12, fx + 12, fy + 12], fill=(255, 190, 90, 64))
 canvas.alpha_composite(motes.filter(ImageFilter.GaussianBlur(2)))
 
 # ---- near band: dark spires at edges + the floating platform mid-frame ----
@@ -203,6 +178,16 @@ vig = Image.new("L", (W, H), 0)
 ImageDraw.Draw(vig).ellipse([-W * 0.22, -H * 0.3, W * 1.22, H * 1.3], fill=255)
 vig = vig.filter(ImageFilter.GaussianBlur(170))
 canvas = Image.composite(canvas, Image.new("RGBA", (W, H), (8, 5, 20, 255)), vig)
+
+# ---- gold fireflies LAST (post-bloom/vignette) so the amber hue survives ----
+ff = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+fd2 = ImageDraw.Draw(ff)
+for _ in range(9):
+    fx, fy = int(rng.integers(120, W - 120)), int(rng.integers(H // 2, H - 90))
+    fd2.ellipse([fx - 14, fy - 14, fx + 14, fy + 14], fill=(255, 150, 40, 70))
+    fd2.ellipse([fx - 7, fy - 7, fx + 7, fy + 7], fill=(255, 176, 56, 160))
+    fd2.ellipse([fx - 3, fy - 3, fx + 3, fy + 3], fill=(255, 214, 120, 255))
+canvas.alpha_composite(ff.filter(ImageFilter.GaussianBlur(2)))
 
 canvas.convert("RGB").save(OUT, quality=95)
 print("mock v3 ->", OUT)
