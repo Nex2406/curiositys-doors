@@ -1,5 +1,18 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-06-12_
+_Last updated: 2026-07-04_
+
+## Realm 2 — living background SHIPPED (test scene)
+`scenes/realms/Realm2BgTest.tscn` (+`scripts/Realm2BgTest.gd`, all built in
+code) — the intimate violet moss canopy, fully in motion: 3 parallax spire
+bands, randomized swinging canopy strands, bobbing chunk with Maaot's
+animated plants, breathing gold pocket, fireflies/spores/fog/stars/storm
+wisps, finger-moss floor. A/B target:
+`assets/_reference/realm2_bg_target_2026-07-04.png`. Assets:
+`assets/realms/realm2_moss/` (Maaot pack, purple-shifted via
+`scripts/purple_shift.py`). Concept (SKETCHBOOK 2026-07-04): flat-ground
+intro → storm tears the middle chunk loose → vertical ascent w/ slime waves,
+potion orb, lightning → sky door. Next brick: quake + liftoff (R2-M1).
+Credits: `CREDITS.md` (root) — keep updated per asset, college-portfolio gate.
 
 ## Live loop
 Hub.tscn ↔ Realm1 (cave traversal) ↔ Hub return. Door 1 wired.
