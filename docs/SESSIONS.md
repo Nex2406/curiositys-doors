@@ -7,6 +7,46 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 
 ---
 
+## 2026-07-04 — Realm 2's stage is standing (and it breathes)
+
+**Shipped**
+- **Realm 2 concept locked in chat**: storm-lifted chunk ascent — flat mossy
+  ground intro → storm tears the middle chunk loose → ride it up fighting
+  waves (slimes), brewing a potion orb, dodging lightning → sky door.
+  Palette: violet, low-lit, kin to Curiosity. All in SKETCHBOOK.
+- **Background target locked by iteration**: 7 mock versions with Advika
+  (open luminous cut rejected as HK-ripoff → the INTIMATE cut won: dense
+  dark canopy, one warm gold pocket, side moon).
+  `assets/_reference/realm2_bg_target_2026-07-04.png` + compose recipe in
+  `scripts/compose_realm2_bg_mock.py` + `scripts/purple_shift.py` (Maaot
+  pack green→violet).
+- **`Realm2BgTest.tscn`** — the target wired live, everything MOVING:
+  3 parallax spire bands, randomized swinging canopy (pendulum + shear
+  sway, fresh roll per launch), mid-depth strands behind the chunk,
+  bobbing chunk w/ Maaot's animated wind plants, breathing gold pocket,
+  amber fireflies, spore drift, crawling fog, twinkling stars, storm
+  wisps, finger-moss floor hedge, clean soft moon. Self-screenshot via
+  `R2_SHOT` env var for A/B against the target.
+- **`CREDITS.md`** — per-piece attributions (Szadi art / Maaot / Advika /
+  AI-assisted programming), college-portfolio ready, update rule in place.
+- College portfolio gap analysis + action plan PDFs → Advika's Downloads.
+
+**What didn't work / dead ends**
+- Static painted lightning + god-rays in the mock (read as squiggle +
+  triangle) — cut; lightning will be an animated in-engine flash.
+- Stepped-ellipse moon halo (rings) and un-windowed halo (square edge) —
+  both replaced by smooth per-pixel falloff.
+- First open/luminous background direction — beautiful but read as Hollow
+  Knight; the intimate cut is ours.
+
+**Next 3 safe candidates**
+1. **R2-M1: quake + liftoff** — flat-ground intro on the mossy tileset,
+   storm arrives (shake, wind ramps), chunk tears free and rises.
+2. **R2-M2: wave combat on the chunk** — slime enemies (Maaot frames)
+   board during ascent; reuse Golem's enemy brain.
+3. **Realm 1 leftovers** (Advika's parked list): jade motivation beat,
+   real hub, sound, shorter prologue, custom text-box animation.
+
 ## 2026-05-17 — Close the agentic loop
 
 **Shipped**
