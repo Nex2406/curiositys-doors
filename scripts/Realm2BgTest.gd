@@ -16,6 +16,9 @@ var _chunk_base_y := 170.0
 var _glow: Sprite2D
 var _moon: Sprite2D
 var _fogs: Array[Sprite2D] = []
+var _stars: Array[Sprite2D] = []
+var _star_phase: Array[float] = []
+var _clouds: Array[Sprite2D] = []
 var _manual := 0.0
 
 const SWAY_SHADER := "
@@ -88,6 +91,35 @@ func _build_parallax() -> void:
 	_moon.texture = load(BASE + "moon.png")
 	_moon.position = Vector2(310, 215)  # screen-space: upper left, through the canopy
 	ml.add_child(_moon)
+	# faint stars, mid-sky (twinkle in _process)
+	var sl := ParallaxLayer.new()
+	sl.motion_scale = Vector2(0.04, 0.0)
+	pb.add_child(sl)
+	var srng := RandomNumberGenerator.new()
+	srng.seed = 7
+	for i in 16:
+		var st := Sprite2D.new()
+		st.texture = load(BASE + "star.png")
+		st.position = Vector2(srng.randf_range(80, 1840), srng.randf_range(50, 430))
+		st.scale = Vector2.ONE * srng.randf_range(0.5, 1.1)
+		st.modulate.a = srng.randf_range(0.2, 0.5)
+		sl.add_child(st)
+		_stars.append(st)
+		_star_phase.append(srng.randf_range(0.0, TAU))
+
+	# dark storm wisps drifting across the mid-sky
+	var cl2 := ParallaxLayer.new()
+	cl2.motion_scale = Vector2(0.08, 0.0)
+	pb.add_child(cl2)
+	for i in 3:
+		var c := Sprite2D.new()
+		c.texture = load(BASE + "cloud.png")
+		c.position = Vector2(200 + i * 700, 180 + i * 90)
+		c.scale = Vector2(1.3 + 0.3 * i, 1.1)
+		c.modulate.a = 0.5
+		cl2.add_child(c)
+		_clouds.append(c)
+
 	_add_band(pb, "band_far.png", 0.12)
 	_add_band(pb, "band_mid.png", 0.3)
 	_add_band(pb, "band_ground.png", 0.75)
@@ -302,3 +334,12 @@ func _process(delta: float) -> void:
 		f.position.x += (6.0 + i * 3.0) * delta
 		if f.position.x > 2400.0:
 			f.position.x = -2400.0
+	# stars twinkle, slow
+	for i in _stars.size():
+		_stars[i].modulate.a = 0.32 + sin(_t * 0.6 + _star_phase[i]) * 0.18
+	# storm wisps drift, wrap in layer space
+	for i in _clouds.size():
+		var c := _clouds[i]
+		c.position.x += (4.0 + i * 2.5) * delta
+		if c.position.x > 2600.0:
+			c.position.x = -700.0
