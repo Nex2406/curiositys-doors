@@ -7,24 +7,27 @@ extends Node2D
 ## R2_SHOT env: screenshot at 1s + quit. R2_SHOT_LIFT: jump to mid-ascent first.
 
 const BASE := "res://assets/realms/realm2_moss/"
+const LIVES_HUD := preload("res://scenes/UI/LivesHUD.tscn")
+const STARTING_LIVES: int = 3  # same rules as Realm 1
 const FLOOR_Y := 300.0
 const CHUNK_X := 1500.0
 const CHUNK_START_Y := 420.0
 const LIFT_TOP_Y := -2400.0
 
-enum Phase { INTRO, BUILD, TEAR, LIFT, DONE }
+enum Phase { INTRO, BUILD, RIDE, DONE }
 
 var phase := Phase.INTRO
 var _pt := 0.0            # time in current phase
 var _t := 0.0
 var _bg: Realm2Background
-var _chunk: AnimatableBody2D
+var _chunk: LevitatingIsland
 var _chunk_glow: Sprite2D
 var _curi: CharacterBody2D
 var _cam: Camera2D
 var _trauma := 0.0
 var _lbl: Label
-var _debris: CPUParticles2D
+var _lives: LivesHUD
+var _dying := false
 
 
 func _ready() -> void:
@@ -78,53 +81,49 @@ func _build_ground() -> void:
 	hedge2.position = Vector2(-1900 + 3840 * 0.7, FLOOR_Y - 1080 * 0.7 + 26)
 	add_child(hedge2)
 
-	# FRONT moss row — drawn OVER Curiosity, but ONLY the bottom finger strip
-	# of the band (region crop), tuned so tips reach the hero's waist at most.
+	# continuous moss MAT behind the hero — grass always under the feet,
+	# no floating over visual dips (tileable, no seams)
+	for i in 3:
+		var mat := Sprite2D.new()
+		mat.texture = load(BASE + "moss_mat.png")
+		mat.centered = false
+		mat.scale = Vector2(0.7, 0.7)
+		mat.position = Vector2(-2200 + i * 3840 * 0.7, 210.0)
+		add_child(mat)
+
+	# FRONT moss row — dedicated tileable strip drawn OVER Curiosity
+	# (organic tips to the waist; no crop slices, no seams)
 	for i in 3:
 		var front := Sprite2D.new()
-		front.texture = load(BASE + "band_ground.png")
+		front.texture = load(BASE + "moss_front.png")
 		front.centered = false
-		front.region_enabled = true
-		front.region_rect = Rect2(0, 810, 3840, 270)
 		front.scale = Vector2(0.7, 0.7)
-		front.position = Vector2(-2200 + i * 3840 * 0.7, FLOOR_Y - 56.0)
-		front.modulate = Color(0.82, 0.8, 0.9)
+		front.position = Vector2(-2200 + i * 3840 * 0.7, 236.0)
+		front.modulate = Color(0.86, 0.84, 0.94)
 		front.z_index = 12
 		add_child(front)
 
 
 func _build_chunk() -> void:
-	_chunk = AnimatableBody2D.new()
-	_chunk.sync_to_physics = true
+	# the chunk IS a LevitatingIsland — self-contained shake/debris/ascent/hover
+	_chunk = LevitatingIsland.new()
 	_chunk.position = Vector2(CHUNK_X, CHUNK_START_Y)
+	_chunk.rise_height = CHUNK_START_Y - LIFT_TOP_Y
+	_chunk.rise_duration = 24.0
+	_chunk.sway_amplitude = 22.0
+	_chunk.sway_period = 3.4
+	_chunk.bob_amplitude = 8.0
+	_chunk.shake_duration = 0.8
 	var col := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
-	shape.size = Vector2(600, 32)
+	shape.size = Vector2(1100, 32)  # match the wide island art, not just its center
 	col.shape = shape
 	col.position = Vector2(0, -114)  # top surface, under the grass fringe
 	_chunk.add_child(col)
 	add_child(_chunk)
 	_chunk_glow = _bg.build_chunk_visuals(_chunk)
-
-	_debris = CPUParticles2D.new()
-	_debris.texture = load(BASE + "spore.png")
-	_debris.emitting = false
-	_debris.one_shot = true
-	_debris.explosiveness = 0.9
-	_debris.amount = 60
-	_debris.lifetime = 1.6
-	_debris.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	_debris.emission_rect_extents = Vector2(330, 20)
-	_debris.direction = Vector2(0, 1)
-	_debris.spread = 40.0
-	_debris.gravity = Vector2(0, 700)
-	_debris.initial_velocity_min = 60.0
-	_debris.initial_velocity_max = 240.0
-	_debris.scale_amount_min = 1.0
-	_debris.scale_amount_max = 2.6
-	_debris.modulate = Color(0.45, 0.38, 0.62)
-	_debris.position = Vector2(0, 40)
-	_chunk.add_child(_debris)
+	_chunk.levitation_started.connect(func() -> void: _lbl.text = "")
+	_chunk.arrived.connect(func() -> void: _set_phase(Phase.DONE))
 
 
 func _build_player() -> void:
@@ -133,6 +132,13 @@ func _build_player() -> void:
 	# the world is authored at 1080-scale; shrink the hero to stand ~110px tall
 	_curi.scale = Vector2(0.24, 0.24)
 	add_child(_curi)
+
+	# the SAME eye lifeline counter as Realm 1 — shared scene, same rules
+	_lives = LIVES_HUD.instantiate() as LivesHUD
+	add_child(_lives)
+	_lives.reset(STARTING_LIVES)
+	if _curi.has_signal("died") and not _curi.died.is_connected(_die):
+		_curi.died.connect(_die)
 
 
 func _build_camera() -> void:
@@ -143,6 +149,7 @@ func _build_camera() -> void:
 	_cam.position = Vector2(150, FLOOR_Y - 220)
 	add_child(_cam)
 	_cam.make_current()
+	_chunk.camera_path = _chunk.get_path_to(_cam)  # island drives it once active
 
 
 func _build_ui() -> void:
@@ -168,9 +175,8 @@ func _build_ui() -> void:
 func _self_screenshot(path: String) -> void:
 	if OS.get_environment("R2_SHOT_LIFT") != "":
 		# jump straight to mid-ascent for the screenshot
-		_set_phase(Phase.LIFT)
-		_pt = 6.0
-		_chunk.position.y = CHUNK_START_Y - 1400.0
+		_set_phase(Phase.RIDE)
+		_chunk.debug_jump(0.5)
 		_curi.position = Vector2(CHUNK_X, _chunk.position.y - 150.0)
 		_curi.velocity = Vector2.ZERO
 		_bg.set_storm(0.75)
@@ -178,6 +184,30 @@ func _self_screenshot(path: String) -> void:
 	await get_tree().create_timer(1.0).timeout
 	get_viewport().get_texture().get_image().save_png(path)
 	get_tree().quit()
+
+
+# Realm 1's death beat, verbatim rules: eye closes, respawn with full health;
+# last eye → whole scene restarts.
+func _die() -> void:
+	if _dying:
+		return
+	_dying = true
+	if _curi.has_method("hurt"):
+		_curi.hurt()
+	var remaining: int = _lives.lose_eye()
+	await get_tree().create_timer(0.45).timeout
+	if remaining <= 0:
+		get_tree().reload_current_scene()
+		return
+	# respawn: on the island if it's flying, else back on solid ground
+	if _chunk.state != LevitatingIsland.State.IDLE:
+		_curi.global_position = _chunk.global_position + Vector2(0, -170)
+	else:
+		_curi.position = Vector2(clampf(_curi.position.x, -600.0, 2100.0), FLOOR_Y - 140.0)
+	_curi.velocity = Vector2.ZERO
+	if _curi.has_method("refill_health"):
+		_curi.refill_health()
+	_dying = false
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -193,12 +223,8 @@ func _set_phase(p: Phase) -> void:
 	match p:
 		Phase.BUILD:
 			_lbl.text = "the wind is changing…"
-		Phase.TEAR:
-			_lbl.text = ""
+		Phase.RIDE:
 			_trauma = 1.0
-			_debris.emitting = true
-		Phase.LIFT:
-			_lbl.text = ""
 		Phase.DONE:
 			_lbl.text = "above the canopy — R2-M1 complete   (R restart · ESC quit)"
 
@@ -215,29 +241,17 @@ func _physics_process(delta: float) -> void:
 			var k := clampf(_pt / 5.0, 0.0, 1.0)
 			_bg.set_storm(k * 0.85)
 			_trauma = maxf(_trauma, k * 0.55)
-			# the ground itself judders as the storm grips it
-			_chunk.position.x = CHUNK_X + sin(_pt * 31.0) * 2.4 * k
 			if _pt >= 5.0:
-				_set_phase(Phase.TEAR)
-		Phase.TEAR:
-			_trauma = 1.0
-			_bg.set_storm(1.0)
-			# three violent jerks upward before it breaks free
-			_chunk.position.y = CHUNK_START_Y - absf(sin(_pt * 12.0)) * 26.0
-			if _pt >= 1.3:
-				_set_phase(Phase.LIFT)
-		Phase.LIFT:
-			_bg.set_storm(0.75)
-			_trauma = maxf(_trauma, 0.18)
-			# ease-in ascent: slow tear-away, accelerating climb
-			var v := minf(30.0 + _pt * 26.0, 380.0)
-			_chunk.position.y -= v * delta
-			_chunk.position.x = CHUNK_X + sin(_t * 1.3) * 6.0
-			if _chunk.position.y <= LIFT_TOP_Y:
-				_set_phase(Phase.DONE)
+				_chunk.start_levitation()  # island owns shake/debris/ascent now
+				_set_phase(Phase.RIDE)
+		Phase.RIDE:
+			_bg.set_storm(0.8)
+			_trauma = maxf(_trauma, 0.15)
+			# fell off mid-ascent: same death beat as any other (eye closes, respawn)
+			if _curi.global_position.y > _chunk.global_position.y + 900.0:
+				_die()
 		Phase.DONE:
 			_bg.set_storm(0.35)
-			_chunk.position.y = LIFT_TOP_Y + sin(_t * 0.5) * 10.0
 
 
 func _process(delta: float) -> void:
@@ -248,13 +262,14 @@ func _process(delta: float) -> void:
 	if _chunk_glow:
 		_chunk_glow.modulate.a = 0.82 + sin(_t * 1.1) * 0.1 + sin(_t * 1.7 + 1.3) * 0.06
 
-	# camera: follow Curiosity, shake by trauma
-	var target := Vector2(
-		clampf(_curi.global_position.x, -450.0, CHUNK_X + 250.0),
-		clampf(_curi.global_position.y - 130.0, LIFT_TOP_Y - 200.0, FLOOR_Y - 220.0))
-	_cam.position = _cam.position.lerp(target, 1.0 - pow(0.001, delta))
-	var sh := _trauma * _trauma
-	_cam.offset = Vector2(
-		randf_range(-1.0, 1.0) * 16.0 * sh,
-		randf_range(-1.0, 1.0) * 12.0 * sh)
-	_cam.rotation = randf_range(-1.0, 1.0) * 0.012 * sh
+	# camera: ours until the island wakes, then the island drives it
+	if _chunk.state == LevitatingIsland.State.IDLE:
+		var target := Vector2(
+			clampf(_curi.global_position.x, -450.0, CHUNK_X + 250.0),
+			clampf(_curi.global_position.y - 130.0, LIFT_TOP_Y - 200.0, FLOOR_Y - 220.0))
+		_cam.position = _cam.position.lerp(target, 1.0 - pow(0.001, delta))
+		var sh := _trauma * _trauma
+		_cam.offset = Vector2(
+			randf_range(-1.0, 1.0) * 16.0 * sh,
+			randf_range(-1.0, 1.0) * 12.0 * sh)
+		_cam.rotation = randf_range(-1.0, 1.0) * 0.012 * sh
