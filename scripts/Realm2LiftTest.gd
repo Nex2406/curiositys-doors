@@ -122,6 +122,17 @@ func _build_chunk() -> void:
 	_chunk.add_child(col)
 	add_child(_chunk)
 	_chunk_glow = _bg.build_chunk_visuals(_chunk)
+
+	# soil plug: hides the island's underbelly while it's embedded in the
+	# ground (same near-black as the earth, beneath the z12 front moss).
+	# It stays with the ground — the island rises OUT of it at the tear.
+	var plug := Polygon2D.new()
+	plug.polygon = PackedVector2Array([
+		Vector2(CHUNK_X - 730, FLOOR_Y + 4), Vector2(CHUNK_X + 730, FLOOR_Y + 4),
+		Vector2(CHUNK_X + 730, FLOOR_Y + 900), Vector2(CHUNK_X - 730, FLOOR_Y + 900)])
+	plug.color = Color(7.0 / 255.0, 5.0 / 255.0, 16.0 / 255.0)
+	plug.z_index = 11
+	add_child(plug)
 	_chunk.levitation_started.connect(func() -> void: _lbl.text = "")
 	_chunk.arrived.connect(func() -> void: _set_phase(Phase.DONE))
 
