@@ -63,7 +63,7 @@ func _build_ground() -> void:
 	var earth := Polygon2D.new()
 	earth.polygon = PackedVector2Array([Vector2(-6000, FLOOR_Y + 6), Vector2(6400, FLOOR_Y + 6),
 			Vector2(6400, FLOOR_Y + 1400), Vector2(-6000, FLOOR_Y + 1400)])
-	earth.color = Color(13.0 / 255.0, 9.0 / 255.0, 28.0 / 255.0)
+	earth.color = Color(7.0 / 255.0, 5.0 / 255.0, 16.0 / 255.0)  # near-black soil, not a purple band
 	add_child(earth)
 	var hedge := Sprite2D.new()
 	hedge.texture = load(BASE + "band_ground.png")
@@ -77,6 +77,20 @@ func _build_ground() -> void:
 	hedge2.scale = Vector2(0.7, 0.7)
 	hedge2.position = Vector2(-1900 + 3840 * 0.7, FLOOR_Y - 1080 * 0.7 + 26)
 	add_child(hedge2)
+
+	# FRONT moss row — drawn OVER Curiosity, but ONLY the bottom finger strip
+	# of the band (region crop), tuned so tips reach the hero's waist at most.
+	for i in 3:
+		var front := Sprite2D.new()
+		front.texture = load(BASE + "band_ground.png")
+		front.centered = false
+		front.region_enabled = true
+		front.region_rect = Rect2(0, 810, 3840, 270)
+		front.scale = Vector2(0.7, 0.7)
+		front.position = Vector2(-2200 + i * 3840 * 0.7, FLOOR_Y - 56.0)
+		front.modulate = Color(0.82, 0.8, 0.9)
+		front.z_index = 12
+		add_child(front)
 
 
 func _build_chunk() -> void:
