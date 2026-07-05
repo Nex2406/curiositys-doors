@@ -144,7 +144,7 @@ func _build_player() -> void:
 func _build_camera() -> void:
 	_cam = Camera2D.new()
 	var vp := get_viewport_rect().size
-	var z := 1.55 * vp.y / 1080.0
+	var z := 1.12 * vp.y / 1080.0  # zoomed out: context around the island
 	_cam.zoom = Vector2(z, z)
 	_cam.position = Vector2(150, FLOOR_Y - 220)
 	add_child(_cam)
@@ -247,8 +247,9 @@ func _physics_process(delta: float) -> void:
 		Phase.RIDE:
 			_bg.set_storm(0.8)
 			_trauma = maxf(_trauma, 0.15)
-			# fell off mid-ascent: same death beat as any other (eye closes, respawn)
-			if _curi.global_position.y > _chunk.global_position.y + 900.0:
+			# fell off mid-ascent: same death beat as any other (eye closes, respawn).
+			# _pt guard: never fire in the ride's first moments (spawn/settle race).
+			if _pt > 1.0 and _curi.global_position.y > _chunk.global_position.y + 900.0:
 				_die()
 		Phase.DONE:
 			_bg.set_storm(0.35)

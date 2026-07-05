@@ -78,9 +78,9 @@ func _build_sky() -> void:
 	cl.add_child(_sky_rect)
 
 
-func _add_band(pb: ParallaxBackground, tex: String, motion: float) -> void:
+func _add_band(pb: ParallaxBackground, tex: String, motion: float, y_motion: float) -> void:
 	var layer := ParallaxLayer.new()
-	layer.motion_scale = Vector2(motion, motion * 0.4)
+	layer.motion_scale = Vector2(motion, y_motion)
 	pb.add_child(layer)
 	var s := Sprite2D.new()
 	s.texture = load(BASE + tex)
@@ -129,9 +129,11 @@ func _build_parallax() -> void:
 		cl2.add_child(c)
 		_clouds.append(c)
 
-	_add_band(pb, "band_far.png", 0.12)
-	_add_band(pb, "band_mid.png", 0.3)
-	_add_band(pb, "band_ground.png", 0.75)
+	# y motions tuned for the ascent: near canopy falls away fast, far spires
+	# sink slowly — high altitude reads as open sky + moon + stars
+	_add_band(pb, "band_far.png", 0.12, 0.25)
+	_add_band(pb, "band_mid.png", 0.3, 0.55)
+	_add_band(pb, "band_ground.png", 0.75, 0.9)
 
 
 func _sway_material(amp: float, speed: float, phase: float) -> ShaderMaterial:
@@ -192,9 +194,6 @@ func build_chunk_visuals(parent: Node2D) -> Sprite2D:
 	var body := Sprite2D.new()
 	body.texture = load(BASE + "chunk.png")
 	parent.add_child(body)
-	var wind := _animated("plant_wind", 10.0, 0.30)
-	wind.position = Vector2(-170, -140)
-	parent.add_child(wind)
 	var flower := _animated("flower", 8.0, 0.26)
 	flower.position = Vector2(60, -138)
 	parent.add_child(flower)
