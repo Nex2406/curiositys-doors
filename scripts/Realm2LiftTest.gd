@@ -118,7 +118,7 @@ func _build_chunk() -> void:
 	var shape := RectangleShape2D.new()
 	shape.size = Vector2(1100, 32)  # match the wide island art, not just its center
 	col.shape = shape
-	col.position = Vector2(0, -114)  # top surface, under the grass fringe
+	col.position = Vector2(0, -104)  # sunk into the fringe — he stands IN the moss
 	_chunk.add_child(col)
 	add_child(_chunk)
 	_chunk_glow = _bg.build_chunk_visuals(_chunk)
@@ -135,6 +135,8 @@ func _build_player() -> void:
 
 	# the SAME eye lifeline counter as Realm 1 — shared scene, same rules
 	_lives = LIVES_HUD.instantiate() as LivesHUD
+	_lives.eye_scale = 0.22     # bigger lifelines (R1 default is 0.15)
+	_lives.eye_spacing = 112.0  # keep centers apart at the larger size
 	add_child(_lives)
 	_lives.reset(STARTING_LIVES)
 	if _curi.has_signal("died") and not _curi.died.is_connected(_die):
@@ -144,7 +146,7 @@ func _build_player() -> void:
 func _build_camera() -> void:
 	_cam = Camera2D.new()
 	var vp := get_viewport_rect().size
-	var z := 1.12 * vp.y / 1080.0  # zoomed out: context around the island
+	var z := 0.95 * vp.y / 1080.0  # zoomed out: the island travels through a big sky
 	_cam.zoom = Vector2(z, z)
 	_cam.position = Vector2(150, FLOOR_Y - 220)
 	add_child(_cam)
@@ -174,14 +176,20 @@ func _build_ui() -> void:
 
 func _self_screenshot(path: String) -> void:
 	if OS.get_environment("R2_SHOT_LIFT") != "":
-		# jump straight to mid-ascent for the screenshot
+		# jump straight to mid-ascent for the screenshot. Let the island's
+		# physics body settle at the jumped position FIRST — placing the hero
+		# in the same tick lets the teleport sweep past him (he falls home).
 		_set_phase(Phase.RIDE)
 		_chunk.debug_jump(0.5)
-		_curi.position = Vector2(CHUNK_X, _chunk.position.y - 150.0)
+		await get_tree().physics_frame
+		await get_tree().physics_frame
+		_curi.global_position = _chunk.global_position + Vector2(0, -175.0)
 		_curi.velocity = Vector2.ZERO
 		_bg.set_storm(0.75)
-		_cam.position = Vector2(CHUNK_X, _chunk.position.y - 120.0)
+		_cam.position = Vector2(CHUNK_X, _chunk.global_position.y - 120.0)
 	await get_tree().create_timer(1.0).timeout
+	print("SHOT curi=", _curi.global_position, " island=", _chunk.global_position,
+			" state=", _chunk.state, " visible=", _curi.visible)
 	get_viewport().get_texture().get_image().save_png(path)
 	get_tree().quit()
 

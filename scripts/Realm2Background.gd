@@ -194,6 +194,55 @@ func build_chunk_visuals(parent: Node2D) -> Sprite2D:
 	var body := Sprite2D.new()
 	body.texture = load(BASE + "chunk.png")
 	parent.add_child(body)
+
+	# ---- design pass: break up the flat dark core ----
+	# boulders grown into the top line (roots hidden by the fringe overlay)
+	for p in [[-330.0, -122.0, 0.34, 0, 0.85], [255.0, -116.0, 0.24, 1, 0.75]]:
+		var b := Sprite2D.new()
+		b.texture = load(BASE + "boulder_%d.png" % [0 if p[3] == 0 else 1])
+		b.scale = Vector2(p[2], p[2])
+		if p[3] == 1:
+			b.flip_h = true
+		b.position = Vector2(p[0], p[1])
+		b.modulate = Color(p[4], p[4], p[4])
+		parent.add_child(b)
+	# tuft clusters varying the fringe silhouette — bases rooted INSIDE the
+	# fringe (bottom sits at -85 local, covered by the z12 fringe overlay)
+	for p in [[-460.0, 0.5], [-70.0, 0.62], [420.0, 0.45]]:
+		var tf := Sprite2D.new()
+		tf.texture = load(BASE + "tuft_%d.png" % (randi() % 3))
+		tf.scale = Vector2(p[1], p[1])
+		tf.position = Vector2(p[0], -85.0 - tf.texture.get_height() * p[1] * 0.5)
+		parent.add_child(tf)
+	# half-sunk rocks texturing the dark core
+	for p in [[-180.0, -20.0, 0.2, 0.5], [120.0, -8.0, 0.16, 0.42]]:
+		var r := Sprite2D.new()
+		r.texture = load(BASE + "boulder_2.png")
+		r.scale = Vector2(p[2], p[2])
+		r.position = Vector2(p[0], p[1])
+		r.modulate = Color(p[3], p[3], p[3] * 1.15)
+		parent.add_child(r)
+	# faint gold ember-veins in the rock (kin to the lantern)
+	for p in [[-280.0, -36.0, 0.13], [40.0, -18.0, 0.1], [340.0, -42.0, 0.15]]:
+		var em := Sprite2D.new()
+		em.texture = load(BASE + "glow_gold.png")
+		em.scale = Vector2(p[2], p[2])
+		em.position = Vector2(p[0], p[1])
+		em.modulate.a = 0.5
+		var add_m := CanvasItemMaterial.new()
+		add_m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		em.material = add_m
+		parent.add_child(em)
+
+	# front fringe overlay: the island's own top grass drawn OVER the rider,
+	# so anyone standing on it stands IN the moss, not on a shelf above it
+	var fringe := Sprite2D.new()
+	fringe.texture = body.texture
+	fringe.region_enabled = true
+	fringe.region_rect = Rect2(0, 0, body.texture.get_width(), 95)
+	fringe.position = Vector2(0, -body.texture.get_height() / 2.0 + 47.5)
+	fringe.z_index = 12
+	parent.add_child(fringe)
 	var flower := _animated("flower", 8.0, 0.26)
 	flower.position = Vector2(60, -138)
 	parent.add_child(flower)
@@ -309,6 +358,11 @@ func _process(delta: float) -> void:
 	if cam:
 		$Foreground.position.x = cam.global_position.x * -0.22
 		$MidVines.position.x = cam.global_position.x * 0.55
+		# the hanging canopy belongs to the forest floor: fade it out smoothly
+		# as the camera climbs, so ascent never shows cut-off leaf tops
+		var alt := clampf(inverse_lerp(-220.0, -820.0, cam.global_position.y), 0.0, 1.0)
+		$Foreground.modulate.a = 1.0 - alt
+		$MidVines.modulate.a = 1.0 - alt
 	if _chunk:
 		_chunk.position.y = _chunk_base_y + sin(_t * 0.5) * 10.0
 	if _glow:
