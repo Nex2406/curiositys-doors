@@ -117,6 +117,11 @@ the "10x later" investment.
 ### M4 — Realm 2 (design + build)
 *Its own dimension, its own verb, its own boss. Design locked with Advika before building.*
 
+> Realm 2 turned out technical enough to get its own phase ladder — see
+> [`docs/realms/realm2.md`](realms/realm2.md) (R2-M0 … R2-M8). Note: it started
+> ahead of M2/M3 in practice; the combat framework (M2) lands *inside* Realm 2
+> as phases R2-M2/R2-M3, built reusable as always.
+
 - **Why now:** with the engine + bar set, this is mostly authoring.
 - **Scope:**
   - **Gate A — Design:** interview Advika; lock theme, palette, puzzle/verb, boss,

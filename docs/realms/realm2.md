@@ -1,0 +1,87 @@
+# Realm 2 — The Rising Chunk *(working name)*
+
+> Living spec. Last updated: 2026-07-07. Vertical arena setpiece — the storm
+> tears the ground loose and Curiosity rides it into the sky. Full pitch:
+> [SKETCHBOOK 2026-07-04](../SKETCHBOOK.md).
+
+---
+
+## What it is
+The contrast realm. Realm 1 is quiet horizontal cave traversal; Realm 2 is a
+loud vertical arena. Curiosity walks in on flat mossy ground, a storm hits, the
+storm tears the middle chunk loose and lifts it — Curiosity rides the rising
+island, survives everything the storm throws at them, and steps through a door
+in the sky.
+
+## The verb
+Survive the ascent — fight, dodge, hold on.
+
+## Palette / feel
+Purple, low-lit, cloak-colored (settled 2026-07-04) — the realm is made of the
+same stuff as the hero. Deep violets, dim base, lantern gold as the one warm
+accent. The storm is the realm's engine: it lifts the chunk, throws the
+lightning, drives everything.
+
+## Build phases (R2-M#)
+
+Realm 2 is technical enough that it gets its own milestone ladder. Each phase
+is one shippable brick: its own branch/PR, directly testable (boot straight
+into it), leaves the realm playable end-to-end at whatever depth exists so far.
+
+### ✅ R2-M0 — Living background *(merged 2026-07-04)*
+The violet moss canopy in motion: parallax spire bands, swinging strands,
+breathing gold pocket, fireflies/spores/fog/storm wisps.
+`scenes/realms/Realm2BgTest.tscn`.
+
+### 🔨 R2-M1 — Quake + liftoff *(on `feat/realm2-liftoff` now)*
+Flat-ground intro → quake → the storm tears the island loose → seamless ascent
+with Curiosity planted as a rider. `LevitatingIsland` component, soil plug,
+bands falling away on ascent.
+
+### R2-M2 — Curiosity learns to fight
+Wire the already-imported attack / dash / hurt / death frames into the state
+machine, plus the health → damage → knockback → death → respawn loop. This is
+global milestone **M2's** first brick landing inside Realm 2 — built reusable,
+every later realm inherits it. No enemies yet; proven in a test arena.
+
+### R2-M3 — Enemy base + the first slime
+Reusable `Enemy` base (spawn / approach / attack / take damage / die) proven on
+one slime that can reach the flying island. One slime, killable, dangerous.
+*Forces the decision: how do enemies reach the chunk — fly, climb, drop from
+the storm?*
+
+### R2-M4 — Wave director
+Waves of slimes tied to the ascent — the climb IS the difficulty curve.
+Spawn timing, escalation, breathing room between waves.
+*Forces the decision: continuous rise vs rise-between-waves.*
+
+### R2-M5 — Storm hazards
+Telegraphed lightning strikes on the island — see it coming, dodge it — plus
+whatever "other stuff" the storm throws. Screenshake, flash, scorch.
+
+### R2-M6 — Potion orb
+Ingredients to gather on the island mid-fight → brew → the **orb**, Curiosity's
+first ranged weapon. *Forces the decision: is orb-brewing the realm's "puzzle"
+beat, or a side weapon?*
+
+### R2-M7 — Sky door finale
+The ascent tops out at the door in the sky. Arrival beat, one-line exit lore
+(needs the realm's emotional word — Advika), hub return, save/persistence
+(RealmBase).
+
+### R2-M8 — Sound + polish
+Storm ambience + SFX (thunder, slime, orb, lightning), particle/feel pass,
+A/B against `assets/_reference/realm2_bg_target_2026-07-04.png`, full
+end-to-end playthrough on the live web build.
+
+## Open questions
+- Enemy design: slimes settled as the wave creature? What do they look like —
+  and how do they reach a floating island? *(forced by R2-M3)*
+- Chunk pacing: continuous rise, or rise-between-waves? *(forced by R2-M4)*
+- Is orb-brewing the realm's puzzle beat? *(forced by R2-M6)*
+- The realm's emotional word — palette is set, the *feeling* is unnamed.
+  *(needed before the R2-M7 lore line)*
+- What does Curiosity carry OUT of Realm 2? (Realm 1 = jade key → Door 2.
+  Later realms riff on "what you carry out matters", not repeat it — the orb?)
+- Which door in the hub leads here, and how does it unlock? (Currently: jade
+  key unlocks Door 2.)
