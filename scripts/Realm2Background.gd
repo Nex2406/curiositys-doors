@@ -292,8 +292,10 @@ func _build_foreground() -> void:
 	mv.name = "MidVines"
 	add_child(mv)
 	move_child(mv, 0)
+	# (range: the container parallax-shifts by +0.55*cam.x, so 2200 local is
+	# what the frame's right edge needs at the island)
 	var mx := rng.randf_range(-1700.0, -1300.0)
-	while mx < 1900.0:
+	while mx < 2200.0:
 		_leaf(mv, "cascade.png", mx, rng.randf_range(-660.0, -595.0),
 				rng.randf_range(0.55, 0.95), rng.randf_range(0.38, 0.58),
 				rng.randf_range(6.0, 10.0), rng.randf_range(0.5, 0.75),
@@ -301,12 +303,31 @@ func _build_foreground() -> void:
 				rng.randf_range(1.5, 2.8))
 		mx += rng.randf_range(520.0, 950.0)
 
+	# canopy moss clumps — the ground's own tufts hanging among the leaf
+	# strands, so ceiling and floor share one vocabulary (they ride MidVines:
+	# same parallax, same fade-out at liftoff)
+	var tx := rng.randf_range(-1650.0, -1250.0)
+	while tx < 2200.0:
+		var ct := Sprite2D.new()
+		ct.texture = load(BASE + "tuft_%d.png" % (rng.randi() % 3))
+		var cs := rng.randf_range(0.30, 0.52)
+		ct.scale = Vector2(cs, cs)
+		ct.flip_h = rng.randf() < 0.5
+		ct.position = Vector2(tx, rng.randf_range(-650.0, -545.0))
+		var cb := rng.randf_range(0.36, 0.52)
+		ct.modulate = Color(cb, cb * 0.95, cb * 1.2)
+		mv.add_child(ct)
+		tx += rng.randf_range(280.0, 520.0)
+
 	var fg := Node2D.new()
 	fg.name = "Foreground"
 	fg.z_index = 50
 	add_child(fg)
+	# (range: this container parallax-shifts by -0.22*cam.x, so the frame's
+	# right edge at the island needs strands out to ~3300 local — stopping at
+	# 2000 left the right half of the level bald)
 	var fx := rng.randf_range(-1800.0, -1500.0)
-	while fx < 2000.0:
+	while fx < 3300.0:
 		var tex := "vine_dark.png" if rng.randf() < 0.6 else "cascade_dark.png"
 		_leaf(fg, tex, fx, rng.randf_range(-620.0, -535.0),
 				rng.randf_range(0.55, 1.2), rng.randf_range(0.72, 1.0),
