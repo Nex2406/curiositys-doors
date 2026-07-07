@@ -13,8 +13,10 @@ const FLOOR_Y := 300.0
 const CHUNK_X := 1500.0
 const CHUNK_START_Y := 420.0
 const LIFT_TOP_Y := -2400.0
-# embedded island tint — matches the dark violet of the surrounding ground
-const CAMO_TINT := Color(0.36, 0.34, 0.47)
+# embedded island tint — the chunk art is intrinsically ~3x brighter than the
+# ground strips, so the camo sits proportionally darker to land on the same
+# rendered brightness
+const CAMO_TINT := Color(0.26, 0.245, 0.34)
 const WAKE_TIME := 7.0  # seconds to blossom to full color during the rise
 
 enum Phase { INTRO, BUILD, RIDE, DONE }
@@ -32,6 +34,7 @@ var _lbl: Label
 var _lives: LivesHUD
 var _dying := false
 var _hedge_dissolve: ShaderMaterial
+var _wake := 0.0  # 0 = embedded/dormant island, 1 = fully awake (glow breathes)
 
 
 func _ready() -> void:
@@ -223,9 +226,14 @@ func _build_chunk() -> void:
 	add_child(_chunk)
 	_chunk_glow = _bg.build_chunk_visuals(_chunk)
 	# CAMOUFLAGE: while embedded, the island wears the ground's own dark
-	# violet — bright chunk art in a dark field reads as pasted-on. At the
-	# tear it tweens awake to its true colors (see start of Phase.RIDE).
+	# violet — bright chunk art in a dark field reads as pasted-on. Its
+	# animated plants freeze and the gold glow banks to a still ember: any
+	# motion in an otherwise still field gives the island away instantly.
+	# At the tear it all wakes together (tint tween + _wake ramp + plants).
 	_chunk.modulate = CAMO_TINT
+	for c in _chunk.get_children():
+		if c is AnimatedSprite2D:
+			c.pause()
 
 	# soil plug: hides the island's pink under-moss while it's embedded (same
 	# near-black as the earth). It stays with the ground — the island rises
@@ -243,9 +251,14 @@ func _build_chunk() -> void:
 	add_child(plug)
 	_chunk.levitation_started.connect(func() -> void:
 		_lbl.text = ""
-		# the island wakes: camouflage violet -> its own bright moss colors
+		# the island wakes: camouflage violet -> its own bright moss colors,
+		# glow breathing ramps in, plants stir back to life
 		create_tween().tween_property(_chunk, "modulate", Color(1, 1, 1), WAKE_TIME)\
-				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT))
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		create_tween().tween_property(self, "_wake", 1.0, WAKE_TIME)
+		for c in _chunk.get_children():
+			if c is AnimatedSprite2D:
+				c.play())
 	_chunk.arrived.connect(func() -> void: _set_phase(Phase.DONE))
 
 
@@ -309,6 +322,10 @@ func _self_screenshot(path: String) -> void:
 		# in the same tick lets the teleport sweep past him (he falls home).
 		_set_phase(Phase.RIDE)
 		_chunk.modulate = Color(1, 1, 1)  # mid-ascent = fully awake colors
+		_wake = 1.0
+		for c in _chunk.get_children():
+			if c is AnimatedSprite2D:
+				c.play()
 		# R2_SHOT_LIFT may carry an ascent progress (0..1); bare "1" means midway
 		var prog := 0.5
 		var pv := OS.get_environment("R2_SHOT_LIFT")
@@ -415,9 +432,10 @@ func _process(delta: float) -> void:
 	_t += delta
 	_trauma = maxf(_trauma - delta * 0.8, 0.0)
 
-	# chunk glow breathes
+	# chunk glow: still faint ember while embedded, breathes once awake
 	if _chunk_glow:
-		_chunk_glow.modulate.a = 0.82 + sin(_t * 1.1) * 0.1 + sin(_t * 1.7 + 1.3) * 0.06
+		var breath := 0.82 + sin(_t * 1.1) * 0.1 + sin(_t * 1.7 + 1.3) * 0.06
+		_chunk_glow.modulate.a = lerpf(0.10, breath, _wake)
 
 	# camera: ours until the island wakes, then the island drives it
 	if _chunk.state == LevitatingIsland.State.IDLE:
