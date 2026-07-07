@@ -120,6 +120,30 @@ func _build_ground() -> void:
 		tf.set_meta("dbg", "mound")
 		add_child(tf)
 
+	# SEAM BELT — the upper moss masses and the ground rows are horizontal
+	# strips at constant heights, which reads as a dark flat channel running
+	# the whole level ("the canopy is separate from the scene"). A belt of
+	# mid-tone tufts straddles that seam at varied x/height/scale so the two
+	# masses interlock. z0 late in the tree: over the crest/mats, but behind
+	# Curiosity and the z11/z12 rows so the hero never drowns in it.
+	var belt_rng := RandomNumberGenerator.new()
+	belt_rng.seed = 20260707  # fixed: the belt is level design, not weather
+	var bx := -2100.0
+	while bx < 3900.0:
+		if absf(bx - CHUNK_X) > 800.0:  # the island owns its own silhouette
+			var bt := Sprite2D.new()
+			bt.texture = load(BASE + "tuft_%d.png" % (belt_rng.randi() % 3))
+			var bs := belt_rng.randf_range(0.30, 0.52)
+			bt.scale = Vector2(bs, bs)
+			bt.flip_h = belt_rng.randf() < 0.5
+			bt.position = Vector2(bx + belt_rng.randf_range(-60.0, 60.0),
+					belt_rng.randf_range(210.0, 280.0))
+			var bb := belt_rng.randf_range(0.34, 0.58)
+			bt.modulate = Color(bb, bb * 0.96, bb * 1.22)
+			bt.set_meta("dbg", "belt")
+			add_child(bt)
+		bx += belt_rng.randf_range(190.0, 330.0)
+
 	# DEPTH STACK — staggered rows of the same tileable strip, each lower and
 	# darker, so the whole floor band is one seamless moss mound fading into
 	# soil (no black gap-windows anywhere). z11: over the plug (z10) and the
@@ -133,7 +157,9 @@ func _build_ground() -> void:
 			mid.texture = load(BASE + "moss_front.png")
 			mid.centered = false
 			mid.scale = Vector2(0.7, 0.7)
-			mid.position = Vector2(-2200 + row[4] + i * 3840 * 0.7, row[0])
+			# per-tile height wobble so the strip rows don't sit on one flat line
+			mid.position = Vector2(-2200 + row[4] + i * 3840 * 0.7,
+					row[0] + sin(i * 2.6 + row[0]) * 10.0)
 			mid.modulate = Color(row[1], row[2], row[3])
 			mid.z_index = 11
 			mid.set_meta("dbg", row[5])
@@ -146,7 +172,7 @@ func _build_ground() -> void:
 		front.texture = load(BASE + "moss_front.png")
 		front.centered = false
 		front.scale = Vector2(0.7, 0.7)
-		front.position = Vector2(-2200 + i * 3840 * 0.7, 236.0)
+		front.position = Vector2(-2200 + i * 3840 * 0.7, 236.0 + sin(i * 2.1 + 4.0) * 9.0)
 		front.modulate = Color(0.86, 0.84, 0.94)
 		front.z_index = 12
 		front.set_meta("dbg", "front")
@@ -232,7 +258,7 @@ func _build_player() -> void:
 func _build_camera() -> void:
 	_cam = Camera2D.new()
 	var vp := get_viewport_rect().size
-	var z := 0.95 * vp.y / 1080.0  # zoomed out: the island travels through a big sky
+	var z := 0.85 * vp.y / 1080.0  # zoomed out: the island travels through a big sky
 	_cam.zoom = Vector2(z, z)
 	_cam.position = Vector2(150, FLOOR_Y - 220)
 	add_child(_cam)
@@ -360,16 +386,16 @@ func _physics_process(delta: float) -> void:
 			_bg.set_storm(0.8)
 			_trauma = maxf(_trauma, 0.15)
 			# fell off mid-ascent: the fall plays out PAST the bottom of the frame
-			# (view half-height is 1080/(2*zoom) ≈ 568px), THEN the eye closes and
+			# (view half-height is 1080/(2*zoom) ≈ 635px), THEN the eye closes and
 			# the respawn blinks in. Frame-relative so it can never strand the hero
 			# on the old ground while the island sails away.
 			# _pt guard: never fire in the ride's first moments (spawn/settle race).
-			if _pt > 1.0 and _curi.global_position.y > _cam.global_position.y + 640.0:
+			if _pt > 1.0 and _curi.global_position.y > _cam.global_position.y + 700.0:
 				_die()
 		Phase.DONE:
 			_bg.set_storm(0.35)
 			# walking off the hovering island at the top is a fall like any other
-			if _curi.global_position.y > _cam.global_position.y + 640.0:
+			if _curi.global_position.y > _cam.global_position.y + 700.0:
 				_die()
 
 
