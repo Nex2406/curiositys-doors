@@ -1,17 +1,22 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-07-04_
+_Last updated: 2026-07-07_
 
-## Realm 2 — living background SHIPPED (test scene)
-`scenes/realms/Realm2BgTest.tscn` (+`scripts/Realm2BgTest.gd`, all built in
-code) — the intimate violet moss canopy, fully in motion: 3 parallax spire
-bands, randomized swinging canopy strands, bobbing chunk with Maaot's
-animated plants, breathing gold pocket, fireflies/spores/fog/stars/storm
-wisps, finger-moss floor. A/B target:
-`assets/_reference/realm2_bg_target_2026-07-04.png`. Assets:
-`assets/realms/realm2_moss/` (Maaot pack, purple-shifted via
-`scripts/purple_shift.py`). Concept (SKETCHBOOK 2026-07-04): flat-ground
-intro → storm tears the middle chunk loose → vertical ascent w/ slime waves,
-potion orb, lightning → sky door. Next brick: quake + liftoff (R2-M1).
+## Realm 2 — R2-M1 quake + liftoff SHIPPED (test scene)
+`scenes/realms/Realm2LiftTest.tscn` (+`scripts/Realm2LiftTest.gd`,
+`scripts/LevitatingIsland.gd`, shared `scripts/Realm2Background.gd`) — the
+full setpiece, playable: flat mossy intro → step onto the buried island →
+storm builds → the tear → 24s seamless ascent with Curiosity riding → arrival
+above the canopy. The embedded island is CAMOUFLAGED (ground-dark tint,
+dormant glow, frozen plants) and wakes to full color over the tear — no
+pasted-on contrast. Ground is a seamless moss body: staggered big-finger rows
+to silhouette depth, crest + mounds skyline, seam belt interlocking the upper
+masses, fringe/hedge crop edges dissolved by shader. Falling off (any phase)
+plays out past the frame, closes an eye, respawns with Curiosity's invuln
+blink; 3 lifelines then scene restart. Harness: R2_SHOT / R2_SHOT_X /
+R2_SHOT_LIFT(progress) / R2_SHOT_FALL / R2_TINT (layer forensics).
+Phase ladder: [`docs/realms/realm2.md`](realms/realm2.md) — R2-M0 ✅ R2-M1 ✅;
+next R2-M3 (Enemy base + first slime; R2-M2 combat was already shipped by the
+golem work). The older `Realm2BgTest.tscn` remains as the background gallery.
 Credits: `CREDITS.md` (root) — keep updated per asset, college-portfolio gate.
 
 ## Live loop
@@ -105,8 +110,10 @@ placeholder arch — ornate door / eyed moon / silhouettes are the next art lift
   https://nex2406.github.io/curiositys-doors/)
 
 ## What exists but is unwired
-- Combat / dash / lever / approach / hurt / charged / celebrate animations
-  on Curiosity (frames imported, not reachable from state machine)
+- Lever / approach / charged / celebrate animations on Curiosity (frames
+  imported, not reachable from state machine). Combat IS wired: attack1/2
+  combo, dash, hurt, health/invuln, died signal — live in `Curiosity.gd`,
+  proven against the golem in Realm 1 and `GolemTest.tscn`.
 - Puzzle framework (docs-only)
 - No "continue / resume on boot" flow yet — the game always starts at the Intro.
   SaveManager persists and RealmBase restores per-realm state on *re-entry*, but
