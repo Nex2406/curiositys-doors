@@ -91,6 +91,27 @@ func _build_ground() -> void:
 		mat.position = Vector2(-2200 + i * 3840 * 0.7, 210.0)
 		add_child(mat)
 
+	# CREST — the mat's top edge is a flat line against the sky; a dark row of
+	# the tippy strip + scattered tuft mounds make the skyline organic. All z0,
+	# behind the hero and the brighter rows.
+	for i in 4:
+		var crest := Sprite2D.new()
+		crest.texture = load(BASE + "moss_front.png")
+		crest.centered = false
+		crest.scale = Vector2(0.7, 0.7)
+		crest.position = Vector2(-2200 - 960 + i * 3840 * 0.7, 150.0)
+		crest.modulate = Color(0.50, 0.48, 0.62)
+		add_child(crest)
+	# mound clusters along the crest (kept off the island's own silhouette)
+	for p in [[-1750.0, 0.55], [-1150.0, 0.42], [-600.0, 0.60], [-50.0, 0.45],
+			[450.0, 0.55], [2500.0, 0.50], [3100.0, 0.62], [3700.0, 0.45]]:
+		var tf := Sprite2D.new()
+		tf.texture = load(BASE + "tuft_%d.png" % (randi() % 3))
+		tf.scale = Vector2(p[1], p[1])
+		tf.position = Vector2(p[0], 262.0 - tf.texture.get_height() * p[1] * 0.5)
+		tf.modulate = Color(0.52, 0.50, 0.64)
+		add_child(tf)
+
 	# DEPTH STACK — staggered rows of the same tileable strip, each lower and
 	# darker, so the whole floor band is one seamless moss mound fading into
 	# soil (no black gap-windows anywhere). z11: over the plug (z10) and the
