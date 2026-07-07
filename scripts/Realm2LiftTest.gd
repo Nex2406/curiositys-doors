@@ -91,6 +91,19 @@ func _build_ground() -> void:
 		mat.position = Vector2(-2200 + i * 3840 * 0.7, 210.0)
 		add_child(mat)
 
+	# MID moss row — same strip offset half a tile, so its tips fill the
+	# front row's dips (kills the black gap-windows onto the soil plug).
+	# z11: over the plug (z10), behind the z12 front row.
+	for i in 4:
+		var mid := Sprite2D.new()
+		mid.texture = load(BASE + "moss_front.png")
+		mid.centered = false
+		mid.scale = Vector2(0.7, 0.7)
+		mid.position = Vector2(-2200 - 1344 + i * 3840 * 0.7, 228.0)
+		mid.modulate = Color(0.58, 0.55, 0.70)
+		mid.z_index = 11
+		add_child(mid)
+
 	# FRONT moss row — dedicated tileable strip drawn OVER Curiosity
 	# (organic tips to the waist; no crop slices, no seams)
 	for i in 3:
@@ -131,7 +144,7 @@ func _build_chunk() -> void:
 		Vector2(CHUNK_X - 730, FLOOR_Y + 4), Vector2(CHUNK_X + 730, FLOOR_Y + 4),
 		Vector2(CHUNK_X + 730, FLOOR_Y + 900), Vector2(CHUNK_X - 730, FLOOR_Y + 900)])
 	plug.color = Color(7.0 / 255.0, 5.0 / 255.0, 16.0 / 255.0)
-	plug.z_index = 11
+	plug.z_index = 10  # over the island underbelly, under the z11 mid moss row
 	add_child(plug)
 	_chunk.levitation_started.connect(func() -> void: _lbl.text = "")
 	_chunk.arrived.connect(func() -> void: _set_phase(Phase.DONE))
@@ -186,6 +199,11 @@ func _build_ui() -> void:
 
 
 func _self_screenshot(path: String) -> void:
+	if OS.get_environment("R2_SHOT_X") != "":
+		# park the hero at a given ground x (pre-liftoff framing checks)
+		_curi.position = Vector2(float(OS.get_environment("R2_SHOT_X")), FLOOR_Y - 140.0)
+		_curi.velocity = Vector2.ZERO
+		_cam.position = Vector2(_curi.position.x, FLOOR_Y - 220.0)
 	if OS.get_environment("R2_SHOT_LIFT") != "":
 		# jump straight to mid-ascent for the screenshot. Let the island's
 		# physics body settle at the jumped position FIRST — placing the hero
