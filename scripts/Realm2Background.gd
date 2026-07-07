@@ -208,7 +208,9 @@ func build_chunk_visuals(parent: Node2D) -> Sprite2D:
 		parent.add_child(b)
 	# tuft clusters varying the fringe silhouette — bases rooted INSIDE the
 	# fringe (bottom sits at -85 local, covered by the z12 fringe overlay)
-	for p in [[-460.0, 0.5], [-70.0, 0.62], [420.0, 0.45]]:
+	# (-140 / +350 plug the bare-rock notches between the fringe clumps —
+	# they read as black holes while the island is embedded)
+	for p in [[-460.0, 0.5], [-140.0, 0.55], [-70.0, 0.62], [350.0, 0.5], [420.0, 0.45]]:
 		var tf := Sprite2D.new()
 		tf.texture = load(BASE + "tuft_%d.png" % (randi() % 3))
 		tf.scale = Vector2(p[1], p[1])

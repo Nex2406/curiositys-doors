@@ -91,18 +91,21 @@ func _build_ground() -> void:
 		mat.position = Vector2(-2200 + i * 3840 * 0.7, 210.0)
 		add_child(mat)
 
-	# MID moss row — same strip offset half a tile, so its tips fill the
-	# front row's dips (kills the black gap-windows onto the soil plug).
-	# z11: over the plug (z10), behind the z12 front row.
-	for i in 4:
-		var mid := Sprite2D.new()
-		mid.texture = load(BASE + "moss_front.png")
-		mid.centered = false
-		mid.scale = Vector2(0.7, 0.7)
-		mid.position = Vector2(-2200 - 1344 + i * 3840 * 0.7, 228.0)
-		mid.modulate = Color(0.58, 0.55, 0.70)
-		mid.z_index = 11
-		add_child(mid)
+	# DEPTH STACK — staggered rows of the same tileable strip, each lower and
+	# darker, so the whole floor band is one seamless moss mound fading into
+	# soil (no black gap-windows anywhere). z11: over the plug (z10) and the
+	# embedded island core, behind the z12 front row.
+	for row in [[228.0, 0.58, 0.55, 0.70, -1344.0], [296.0, 0.38, 0.36, 0.48, 0.0],
+			[362.0, 0.22, 0.20, 0.30, -1344.0]]:
+		for i in 4:
+			var mid := Sprite2D.new()
+			mid.texture = load(BASE + "moss_front.png")
+			mid.centered = false
+			mid.scale = Vector2(0.7, 0.7)
+			mid.position = Vector2(-2200 + row[4] + i * 3840 * 0.7, row[0])
+			mid.modulate = Color(row[1], row[2], row[3])
+			mid.z_index = 11
+			add_child(mid)
 
 	# FRONT moss row — dedicated tileable strip drawn OVER Curiosity
 	# (organic tips to the waist; no crop slices, no seams)
