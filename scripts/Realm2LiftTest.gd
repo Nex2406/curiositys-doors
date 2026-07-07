@@ -156,8 +156,12 @@ func _build_ground() -> void:
 	# embedded island core, behind the z12 front row.
 	# (the 272 near-black shadow row straddles the soil plug's flat top edge —
 	# without it that edge cuts a dead-straight line across the level)
+	# (the two deepest rows sink the band into silhouette-black before the
+	# fine-grained mat texture can show through — big fingers all the way down,
+	# no small-vs-thick moss scale contrast)
 	for row in [[272.0, 0.13, 0.11, 0.20, -672.0, "shadow272"], [228.0, 0.58, 0.55, 0.70, -1344.0, "mid228"],
-			[296.0, 0.38, 0.36, 0.48, 0.0, "mid296"], [362.0, 0.22, 0.20, 0.30, -1344.0, "mid362"]]:
+			[296.0, 0.38, 0.36, 0.48, 0.0, "mid296"], [362.0, 0.22, 0.20, 0.30, -1344.0, "mid362"],
+			[424.0, 0.12, 0.11, 0.17, -448.0, "mid424"], [488.0, 0.06, 0.05, 0.10, -1792.0, "mid488"]]:
 		for i in 4:
 			var mid := Sprite2D.new()
 			mid.texture = load(BASE + "moss_front.png")
@@ -191,6 +195,7 @@ func _build_ground() -> void:
 				"crest": Color(1, 0, 1), "mound": Color(0.55, 0, 1),
 				"shadow272": Color(0, 0, 1), "mid228": Color(0, 1, 0),
 				"mid296": Color(0, 1, 1), "mid362": Color(1, 1, 0),
+				"mid424": Color(0.5, 1, 0), "mid488": Color(1, 0.5, 0.5),
 				"front": Color(1, 0, 0)}
 		var flat := Shader.new()
 		flat.code = "shader_type canvas_item;
