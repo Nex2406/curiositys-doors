@@ -216,10 +216,15 @@ func _self_screenshot(path: String) -> void:
 		await get_tree().physics_frame
 		await get_tree().physics_frame
 		_curi.global_position = _chunk.global_position + Vector2(0, -175.0)
+		if OS.get_environment("R2_SHOT_FALL") != "":
+			# drop the hero below the island instead — proves the fall→respawn beat
+			_curi.global_position = _chunk.global_position + Vector2(0, 400.0)
 		_curi.velocity = Vector2.ZERO
 		_bg.set_storm(0.75)
 		_cam.position = Vector2(CHUNK_X, _chunk.global_position.y - 120.0)
-	await get_tree().create_timer(1.0).timeout
+	# fall mode needs the ride guard (1s) + death beat (0.45s) to play out first
+	var delay := 2.5 if OS.get_environment("R2_SHOT_FALL") != "" else 1.0
+	await get_tree().create_timer(delay).timeout
 	print("SHOT curi=", _curi.global_position, " island=", _chunk.global_position,
 			" state=", _chunk.state, " visible=", _curi.visible)
 	get_viewport().get_texture().get_image().save_png(path)
@@ -288,11 +293,16 @@ func _physics_process(delta: float) -> void:
 			_bg.set_storm(0.8)
 			_trauma = maxf(_trauma, 0.15)
 			# fell off mid-ascent: same death beat as any other (eye closes, respawn).
+			# Margin sits just under the island's hanging moss — a +900 margin let an
+			# early fall-off land safely on the old ground, stranded with no respawn.
 			# _pt guard: never fire in the ride's first moments (spawn/settle race).
-			if _pt > 1.0 and _curi.global_position.y > _chunk.global_position.y + 900.0:
+			if _pt > 1.0 and _curi.global_position.y > _chunk.global_position.y + 250.0:
 				_die()
 		Phase.DONE:
 			_bg.set_storm(0.35)
+			# walking off the hovering island at the top is a fall like any other
+			if _curi.global_position.y > _chunk.global_position.y + 250.0:
+				_die()
 
 
 func _process(delta: float) -> void:
