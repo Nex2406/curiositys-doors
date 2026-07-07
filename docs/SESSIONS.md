@@ -7,6 +7,56 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 
 ---
 
+## 2026-07-07 — The island tears loose (R2-M1 shipped)
+
+**Shipped**
+- **R2-M1 merged to main (PR #138 / issue #137, deploy green)** — the quake +
+  liftoff is playable end to end in `Realm2LiftTest.tscn`: flat mossy intro →
+  step onto the buried island → storm builds → the tear → 24s seamless ascent
+  with Curiosity riding → arrival above the canopy. Reusable
+  `LevitatingIsland` (shake/debris/ascent/hover, drives the camera,
+  sync_to_physics riders).
+- **Island camouflage + wake** (Advika's call, the session's best idea): the
+  embedded island wears the ground's dark violet — proportionally darker tint
+  (its art is ~3x brighter), gold glow banked to a still ember, plants frozen
+  — then everything wakes to full color over the 7s of the tear. Kills the
+  "pasted-on chunk" read completely.
+- **The Great Line Hunt**: Advika kept circling straight lines in the ground;
+  five suspects were dissolved/fixed in turn, and the real killer (island
+  fringe overlay's region-crop edge, drawn over EVERYTHING) was caught with a
+  new `R2_TINT` forensics mode that flat-colors every ground layer. Ground is
+  now one seamless moss body: staggered big-finger rows down to silhouette
+  black, organic crest + tuft mounds skyline, seam belt interlocking the
+  upper masses, shader-dissolved crop edges, per-tile height wobble.
+- **Fall death beat**: fall off anywhere (mid-ascent or at the top) → the fall
+  plays out past the frame bottom → an eye closes → Curiosity blinks back in
+  on the island (mercy invuln); 3 lifelines then scene restart. Proven via
+  `R2_SHOT_FALL` harness.
+- **Canopy**: right half of the level was bald (strand loop stopped short of
+  the parallax-shifted frame edge — fixed), ground tufts now hang among the
+  leaves, and the canopy fade completes before any cut-off strand top can
+  enter the frame during ascent.
+- **Docs truth pass**: Realm 2 phase ladder written (`docs/realms/realm2.md`,
+  R2-M0..M8) — and discovered **R2-M2 (combat) was already shipped** by the
+  golem sessions while STATE.md still claimed combat was unwired. STATE
+  synced.
+
+**What didn't work / dead ends**
+- Four line-fix attempts (hedge dissolve, plug-top lowering, mat/hedge
+  re-layering) barely moved the pixels — the lesson: stop theorizing about
+  layers, tint them all and LOOK (`R2_TINT` now permanent kit).
+- Screenshot-harness fall test needed its window widened past the ride guard
+  before it could prove anything.
+
+**Next 3 safe candidates**
+1. **R2-M3 — Enemy base + the first slime** (forces: how do slimes reach a
+   flying island — fly, climb, drop from the storm?)
+2. **Wire Realm 2 into the game** — which hub door, how it unlocks (jade key
+   opens Door 2 — is this behind it?). The lift scene ships unreachable today.
+3. **R2-M4 — wave director** (forces: continuous rise vs rise-between-waves).
+
+---
+
 ## 2026-07-04 — Realm 2's stage is standing (and it breathes)
 
 **Shipped**
