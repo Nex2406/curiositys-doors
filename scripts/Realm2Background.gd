@@ -237,13 +237,21 @@ func build_chunk_visuals(parent: Node2D) -> Sprite2D:
 		parent.add_child(em)
 
 	# front fringe overlay: the island's own top grass drawn OVER the rider,
-	# so anyone standing on it stands IN the moss, not on a shelf above it
+	# so anyone standing on it stands IN the moss, not on a shelf above it.
+	# The region crop ends mid-texture, so its bottom quarter dissolves —
+	# otherwise the crop edge draws a razor-straight line across everything
+	# beneath it (it was THE ground-band line while the island sat embedded).
 	var fringe := Sprite2D.new()
 	fringe.texture = body.texture
 	fringe.region_enabled = true
 	fringe.region_rect = Rect2(0, 0, body.texture.get_width(), 95)
 	fringe.position = Vector2(0, -body.texture.get_height() / 2.0 + 47.5)
 	fringe.z_index = 12
+	var fade := Shader.new()
+	fade.code = "shader_type canvas_item;\nvoid fragment() {\n\tvec4 c = texture(TEXTURE, UV);\n\tc.a *= 1.0 - smoothstep(0.52, 1.0, UV.y);\n\tCOLOR = c;\n}"
+	var fade_mat := ShaderMaterial.new()
+	fade_mat.shader = fade
+	fringe.material = fade_mat
 	parent.add_child(fringe)
 	var flower := _animated("flower", 8.0, 0.26)
 	flower.position = Vector2(60, -138)
@@ -360,9 +368,12 @@ func _process(delta: float) -> void:
 	if cam:
 		$Foreground.position.x = cam.global_position.x * -0.22
 		$MidVines.position.x = cam.global_position.x * 0.55
-		# the hanging canopy belongs to the forest floor: fade it out smoothly
-		# as the camera climbs, so ascent never shows cut-off leaf tops
-		var alt := clampf(inverse_lerp(-220.0, -820.0, cam.global_position.y), 0.0, 1.0)
+		# the hanging canopy belongs to the forest floor: it must be FULLY gone
+		# before the highest strand anchor (y ≈ -535) can cross the frame top
+		# (cam.y ≈ 33 at ground zoom) — otherwise cut-off leaf tops float in
+		# mid-air during the climb. Ground cam sits at y = 80; the liftoff
+		# shake/storm masks this quick fade.
+		var alt := clampf(inverse_lerp(75.0, 20.0, cam.global_position.y), 0.0, 1.0)
 		$Foreground.modulate.a = 1.0 - alt
 		$MidVines.modulate.a = 1.0 - alt
 	if _chunk:

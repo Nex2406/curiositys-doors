@@ -28,6 +28,7 @@ var _trauma := 0.0
 var _lbl: Label
 var _lives: LivesHUD
 var _dying := false
+var _hedge_dissolve: ShaderMaterial
 
 
 func _ready() -> void:
@@ -68,18 +69,22 @@ func _build_ground() -> void:
 			Vector2(6400, FLOOR_Y + 1400), Vector2(-6000, FLOOR_Y + 1400)])
 	earth.color = Color(7.0 / 255.0, 5.0 / 255.0, 16.0 / 255.0)  # near-black soil, not a purple band
 	add_child(earth)
-	var hedge := Sprite2D.new()
-	hedge.texture = load(BASE + "band_ground.png")
-	hedge.centered = false
-	hedge.scale = Vector2(0.7, 0.7)
-	hedge.position = Vector2(-1900, FLOOR_Y - 1080 * 0.7 + 26)
-	add_child(hedge)
-	var hedge2 := Sprite2D.new()
-	hedge2.texture = load(BASE + "band_ground.png")
-	hedge2.centered = false
-	hedge2.scale = Vector2(0.7, 0.7)
-	hedge2.position = Vector2(-1900 + 3840 * 0.7, FLOOR_Y - 1080 * 0.7 + 26)
-	add_child(hedge2)
+	# the band texture is 100% opaque to its last row — undissolved, its sprite
+	# bottom cuts a razor-straight line across the level (world y = 326), so the
+	# last ~5% of the texture fades out into the dark undergrowth instead
+	var dissolve := Shader.new()
+	dissolve.code = "shader_type canvas_item;\nvoid fragment() {\n\tvec4 c = texture(TEXTURE, UV);\n\tc.a *= 1.0 - smoothstep(0.95, 0.995, UV.y);\n\tCOLOR = c;\n}"
+	_hedge_dissolve = ShaderMaterial.new()
+	_hedge_dissolve.shader = dissolve
+	for i in 2:
+		var hedge := Sprite2D.new()
+		hedge.texture = load(BASE + "band_ground.png")
+		hedge.centered = false
+		hedge.scale = Vector2(0.7, 0.7)
+		hedge.position = Vector2(-1900 + i * 3840 * 0.7, FLOOR_Y - 1080 * 0.7 + 26)
+		hedge.material = _hedge_dissolve
+		hedge.set_meta("dbg", "hedge")
+		add_child(hedge)
 
 	# continuous moss MAT behind the hero — grass always under the feet,
 	# no floating over visual dips (tileable, no seams)
@@ -89,6 +94,7 @@ func _build_ground() -> void:
 		mat.centered = false
 		mat.scale = Vector2(0.7, 0.7)
 		mat.position = Vector2(-2200 + i * 3840 * 0.7, 210.0)
+		mat.set_meta("dbg", "mat")
 		add_child(mat)
 
 	# CREST — the mat's top edge is a flat line against the sky; a dark row of
@@ -101,6 +107,7 @@ func _build_ground() -> void:
 		crest.scale = Vector2(0.7, 0.7)
 		crest.position = Vector2(-2200 - 960 + i * 3840 * 0.7, 150.0)
 		crest.modulate = Color(0.50, 0.48, 0.62)
+		crest.set_meta("dbg", "crest")
 		add_child(crest)
 	# mound clusters along the crest (kept off the island's own silhouette)
 	for p in [[-1750.0, 0.55], [-1150.0, 0.42], [-600.0, 0.60], [-50.0, 0.45],
@@ -110,14 +117,17 @@ func _build_ground() -> void:
 		tf.scale = Vector2(p[1], p[1])
 		tf.position = Vector2(p[0], 262.0 - tf.texture.get_height() * p[1] * 0.5)
 		tf.modulate = Color(0.52, 0.50, 0.64)
+		tf.set_meta("dbg", "mound")
 		add_child(tf)
 
 	# DEPTH STACK — staggered rows of the same tileable strip, each lower and
 	# darker, so the whole floor band is one seamless moss mound fading into
 	# soil (no black gap-windows anywhere). z11: over the plug (z10) and the
 	# embedded island core, behind the z12 front row.
-	for row in [[228.0, 0.58, 0.55, 0.70, -1344.0], [296.0, 0.38, 0.36, 0.48, 0.0],
-			[362.0, 0.22, 0.20, 0.30, -1344.0]]:
+	# (the 272 near-black shadow row straddles the soil plug's flat top edge —
+	# without it that edge cuts a dead-straight line across the level)
+	for row in [[272.0, 0.13, 0.11, 0.20, -672.0, "shadow272"], [228.0, 0.58, 0.55, 0.70, -1344.0, "mid228"],
+			[296.0, 0.38, 0.36, 0.48, 0.0, "mid296"], [362.0, 0.22, 0.20, 0.30, -1344.0, "mid362"]]:
 		for i in 4:
 			var mid := Sprite2D.new()
 			mid.texture = load(BASE + "moss_front.png")
@@ -126,6 +136,7 @@ func _build_ground() -> void:
 			mid.position = Vector2(-2200 + row[4] + i * 3840 * 0.7, row[0])
 			mid.modulate = Color(row[1], row[2], row[3])
 			mid.z_index = 11
+			mid.set_meta("dbg", row[5])
 			add_child(mid)
 
 	# FRONT moss row — dedicated tileable strip drawn OVER Curiosity
@@ -138,7 +149,30 @@ func _build_ground() -> void:
 		front.position = Vector2(-2200 + i * 3840 * 0.7, 236.0)
 		front.modulate = Color(0.86, 0.84, 0.94)
 		front.z_index = 12
+		front.set_meta("dbg", "front")
 		add_child(front)
+
+
+	# R2_TINT env: flat-color every tagged ground layer (layer forensics)
+	if OS.get_environment("R2_TINT") != "":
+		var tints := {"hedge": Color(1, 1, 1), "mat": Color(1, 0.5, 0),
+				"crest": Color(1, 0, 1), "mound": Color(0.55, 0, 1),
+				"shadow272": Color(0, 0, 1), "mid228": Color(0, 1, 0),
+				"mid296": Color(0, 1, 1), "mid362": Color(1, 1, 0),
+				"front": Color(1, 0, 0)}
+		var flat := Shader.new()
+		flat.code = "shader_type canvas_item;
+render_mode unshaded;
+uniform vec4 tint;
+void fragment() {
+	COLOR = vec4(tint.rgb, texture(TEXTURE, UV).a);
+}"
+		for c in get_children():
+			if c is Sprite2D and c.has_meta("dbg"):
+				var fm := ShaderMaterial.new()
+				fm.shader = flat
+				fm.set_shader_parameter("tint", tints[c.get_meta("dbg")])
+				c.material = fm
 
 
 func _build_chunk() -> void:
@@ -160,12 +194,16 @@ func _build_chunk() -> void:
 	add_child(_chunk)
 	_chunk_glow = _bg.build_chunk_visuals(_chunk)
 
-	# soil plug: hides the island's underbelly while it's embedded in the
-	# ground (same near-black as the earth, beneath the z12 front moss).
-	# It stays with the ground — the island rises OUT of it at the tear.
+	# soil plug: hides the island's pink under-moss while it's embedded (same
+	# near-black as the earth). It stays with the ground — the island rises
+	# OUT of it at the tear. Its top sits at FLOOR_Y+140, NOT at the floor
+	# line: chunk.png's bright fringe lives at world y 291-312, so a floor-line
+	# plug slices it into a razor-straight brightness cut across the level.
+	# The island's 312-440 band is near-black rock that reads as soil, and the
+	# pink underbelly only starts at ~459 — still safely under the plug.
 	var plug := Polygon2D.new()
 	plug.polygon = PackedVector2Array([
-		Vector2(CHUNK_X - 730, FLOOR_Y + 4), Vector2(CHUNK_X + 730, FLOOR_Y + 4),
+		Vector2(CHUNK_X - 730, FLOOR_Y + 140), Vector2(CHUNK_X + 730, FLOOR_Y + 140),
 		Vector2(CHUNK_X + 730, FLOOR_Y + 900), Vector2(CHUNK_X - 730, FLOOR_Y + 900)])
 	plug.color = Color(7.0 / 255.0, 5.0 / 255.0, 16.0 / 255.0)
 	plug.z_index = 10  # over the island underbelly, under the z11 mid moss row
@@ -233,7 +271,12 @@ func _self_screenshot(path: String) -> void:
 		# physics body settle at the jumped position FIRST — placing the hero
 		# in the same tick lets the teleport sweep past him (he falls home).
 		_set_phase(Phase.RIDE)
-		_chunk.debug_jump(0.5)
+		# R2_SHOT_LIFT may carry an ascent progress (0..1); bare "1" means midway
+		var prog := 0.5
+		var pv := OS.get_environment("R2_SHOT_LIFT")
+		if pv.is_valid_float() and float(pv) != 1.0:
+			prog = clampf(float(pv), 0.02, 0.98)
+		_chunk.debug_jump(prog)
 		await get_tree().physics_frame
 		await get_tree().physics_frame
 		_curi.global_position = _chunk.global_position + Vector2(0, -175.0)
@@ -273,6 +316,9 @@ func _die() -> void:
 	_curi.velocity = Vector2.ZERO
 	if _curi.has_method("refill_health"):
 		_curi.refill_health()
+	# the respawn reads as a blink: Curiosity's own invulnerability flicker
+	if _curi.has_method("grant_invuln"):
+		_curi.grant_invuln(1.6)
 	_dying = false
 
 
@@ -313,16 +359,17 @@ func _physics_process(delta: float) -> void:
 		Phase.RIDE:
 			_bg.set_storm(0.8)
 			_trauma = maxf(_trauma, 0.15)
-			# fell off mid-ascent: same death beat as any other (eye closes, respawn).
-			# Margin sits just under the island's hanging moss — a +900 margin let an
-			# early fall-off land safely on the old ground, stranded with no respawn.
+			# fell off mid-ascent: the fall plays out PAST the bottom of the frame
+			# (view half-height is 1080/(2*zoom) ≈ 568px), THEN the eye closes and
+			# the respawn blinks in. Frame-relative so it can never strand the hero
+			# on the old ground while the island sails away.
 			# _pt guard: never fire in the ride's first moments (spawn/settle race).
-			if _pt > 1.0 and _curi.global_position.y > _chunk.global_position.y + 250.0:
+			if _pt > 1.0 and _curi.global_position.y > _cam.global_position.y + 640.0:
 				_die()
 		Phase.DONE:
 			_bg.set_storm(0.35)
 			# walking off the hovering island at the top is a fall like any other
-			if _curi.global_position.y > _chunk.global_position.y + 250.0:
+			if _curi.global_position.y > _cam.global_position.y + 640.0:
 				_die()
 
 
