@@ -248,7 +248,9 @@ func build_chunk_visuals(parent: Node2D) -> Sprite2D:
 	fringe.position = Vector2(0, -body.texture.get_height() / 2.0 + 47.5)
 	fringe.z_index = 12
 	var fade := Shader.new()
-	fade.code = "shader_type canvas_item;\nvoid fragment() {\n\tvec4 c = texture(TEXTURE, UV);\n\tc.a *= 1.0 - smoothstep(0.52, 1.0, UV.y);\n\tCOLOR = c;\n}"
+	# NB: modify COLOR (texture * modulate), don't resample — the island's
+	# camouflage/wake tint must keep applying to the fringe
+	fade.code = "shader_type canvas_item;\nvoid fragment() {\n\tCOLOR.a *= 1.0 - smoothstep(0.52, 1.0, UV.y);\n}"
 	var fade_mat := ShaderMaterial.new()
 	fade_mat.shader = fade
 	fringe.material = fade_mat

@@ -13,6 +13,9 @@ const FLOOR_Y := 300.0
 const CHUNK_X := 1500.0
 const CHUNK_START_Y := 420.0
 const LIFT_TOP_Y := -2400.0
+# embedded island tint — matches the dark violet of the surrounding ground
+const CAMO_TINT := Color(0.36, 0.34, 0.47)
+const WAKE_TIME := 7.0  # seconds to blossom to full color during the rise
 
 enum Phase { INTRO, BUILD, RIDE, DONE }
 
@@ -73,7 +76,7 @@ func _build_ground() -> void:
 	# bottom cuts a razor-straight line across the level (world y = 326), so the
 	# last ~5% of the texture fades out into the dark undergrowth instead
 	var dissolve := Shader.new()
-	dissolve.code = "shader_type canvas_item;\nvoid fragment() {\n\tvec4 c = texture(TEXTURE, UV);\n\tc.a *= 1.0 - smoothstep(0.95, 0.995, UV.y);\n\tCOLOR = c;\n}"
+	dissolve.code = "shader_type canvas_item;\nvoid fragment() {\n\tCOLOR.a *= 1.0 - smoothstep(0.95, 0.995, UV.y);\n}"
 	_hedge_dissolve = ShaderMaterial.new()
 	_hedge_dissolve.shader = dissolve
 	for i in 2:
@@ -219,6 +222,10 @@ func _build_chunk() -> void:
 	_chunk.add_child(col)
 	add_child(_chunk)
 	_chunk_glow = _bg.build_chunk_visuals(_chunk)
+	# CAMOUFLAGE: while embedded, the island wears the ground's own dark
+	# violet — bright chunk art in a dark field reads as pasted-on. At the
+	# tear it tweens awake to its true colors (see start of Phase.RIDE).
+	_chunk.modulate = CAMO_TINT
 
 	# soil plug: hides the island's pink under-moss while it's embedded (same
 	# near-black as the earth). It stays with the ground — the island rises
@@ -234,7 +241,11 @@ func _build_chunk() -> void:
 	plug.color = Color(7.0 / 255.0, 5.0 / 255.0, 16.0 / 255.0)
 	plug.z_index = 10  # over the island underbelly, under the z11 mid moss row
 	add_child(plug)
-	_chunk.levitation_started.connect(func() -> void: _lbl.text = "")
+	_chunk.levitation_started.connect(func() -> void:
+		_lbl.text = ""
+		# the island wakes: camouflage violet -> its own bright moss colors
+		create_tween().tween_property(_chunk, "modulate", Color(1, 1, 1), WAKE_TIME)\
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT))
 	_chunk.arrived.connect(func() -> void: _set_phase(Phase.DONE))
 
 
@@ -297,6 +308,7 @@ func _self_screenshot(path: String) -> void:
 		# physics body settle at the jumped position FIRST — placing the hero
 		# in the same tick lets the teleport sweep past him (he falls home).
 		_set_phase(Phase.RIDE)
+		_chunk.modulate = Color(1, 1, 1)  # mid-ascent = fully awake colors
 		# R2_SHOT_LIFT may carry an ascent progress (0..1); bare "1" means midway
 		var prog := 0.5
 		var pv := OS.get_environment("R2_SHOT_LIFT")
