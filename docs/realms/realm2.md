@@ -33,16 +33,17 @@ The violet moss canopy in motion: parallax spire bands, swinging strands,
 breathing gold pocket, fireflies/spores/fog/storm wisps.
 `scenes/realms/Realm2BgTest.tscn`.
 
-### 🔨 R2-M1 — Quake + liftoff *(on `feat/realm2-liftoff` now)*
+### ✅ R2-M1 — Quake + liftoff *(merged 2026-07-07)*
 Flat-ground intro → quake → the storm tears the island loose → seamless ascent
-with Curiosity planted as a rider. `LevitatingIsland` component, soil plug,
-bands falling away on ascent.
+with Curiosity planted as a rider. `LevitatingIsland` component, camouflaged
+embedded island waking to color at the tear, seamless moss ground body,
+fall→eye→blink-respawn death beat. `scenes/realms/Realm2LiftTest.tscn`.
 
-### R2-M2 — Curiosity learns to fight
-Wire the already-imported attack / dash / hurt / death frames into the state
-machine, plus the health → damage → knockback → death → respawn loop. This is
-global milestone **M2's** first brick landing inside Realm 2 — built reusable,
-every later realm inherits it. No enemies yet; proven in a test arena.
+### ✅ R2-M2 — Curiosity learns to fight *(was already shipped — golem work)*
+Discovered done on main (2026-07-07): attack1/attack2 combo, dash, hurt,
+health/invuln/knockback, `died` signal, eyes-as-lives HUD, death restart —
+built during the Realm 1 golem sessions, proven in `GolemTest.tscn`. The
+"combat unwired" claim in older docs was stale.
 
 ### R2-M3 — Enemy base + the first slime
 Reusable `Enemy` base (spawn / approach / attack / take damage / die) proven on
