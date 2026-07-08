@@ -14,9 +14,15 @@ masses, fringe/hedge crop edges dissolved by shader. Falling off (any phase)
 plays out past the frame, closes an eye, respawns with Curiosity's invuln
 blink; 3 lifelines then scene restart. Harness: R2_SHOT / R2_SHOT_X /
 R2_SHOT_LIFT(progress) / R2_SHOT_FALL / R2_TINT (layer forensics).
+The ascent corridor is dressed (2026-07-08): vine trunks, moss-overhang
+platforms with hanging beards/ferns, perched rocks, sparse near-black
+foreground slabs (z13) — all sliced + violet-shifted from the full Mossy
+pack by `tools/slice_mossy_pack.gd` (repeatable; thorn arcs + sprouts left
+uncommitted until R2-M5/M6). Density tapers so the arrival opens into sky.
 Phase ladder: [`docs/realms/realm2.md`](realms/realm2.md) — R2-M0 ✅ R2-M1 ✅;
 next R2-M3 (Enemy base + first slime; R2-M2 combat was already shipped by the
-golem work). The older `Realm2BgTest.tscn` remains as the background gallery.
+golem work). Boss: the BlueWizard (dark mirror of Curiosity) at R2-M7 — see
+the ladder. The older `Realm2BgTest.tscn` remains as the background gallery.
 Credits: `CREDITS.md` (root) — keep updated per asset, college-portfolio gate.
 
 ## Live loop
