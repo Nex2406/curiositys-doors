@@ -225,13 +225,21 @@ void fragment() {
 # hugging both screen edges. Three passes, all Mossy-pack elements sliced +
 # violet-shifted by tools/slice_mossy_pack.gd, all pure decor (no collision):
 #   1. vine trunks — near-continuous vertical bones along each edge
-#   2. overhang platforms — slabs jutting in, moss beards/ferns dangling off
-#      their undersides, an occasional mossy rock perched on top
+#   2. overhang assemblies — a slab jutting in, with moss beards/ferns swaying
+#      from its underside (storm-responsive SWAY_SHADER), an occasional mossy
+#      rock perched on top and an animated pack plant growing from the fringe.
+#      The WHOLE assembly is one Node2D that bobs and tilts together, so a
+#      hanger can never detach from its slab ("no leaves hanging in air" —
+#      Advika, 2026-07-08).
 #   3. foreground silhouettes — a few near-black slabs at the extreme edges
-#      drawn OVER the hero (z13) for layered depth
+#      drawn OVER the hero (z13) for layered depth, breathing slowly
 # Density tapers off near the top so the arrival opens into sky.
 const _DRESS_SEED := 20260708  # fixed: the corridor is level design
 const _VIEW_HALF_X := 1130.0   # half view width at the lift camera's zoom (16:9)
+
+# every animated dressing node: {n, base_y, amp, rate, ph} (+rot_amp for tilt)
+var _dress_bobs: Array[Dictionary] = []
+var _dress_sways: Array[Dictionary] = []  # rigid micro-rotation (vines)
 
 func _build_ascent_dressing() -> void:
 	var rng := RandomNumberGenerator.new()
@@ -271,6 +279,9 @@ func _build_ascent_dressing() -> void:
 			v.modulate = Color(b, b * 0.95, b * 1.25)
 			v.set_meta("dbg", "dress_vine")
 			add_child(v)
+			_dress_sways.append({"n": v, "amp": rng.randf_range(0.006, 0.014),
+					"rate": rng.randf_range(0.18, 0.32), "ph": rng.randf() * TAU,
+					"base": v.rotation})
 			vy -= t.get_height() * sc * rng.randf_range(0.72, 0.92)
 
 	# 2. overhang platforms with hangers — each side walks the corridor
@@ -300,6 +311,9 @@ func _build_ascent_dressing() -> void:
 		f.z_index = 13
 		f.set_meta("dbg", "dress_fg")
 		add_child(f)
+		_dress_bobs.append({"n": f, "base_y": f.position.y, "base_rot": 0.0,
+				"amp": rng.randf_range(6.0, 10.0), "rate": rng.randf_range(0.16, 0.26),
+				"ph": rng.randf() * TAU, "rot_amp": 0.0})
 		fy -= rng.randf_range(700.0, 1100.0)
 
 
@@ -311,39 +325,58 @@ func _spawn_overhang(rng: RandomNumberGenerator, side: float, y: float,
 	var sc := rng.randf_range(0.42, 0.60) * lerpf(0.72, 1.0, depth)
 	var half := tex.get_width() * sc * 0.5
 	# inner tip lands 60..320px inside the screen edge; island channel stays clear
-	var tip_x := CHUNK_X + side * (_VIEW_HALF_X - rng.randf_range(60.0, 320.0))
+	var inset := rng.randf_range(60.0, 320.0)
+	var tip_x := CHUNK_X + side * (_VIEW_HALF_X - inset)
 	if absf(tip_x - CHUNK_X) < 820.0:
 		tip_x = CHUNK_X + side * 820.0
+		inset = _VIEW_HALF_X - 820.0
+	var b := lerpf(0.34, 0.60, depth)
+
+	# the whole overhang is ONE assembly anchored at the slab's inner tip —
+	# slab, hangers, rock and plant bob/tilt together and can never separate
+	var grp := Node2D.new()
+	grp.position = Vector2(tip_x, y)
+	grp.rotation = rng.randf_range(-0.04, 0.04) * side
+	add_child(grp)
+	_dress_bobs.append({"n": grp, "base_y": y, "base_rot": grp.rotation,
+			"amp": rng.randf_range(4.0, 8.0), "rate": rng.randf_range(0.22, 0.4),
+			"ph": rng.randf() * TAU, "rot_amp": rng.randf_range(0.004, 0.010)})
+
 	var slab := Sprite2D.new()
 	slab.texture = tex
 	slab.scale = Vector2(sc, sc)
 	slab.flip_h = side > 0.0
-	slab.rotation = rng.randf_range(-0.05, 0.05) * side
-	slab.position = Vector2(tip_x + side * half, y)
-	var b := lerpf(0.34, 0.60, depth)
+	slab.position = Vector2(side * half, 0)
 	slab.modulate = Color(b, b * 0.95, b * 1.22)
 	slab.set_meta("dbg", "dress_slab")
-	add_child(slab)
+	grp.add_child(slab)
 	var slab_h := tex.get_height() * sc
-	# hangers dangle from the slab's underside, biased toward its inner reach
-	var n_hang := 1 + (rng.randi() % 2)
-	for i in n_hang:
-		var hb := rng.randf() < 0.45
-		var ht: Texture2D = beards[rng.randi() % beards.size()] if hb \
-				else ferns[rng.randi() % ferns.size()]
-		var hsc := rng.randf_range(0.38, 0.58) * sc / 0.5
-		var hg := Sprite2D.new()
-		hg.texture = ht
-		hg.centered = false
-		hg.scale = Vector2(hsc, hsc)
-		hg.flip_h = rng.randf() < 0.5
-		# never past the slab's inner tip — a hanger needs a slab above it
-		var hx := tip_x - side * rng.randf_range(40.0, half * 0.85)
-		hg.position = Vector2(hx - ht.get_width() * hsc * 0.5, y + slab_h * 0.22)
-		var hbr := b * rng.randf_range(0.8, 1.05)
-		hg.modulate = Color(hbr, hbr * 0.95, hbr * 1.22)
-		hg.set_meta("dbg", "dress_hang")
-		add_child(hg)
+
+	# hangers: only on slabs with a real visible body, attached INSIDE the
+	# visible span and tucked up into the moss fringe — never orphaned in air.
+	# Storm-responsive sway shader: the tops stay pinned, the tips whip.
+	if inset >= 140.0:
+		var n_hang := 1 + (rng.randi() % 2)
+		for i in n_hang:
+			var hb := rng.randf() < 0.45
+			var ht: Texture2D = beards[rng.randi() % beards.size()] if hb \
+					else ferns[rng.randi() % ferns.size()]
+			var hsc := rng.randf_range(0.38, 0.58) * sc / 0.5
+			var hg := Sprite2D.new()
+			hg.texture = ht
+			hg.centered = false
+			hg.offset = Vector2(-ht.get_width() * 0.5, -24.0)
+			hg.scale = Vector2(hsc, hsc)
+			hg.flip_h = rng.randf() < 0.5
+			hg.position = Vector2(side * rng.randf_range(50.0, maxf(120.0, inset * 0.85)),
+					slab_h * 0.26)
+			var hbr := b * rng.randf_range(0.8, 1.05)
+			hg.modulate = Color(hbr, hbr * 0.95, hbr * 1.22)
+			hg.material = _bg._sway_material(rng.randf_range(7.0, 15.0),
+					rng.randf_range(0.7, 1.3), rng.randf() * TAU)
+			hg.set_meta("dbg", "dress_hang")
+			grp.add_child(hg)
+
 	# an occasional mossy rock perched on the slab
 	if rng.randf() < 0.4:
 		var rt: Texture2D = rocks[rng.randi() % rocks.size()]
@@ -352,12 +385,45 @@ func _spawn_overhang(rng: RandomNumberGenerator, side: float, y: float,
 		rk.texture = rt
 		rk.scale = Vector2(rsc, rsc)
 		rk.flip_h = rng.randf() < 0.5
-		rk.position = Vector2(tip_x - side * rng.randf_range(80.0, half * 0.9),
-				y - slab_h * 0.30 - rt.get_height() * rsc * 0.35)
+		rk.position = Vector2(side * rng.randf_range(80.0, half * 0.9),
+				-slab_h * 0.30 - rt.get_height() * rsc * 0.35)
 		var rb := b * rng.randf_range(0.85, 1.0)
 		rk.modulate = Color(rb, rb * 0.95, rb * 1.18)
 		rk.set_meta("dbg", "dress_rock")
-		add_child(rk)
+		grp.add_child(rk)
+
+	# an animated pack plant growing from the fringe on some slabs — the same
+	# living plants the island itself wears, breathing on the corridor walls
+	if rng.randf() < 0.55:
+		var pdir: String = ["flower", "plant1", "plant_wind"][rng.randi() % 3]
+		var plant := _dress_plant(pdir, rng.randf_range(7.0, 10.0),
+				rng.randf_range(0.20, 0.30) * sc / 0.5, rng)
+		plant.position = Vector2(side * rng.randf_range(70.0, half * 0.8),
+				-slab_h * 0.32)
+		plant.modulate = Color(b * 1.05, b, b * 1.25)
+		plant.set_meta("dbg", "dress_plant")
+		grp.add_child(plant)
+
+
+# Same recipe as Realm2Background._animated, but deliberately NOT registered
+# with the background's _plants — those freeze with the island's camouflage
+# wake cycle; the corridor's plants live on their own clock.
+func _dress_plant(dir: String, fps: float, sc: float,
+		rng: RandomNumberGenerator) -> AnimatedSprite2D:
+	var frames := SpriteFrames.new()
+	frames.add_animation("sway")
+	frames.set_animation_loop("sway", true)
+	frames.set_animation_speed("sway", fps)
+	var i := 0
+	while ResourceLoader.exists(BASE + dir + "/frame_%03d.png" % i):
+		frames.add_frame("sway", load(BASE + dir + "/frame_%03d.png" % i))
+		i += 1
+	var a := AnimatedSprite2D.new()
+	a.sprite_frames = frames
+	a.scale = Vector2(sc, sc)
+	a.play("sway")
+	a.frame = rng.randi() % maxi(i, 1)  # desync: no two plants pulse in unison
+	return a
 
 
 func _build_chunk() -> void:
@@ -598,6 +664,16 @@ func _physics_process(delta: float) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	_trauma = maxf(_trauma - delta * 0.8, 0.0)
+
+	# the corridor breathes: overhang assemblies bob + tilt, vines micro-sway.
+	# (hanger leaf-bending is the storm sway shader, driven on the GPU.)
+	for d in _dress_bobs:
+		(d.n as Node2D).position.y = d.base_y + sin(_t * d.rate + d.ph) * d.amp
+		if d.rot_amp > 0.0:
+			(d.n as Node2D).rotation = d.base_rot \
+					+ sin(_t * d.rate * 0.7 + d.ph) * d.rot_amp
+	for d in _dress_sways:
+		(d.n as Node2D).rotation = d.base + sin(_t * d.rate + d.ph) * d.amp
 
 	# chunk glow: still faint ember while embedded, breathes once awake
 	if _chunk_glow:

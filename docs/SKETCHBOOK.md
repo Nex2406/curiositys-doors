@@ -11,6 +11,21 @@ Rules:
 
 ## 2026-07-08
 
+- **The ascent is boss-gated (Advika):** the island keeps rising until
+  Curiosity defeats the wizard — the rise doesn't stop on a timer. This
+  ANSWERS the R2-M4 pacing question (continuous rise, fight-driven duration).
+  Implementation lands with R2-M7 (needs the wizard to exist); until then the
+  24s rise + arrival beat stays as placeholder. Note: boss-gated rise means
+  the corridor dressing must generate/recycle procedurally past the current
+  hand-tuned span.
+- **The corridor must feel alive (Advika):** side elements sway, bob,
+  breathe — and no hanger may ever read as floating in air. Shipped same day:
+  grouped overhang assemblies, storm-responsive hanger sway, animated pack
+  plants on the slabs, vine micro-sway.
+- **FlyingForestEnemies pack REJECTED (Advika):** auditioned via the new
+  `tests/EnemyAttackPreview.tscn` rig — chunky 64px pixel art clashes with
+  the painterly hero. Slimes (Maaot) remain the R2-M3 wave creature.
+
 - **The Wizard = Realm 2's boss (Advika).** Small enemies first (slimes, the
   existing R2-M3/M4 ladder), then Curiosity fights the wizard from the
   `BlueWizard Animations` pack (Downloads) as the realm's big boss.
