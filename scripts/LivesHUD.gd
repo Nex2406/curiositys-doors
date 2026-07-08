@@ -35,9 +35,11 @@ const FRAMES: Array[Texture2D] = [
 @export var float_phase_step: float = 0.8
 
 @export_group("Tint")
-## Multiplies the eye art — white keeps the original violet. (Modulate only
-## warms/darkens; a true hue change needs the colorize shader or recoloured art.)
-@export var eye_tint: Color = Color.WHITE
+## Multiplies the eye art. Components above 1.0 brighten it — the default
+## lifts the dim violet source art so the eyes read clearly against dark
+## realms (Advika, 2026-07-08: brighter). A true hue change still needs
+## recoloured art.
+@export var eye_tint: Color = Color(1.35, 1.32, 1.5)
 
 var _eyes: Array[Sprite2D] = []
 var _base_pos: Array[Vector2] = []
