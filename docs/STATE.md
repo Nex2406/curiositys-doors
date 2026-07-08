@@ -5,8 +5,11 @@ _Last updated: 2026-07-07_
 `scenes/realms/Realm2LiftTest.tscn` (+`scripts/Realm2LiftTest.gd`,
 `scripts/LevitatingIsland.gd`, shared `scripts/Realm2Background.gd`) — the
 full setpiece, playable: flat mossy intro → step onto the buried island →
-storm builds → the tear → 24s seamless ascent with Curiosity riding → arrival
-above the canopy. The embedded island is CAMOUFLAGED (ground-dark tint,
+storm builds → the tear → an ENDLESS boss-gated ascent (LevitatingIsland
+`endless` mode, cruise ~130px/s): the island keeps climbing until the wizard
+falls — R2-M7 wires `stop_levitation()` on the defeat beat. The corridor
+dressing recycles seamlessly (wrap-above-view per pass span), so the sides
+never thin out no matter how high the ride goes. The embedded island is CAMOUFLAGED (ground-dark tint,
 dormant glow, frozen plants) and wakes to full color over the tear — no
 pasted-on contrast. Ground is a seamless moss body: staggered big-finger rows
 to silhouette depth, crest + mounds skyline, seam belt interlocking the upper
