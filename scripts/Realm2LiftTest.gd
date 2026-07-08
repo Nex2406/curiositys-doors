@@ -225,27 +225,22 @@ void fragment() {
 # reads as a void (Advika, 2026-07-08); the reference look is moss masses
 # hugging both screen edges. Three passes, all Mossy-pack elements sliced +
 # violet-shifted by tools/slice_mossy_pack.gd, all pure decor (no collision):
-#   1. vine trunks — near-continuous vertical bones along each edge
-#   2. overhang assemblies — a slab jutting in, with moss beards/ferns swaying
-#      from its underside (storm-responsive SWAY_SHADER), an occasional mossy
-#      rock perched on top and an animated pack plant growing from the fringe.
-#      The WHOLE assembly is one Node2D that bobs and tilts together, so a
-#      hanger can never detach from its slab ("no leaves hanging in air" —
-#      Advika, 2026-07-08).
-#   3. foreground silhouettes — a few near-black slabs at the extreme edges
-#      drawn OVER the hero (z13) for layered depth, breathing slowly
+# Overhang assemblies: a slab jutting in from the edge, moss beards/ferns
+# swaying from its underside (storm-responsive SWAY_SHADER), an occasional
+# mossy rock on top, an animated pack plant in the fringe, and on some a
+# whole vine trunk growing through the slab (up like growth or down like
+# roots — always one whole piece, never tiled, never flip_v'd). The WHOLE
+# assembly is one Node2D that bobs and tilts together, so nothing can ever
+# detach, orphan, or open a seam ("no leaves hanging in air" — Advika).
 # The climb is ENDLESS (boss-gated), so the corridor never thins: every
 # element that drops a screen below the camera wraps to above the view,
 # shifted by its pass's full span so spacing and stacking stay seamless.
 const _DRESS_SEED := 20260708  # fixed: the corridor is level design
 const _VIEW_HALF_X := 1130.0   # half view width at the lift camera's zoom (16:9)
-const _VINE_SPAN := 3500.0     # vine pass wrap distance (150 .. -3350)
 const _GRP_SPAN := 3000.0      # overhang pass wrap distance (-180 .. -3180)
-const _FG_SPAN := 2600.0       # foreground pass wrap distance (-350 .. -2950)
 
 # every animated dressing node: {n, base_y, amp, rate, ph} (+rot_amp for tilt)
 var _dress_bobs: Array[Dictionary] = []
-var _dress_sways: Array[Dictionary] = []  # rigid micro-rotation (vines)
 
 func _build_ascent_dressing() -> void:
 	var rng := RandomNumberGenerator.new()
@@ -267,65 +262,38 @@ func _build_ascent_dressing() -> void:
 	for n in ["rock_moss_0", "rock_moss_1", "rock_moss_2"]:
 		rocks.append(load(BASE + n + ".png"))
 
-	# 1. vine trunks: stacked with slight overlap so each edge reads as one
-	# continuous twisted growth, wrapping seamlessly forever
-	for s in [-1.0, 1.0]:
-		var vy := 150.0
-		while vy > 150.0 - _VINE_SPAN:
-			var t: Texture2D = vines[rng.randi() % vines.size()]
-			var sc := rng.randf_range(0.55, 0.8)
-			var v := Sprite2D.new()
-			v.texture = t
-			v.scale = Vector2(sc, sc)
-			v.flip_h = s > 0.0
-			v.flip_v = rng.randf() < 0.5  # breaks the repeat when a trunk recurs
-			v.rotation = rng.randf_range(-0.07, 0.07)
-			v.position = Vector2(CHUNK_X + s * rng.randf_range(1020.0, 1140.0), vy)
-			var b := rng.randf_range(0.30, 0.42)
-			v.modulate = Color(b, b * 0.95, b * 1.25)
-			v.set_meta("dbg", "dress_vine")
-			add_child(v)
-			_dress_sways.append({"n": v, "amp": rng.randf_range(0.006, 0.014),
-					"rate": rng.randf_range(0.18, 0.32), "ph": rng.randf() * TAU,
-					"base": v.rotation, "wrap": _VINE_SPAN})
-			vy -= t.get_height() * sc * rng.randf_range(0.72, 0.92)
+	# (a standalone vine-trunk pass lived here and was cut: the trunks are
+	# S-curved standalone pieces, not tiles — stacking them left bark gaps at
+	# every joint (Advika, 2026-07-08). Trunks now grow from the overhang
+	# assemblies instead, the way the pack draws them.)
 
 	# 2. overhang platforms with hangers — each side walks the corridor
-	# independently so neither edge ever goes bare for a full screen height
+	# independently so neither edge ever goes bare for a full screen height.
+	# NO SKY SLIVERS (Advika, 2026-07-08): two neighbours that land almost
+	# touching get interlocked by 70px+ instead — a near-miss gap winks open
+	# and closed with their independent bobs and reads as a glitch. Either
+	# clearly apart or genuinely merged, never the sliver between.
 	for s in [-1.0, 1.0]:
 		var py := -180.0 if s < 0.0 else -420.0  # offset phases, no mirroring
+		var prev_top := INF  # top edge (smallest y) of the assembly below
 		while py > -180.0 - _GRP_SPAN + 200.0:
-			_spawn_overhang(rng, s, py, plats, beards, ferns, rocks)
-			py -= rng.randf_range(420.0, 640.0)
+			var d := _spawn_overhang(rng, s, py, plats, beards, ferns, rocks, vines)
+			var sliver: float = prev_top - (float(d.base_y) + float(d.half_h))
+			if sliver > 0.0 and sliver < 90.0:
+				d.base_y += sliver + 70.0  # pull down into the neighbour: interlock
+				(d.n as Node2D).position.y = d.base_y
+			prev_top = float(d.base_y) - float(d.half_h)
+			py = float(d.base_y) - rng.randf_range(420.0, 640.0)
 
-	# 3. sparse near-black foreground slabs over the hero for depth
-	var fy := -350.0
-	while fy > -350.0 - _FG_SPAN + 200.0:
-		var s := -1.0 if rng.randf() < 0.5 else 1.0
-		var t: Texture2D = plats[rng.randi() % plats.size()]
-		var sc := rng.randf_range(0.7, 0.95)
-		var f := Sprite2D.new()
-		f.texture = t
-		f.scale = Vector2(sc, sc)
-		f.flip_h = s > 0.0
-		# only the inner ~140px of the slab pokes on-screen — a frame, not a wall
-		f.position = Vector2(
-				CHUNK_X + s * (_VIEW_HALF_X + t.get_width() * sc * 0.5
-				- rng.randf_range(60.0, 140.0)), fy)
-		var b := rng.randf_range(0.09, 0.14)
-		f.modulate = Color(b, b, b * 1.4)
-		f.z_index = 13
-		f.set_meta("dbg", "dress_fg")
-		add_child(f)
-		_dress_bobs.append({"n": f, "base_y": f.position.y, "base_rot": 0.0,
-				"amp": rng.randf_range(6.0, 10.0), "rate": rng.randf_range(0.16, 0.26),
-				"ph": rng.randf() * TAU, "rot_amp": 0.0, "wrap": _FG_SPAN})
-		fy -= rng.randf_range(700.0, 1100.0)
+	# (a near-black z13 "foreground silhouette" pass lived here and was cut:
+	# a barely-on-screen black slab corner reads as a glitch blob, not depth —
+	# Advika, 2026-07-08, three separate screenshots.)
 
 
 func _spawn_overhang(rng: RandomNumberGenerator, side: float, y: float,
 		plats: Array[Texture2D], beards: Array[Texture2D],
-		ferns: Array[Texture2D], rocks: Array[Texture2D]) -> void:
+		ferns: Array[Texture2D], rocks: Array[Texture2D],
+		vines: Array[Texture2D]) -> Dictionary:
 	var tex: Texture2D = plats[rng.randi() % plats.size()]
 	var depth := rng.randf()  # 0 = far/dim, 1 = near/lit
 	var sc := rng.randf_range(0.42, 0.60) * lerpf(0.72, 1.0, depth)
@@ -344,10 +312,11 @@ func _spawn_overhang(rng: RandomNumberGenerator, side: float, y: float,
 	grp.position = Vector2(tip_x, y)
 	grp.rotation = rng.randf_range(-0.04, 0.04) * side
 	add_child(grp)
-	_dress_bobs.append({"n": grp, "base_y": y, "base_rot": grp.rotation,
+	var entry := {"n": grp, "base_y": y, "base_rot": grp.rotation,
 			"amp": rng.randf_range(4.0, 8.0), "rate": rng.randf_range(0.22, 0.4),
 			"ph": rng.randf() * TAU, "rot_amp": rng.randf_range(0.004, 0.010),
-			"wrap": _GRP_SPAN})
+			"wrap": _GRP_SPAN, "half_h": tex.get_height() * sc * 0.5}
+	_dress_bobs.append(entry)
 
 	var slab := Sprite2D.new()
 	slab.texture = tex
@@ -358,6 +327,32 @@ func _spawn_overhang(rng: RandomNumberGenerator, side: float, y: float,
 	slab.set_meta("dbg", "dress_slab")
 	grp.add_child(slab)
 	var slab_h := tex.get_height() * sc
+
+	# a vine trunk growing THROUGH the slab on some assemblies — always a
+	# whole piece (never tiled/stacked: joints gap; never flip_v: the leaves
+	# invert). Behind the slab, rising from it like the reference growth —
+	# or hanging beneath it as roots.
+	if rng.randf() < 0.5:
+		var vt: Texture2D = vines[rng.randi() % vines.size()]
+		var vsc := rng.randf_range(0.45, 0.65) * sc / 0.5
+		var vine := Sprite2D.new()
+		vine.texture = vt
+		vine.scale = Vector2(vsc, vsc)
+		vine.flip_h = side > 0.0
+		vine.z_index = -1  # behind the slab: rooted in the moss, not pasted on
+		var vh := vt.get_height() * vsc
+		var upward := rng.randf() < 0.7
+		var vx := side * rng.randf_range(half * 0.35, half * 0.95)
+		if upward:
+			# tip in the air above, base buried in the slab body
+			vine.position = Vector2(vx, -vh * 0.5 + slab_h * 0.22)
+		else:
+			# hanging under the fringe like a root cascade
+			vine.position = Vector2(vx, vh * 0.5 + slab_h * 0.10)
+		var vb := b * rng.randf_range(0.7, 0.9)
+		vine.modulate = Color(vb, vb * 0.95, vb * 1.25)
+		vine.set_meta("dbg", "dress_vine")
+		grp.add_child(vine)
 
 	# hangers: only on slabs with a real visible body, attached INSIDE the
 	# visible span and tucked up into the moss fringe — never orphaned in air.
@@ -410,6 +405,7 @@ func _spawn_overhang(rng: RandomNumberGenerator, side: float, y: float,
 		plant.modulate = Color(b * 1.05, b, b * 1.25)
 		plant.set_meta("dbg", "dress_plant")
 		grp.add_child(plant)
+	return entry
 
 
 # Same recipe as Realm2Background._animated, but deliberately NOT registered
@@ -675,10 +671,10 @@ func _process(delta: float) -> void:
 	_t += delta
 	_trauma = maxf(_trauma - delta * 0.8, 0.0)
 
-	# the corridor breathes AND recycles: overhang assemblies bob + tilt,
-	# vines micro-sway, and anything a screen below the camera wraps to above
-	# the view shifted by its pass's full span — the endless climb never
-	# reaches a bare stretch. (hanger leaf-bending is the storm sway shader.)
+	# the corridor breathes AND recycles: overhang assemblies bob + tilt, and
+	# any assembly a screen below the camera wraps to above the view shifted
+	# by the pass's full span — the endless climb never reaches a bare
+	# stretch. (hanger leaf-bending is the storm sway shader, on the GPU.)
 	var cam_y := _cam.global_position.y
 	for d in _dress_bobs:
 		if d.base_y > cam_y + 1400.0:
@@ -687,11 +683,6 @@ func _process(delta: float) -> void:
 		if d.rot_amp > 0.0:
 			(d.n as Node2D).rotation = d.base_rot \
 					+ sin(_t * d.rate * 0.7 + d.ph) * d.rot_amp
-	for d in _dress_sways:
-		var vn := d.n as Node2D
-		if vn.position.y > cam_y + 1500.0:
-			vn.position.y -= d.wrap
-		vn.rotation = d.base + sin(_t * d.rate + d.ph) * d.amp
 
 	# chunk glow: still faint ember while embedded, breathes once awake
 	if _chunk_glow:
