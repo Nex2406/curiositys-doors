@@ -13,8 +13,14 @@ extends AnimatableBody2D
 signal levitation_started
 signal arrived
 
-@export var rise_height := 2820.0        ## px the island climbs
-@export var rise_duration := 24.0        ## seconds for the full climb
+@export var rise_height := 2820.0        ## px the island climbs (finite mode)
+@export var rise_duration := 24.0        ## seconds for the full climb (finite mode)
+## Endless mode: no destination — the island eases up to cruise speed and
+## simply keeps climbing until stop_levitation() is called (the wizard's
+## defeat, eventually). `arrived` never fires on its own in this mode.
+@export var endless := false
+@export var cruise_speed := 130.0        ## px/s once the endless climb settles
+@export var cruise_ramp := 5.0           ## seconds to ease from tear to cruise
 @export var sway_amplitude := 22.0       ## px of horizontal levitation sway
 @export var sway_period := 3.4           ## seconds per sway cycle (2-4s feels alive)
 @export var bob_amplitude := 8.0         ## px of vertical hover bob
@@ -28,8 +34,19 @@ var state := State.IDLE
 var _base := Vector2.ZERO      # anchor: where the island rests / current rise origin
 var _t := 0.0                  # time in current state
 var _ht := 0.0                 # hover clock (never resets — keeps sway continuous)
+var _rise_y := 0.0             # endless mode: accumulated climb
 var _debris: CPUParticles2D
 var _cam: Camera2D
+
+
+## Endless mode: the boss is down — settle into a hover where we are.
+## Emits `arrived` so the finale beat (sky door, R2-M8) can hook in.
+func stop_levitation() -> void:
+	if state != State.RISING or not endless:
+		return
+	_base = Vector2(_base.x, position.y)  # hover around the current height
+	state = State.HOVERING
+	arrived.emit()
 
 
 func _ready() -> void:
@@ -79,11 +96,16 @@ func start_levitation() -> void:
 	levitation_started.emit()
 
 
-## Debug/screenshot helper: jump partway up the climb (0..1).
+## Debug/screenshot helper: jump partway up the climb (0..1 of rise_height).
 func debug_jump(fraction: float) -> void:
 	state = State.RISING
-	_t = clampf(fraction, 0.0, 1.0) * rise_duration
-	position = _base + Vector2(0, -rise_height * _ease(clampf(fraction, 0.0, 1.0)))
+	if endless:
+		_t = cruise_ramp + 1.0  # past the ramp: full cruise + hover
+		_rise_y = rise_height * clampf(fraction, 0.0, 1.0)
+		position = _base + Vector2(0, -_rise_y)
+	else:
+		_t = clampf(fraction, 0.0, 1.0) * rise_duration
+		position = _base + Vector2(0, -rise_height * _ease(clampf(fraction, 0.0, 1.0)))
 
 
 func _ease(k: float) -> float:
@@ -109,14 +131,21 @@ func _physics_process(delta: float) -> void:
 				state = State.RISING
 				_t = 0.0
 		State.RISING:
-			var k := _ease(clampf(_t / rise_duration, 0.0, 1.0))
-			# hover fades in over the first 15% so the tear reads heavy, not floaty
-			var hover := clampf(_t / (rise_duration * 0.15), 0.0, 1.0)
-			position = _base + Vector2(sway * hover, -rise_height * k + bob * hover)
-			if _t >= rise_duration:
-				_base = _base + Vector2(0, -rise_height)
-				state = State.HOVERING
-				arrived.emit()
+			if endless:
+				# ease to cruise, then hold it — there is no arrival
+				var ramp := clampf(_t / cruise_ramp, 0.0, 1.0)
+				_rise_y += cruise_speed * _ease(ramp) * delta
+				var hover_e := clampf(_t / (cruise_ramp * 0.7), 0.0, 1.0)
+				position = _base + Vector2(sway * hover_e, -_rise_y + bob * hover_e)
+			else:
+				var k := _ease(clampf(_t / rise_duration, 0.0, 1.0))
+				# hover fades in over the first 15% so the tear reads heavy, not floaty
+				var hover := clampf(_t / (rise_duration * 0.15), 0.0, 1.0)
+				position = _base + Vector2(sway * hover, -rise_height * k + bob * hover)
+				if _t >= rise_duration:
+					_base = _base + Vector2(0, -rise_height)
+					state = State.HOVERING
+					arrived.emit()
 		State.HOVERING:
 			position = _base + Vector2(sway, bob)
 

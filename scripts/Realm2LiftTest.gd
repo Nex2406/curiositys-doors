@@ -2,7 +2,9 @@ extends Node2D
 ## R2-M1 — THE QUAKE + LIFTOFF, playable grey-box on the living background.
 ## Flat mossy ground → walk right onto the half-buried chunk → the storm
 ## builds (wind, shake, dark sky) → the ground TEARS → the chunk rises with
-## Curiosity aboard → high above the canopy: sequence complete.
+## Curiosity aboard — and KEEPS rising: the climb is boss-gated (Advika,
+## 2026-07-08), it only ends when the wizard falls (R2-M7 calls
+## stop_levitation()). The corridor dressing recycles seamlessly forever.
 ## Controls: Curiosity's own (move/jump/dash). R restarts. ESC returns to
 ## the Hub (works headless/editor too — the Hub is just another scene).
 ## Reached in-game via the Hub's middle door (Door2 → "realm_2"). The arrival
@@ -232,9 +234,14 @@ void fragment() {
 #      Advika, 2026-07-08).
 #   3. foreground silhouettes — a few near-black slabs at the extreme edges
 #      drawn OVER the hero (z13) for layered depth, breathing slowly
-# Density tapers off near the top so the arrival opens into sky.
+# The climb is ENDLESS (boss-gated), so the corridor never thins: every
+# element that drops a screen below the camera wraps to above the view,
+# shifted by its pass's full span so spacing and stacking stay seamless.
 const _DRESS_SEED := 20260708  # fixed: the corridor is level design
 const _VIEW_HALF_X := 1130.0   # half view width at the lift camera's zoom (16:9)
+const _VINE_SPAN := 3500.0     # vine pass wrap distance (150 .. -3350)
+const _GRP_SPAN := 3000.0      # overhang pass wrap distance (-180 .. -3180)
+const _FG_SPAN := 2600.0       # foreground pass wrap distance (-350 .. -2950)
 
 # every animated dressing node: {n, base_y, amp, rate, ph} (+rot_amp for tilt)
 var _dress_bobs: Array[Dictionary] = []
@@ -261,10 +268,10 @@ func _build_ascent_dressing() -> void:
 		rocks.append(load(BASE + n + ".png"))
 
 	# 1. vine trunks: stacked with slight overlap so each edge reads as one
-	# continuous twisted growth from the ground up to just short of arrival
+	# continuous twisted growth, wrapping seamlessly forever
 	for s in [-1.0, 1.0]:
 		var vy := 150.0
-		while vy > -2200.0:
+		while vy > 150.0 - _VINE_SPAN:
 			var t: Texture2D = vines[rng.randi() % vines.size()]
 			var sc := rng.randf_range(0.55, 0.8)
 			var v := Sprite2D.new()
@@ -280,20 +287,20 @@ func _build_ascent_dressing() -> void:
 			add_child(v)
 			_dress_sways.append({"n": v, "amp": rng.randf_range(0.006, 0.014),
 					"rate": rng.randf_range(0.18, 0.32), "ph": rng.randf() * TAU,
-					"base": v.rotation})
+					"base": v.rotation, "wrap": _VINE_SPAN})
 			vy -= t.get_height() * sc * rng.randf_range(0.72, 0.92)
 
 	# 2. overhang platforms with hangers — each side walks the corridor
 	# independently so neither edge ever goes bare for a full screen height
 	for s in [-1.0, 1.0]:
 		var py := -180.0 if s < 0.0 else -420.0  # offset phases, no mirroring
-		while py > -1900.0:
+		while py > -180.0 - _GRP_SPAN + 200.0:
 			_spawn_overhang(rng, s, py, plats, beards, ferns, rocks)
 			py -= rng.randf_range(420.0, 640.0)
 
 	# 3. sparse near-black foreground slabs over the hero for depth
 	var fy := -350.0
-	while fy > -1700.0:
+	while fy > -350.0 - _FG_SPAN + 200.0:
 		var s := -1.0 if rng.randf() < 0.5 else 1.0
 		var t: Texture2D = plats[rng.randi() % plats.size()]
 		var sc := rng.randf_range(0.7, 0.95)
@@ -312,7 +319,7 @@ func _build_ascent_dressing() -> void:
 		add_child(f)
 		_dress_bobs.append({"n": f, "base_y": f.position.y, "base_rot": 0.0,
 				"amp": rng.randf_range(6.0, 10.0), "rate": rng.randf_range(0.16, 0.26),
-				"ph": rng.randf() * TAU, "rot_amp": 0.0})
+				"ph": rng.randf() * TAU, "rot_amp": 0.0, "wrap": _FG_SPAN})
 		fy -= rng.randf_range(700.0, 1100.0)
 
 
@@ -339,7 +346,8 @@ func _spawn_overhang(rng: RandomNumberGenerator, side: float, y: float,
 	add_child(grp)
 	_dress_bobs.append({"n": grp, "base_y": y, "base_rot": grp.rotation,
 			"amp": rng.randf_range(4.0, 8.0), "rate": rng.randf_range(0.22, 0.4),
-			"ph": rng.randf() * TAU, "rot_amp": rng.randf_range(0.004, 0.010)})
+			"ph": rng.randf() * TAU, "rot_amp": rng.randf_range(0.004, 0.010),
+			"wrap": _GRP_SPAN})
 
 	var slab := Sprite2D.new()
 	slab.texture = tex
@@ -431,6 +439,10 @@ func _build_chunk() -> void:
 	_chunk.position = Vector2(CHUNK_X, CHUNK_START_Y)
 	_chunk.rise_height = CHUNK_START_Y - LIFT_TOP_Y
 	_chunk.rise_duration = 24.0
+	# BOSS-GATED: the island does not stop until the wizard falls (Advika,
+	# 2026-07-08) — and there is no wizard yet, so it does not stop. R2-M7
+	# calls _chunk.stop_levitation() on the defeat beat.
+	_chunk.endless = true
 	_chunk.sway_amplitude = 22.0
 	_chunk.sway_period = 3.4
 	_chunk.bob_amplitude = 8.0
@@ -477,7 +489,7 @@ func _build_chunk() -> void:
 		for c in _chunk.get_children():
 			if c is AnimatedSprite2D:
 				c.play())
-	_chunk.arrived.connect(func() -> void: _set_phase(Phase.DONE))
+	# `arrived` only fires from stop_levitation() — the wizard's defeat (R2-M7)
 
 
 func _build_player() -> void:
@@ -651,29 +663,35 @@ func _physics_process(delta: float) -> void:
 			if _pt > 1.0 and _curi.global_position.y > _cam.global_position.y + 700.0:
 				_die()
 		Phase.DONE:
+			# only reachable via the wizard's defeat (R2-M7 wires
+			# _chunk.stop_levitation()); the island hovers, storm relents.
 			_bg.set_storm(0.35)
-			# walking off the hovering island at the top is a fall like any other
+			# walking off the hovering island is a fall like any other
 			if _curi.global_position.y > _cam.global_position.y + 700.0:
 				_die()
-			# NO auto-return (Advika, 2026-07-08: being yanked home after a
-			# timer felt terrible). The player leaves when THEY decide — ESC,
-			# per the on-screen label. The real ending is the wizard + sky
-			# door (R2-M7/M8); until then the arrival is theirs to sit in.
 
 
 func _process(delta: float) -> void:
 	_t += delta
 	_trauma = maxf(_trauma - delta * 0.8, 0.0)
 
-	# the corridor breathes: overhang assemblies bob + tilt, vines micro-sway.
-	# (hanger leaf-bending is the storm sway shader, driven on the GPU.)
+	# the corridor breathes AND recycles: overhang assemblies bob + tilt,
+	# vines micro-sway, and anything a screen below the camera wraps to above
+	# the view shifted by its pass's full span — the endless climb never
+	# reaches a bare stretch. (hanger leaf-bending is the storm sway shader.)
+	var cam_y := _cam.global_position.y
 	for d in _dress_bobs:
+		if d.base_y > cam_y + 1400.0:
+			d.base_y -= d.wrap
 		(d.n as Node2D).position.y = d.base_y + sin(_t * d.rate + d.ph) * d.amp
 		if d.rot_amp > 0.0:
 			(d.n as Node2D).rotation = d.base_rot \
 					+ sin(_t * d.rate * 0.7 + d.ph) * d.rot_amp
 	for d in _dress_sways:
-		(d.n as Node2D).rotation = d.base + sin(_t * d.rate + d.ph) * d.amp
+		var vn := d.n as Node2D
+		if vn.position.y > cam_y + 1500.0:
+			vn.position.y -= d.wrap
+		vn.rotation = d.base + sin(_t * d.rate + d.ph) * d.amp
 
 	# chunk glow: still faint ember while embedded, breathes once awake
 	if _chunk_glow:
