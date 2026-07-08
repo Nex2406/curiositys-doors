@@ -170,6 +170,7 @@ func _play_lore(text: String) -> void:
 static func _resolve_scene_path(target: String) -> String:
 	match target:
 		"realm_1": return "res://assets/realms/realm1_caves/Realm1.tscn"
+		"realm_2": return "res://scenes/realms/Realm2LiftTest.tscn"
 		"hub": return "res://scenes/Hub.tscn"
 		_: return ""
 
