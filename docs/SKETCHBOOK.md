@@ -9,7 +9,27 @@ Rules:
 
 ---
 
-## 2026-07-04
+## 2026-07-08
+
+- **The Wizard = Realm 2's boss (Advika).** Small enemies first (slimes, the
+  existing R2-M3/M4 ladder), then Curiosity fights the wizard from the
+  `BlueWizard Animations` pack (Downloads) as the realm's big boss.
+  - The art is a gift: dark blue-grey robes, face hidden, two glowing eyes
+    under the hat — a **dark mirror of Curiosity** (hooded silhouette, hidden
+    face, glowing eyes). Fits the violet realm palette almost untouched.
+  - Narrative hook this unlocks: **the storm has an author.** The wizard drives
+    the storm; defeating them calms it and the sky door reveals itself.
+    (Would also answer "how do slimes reach a flying island" — the wizard
+    conjures/drops them from the storm.)
+  - Pack gap: wizard has **idle / walk / jump-dash only** — no attack, hurt,
+    or death frames. Fine for a *caster* boss: attacks are projectiles/
+    lightning (the storm itself), teleport-blinks reuse the jump/dash frames,
+    hurt is a flash/knockback, death is a dissolve. No sprite surgery needed.
+  - Related packs in Downloads: `Slimes.zip` (green + orange, 30-frame loops —
+    wave fodder; tint toward violet/teal in-engine so they sit in the palette)
+    and `Witches and Wizards.zip` (cauldrons, grimoires, runes, shelves —
+    props that could dress the R2-M6 potion-orb brewing beat and/or the
+    wizard's arena).
 
 - **Realm 2 = the Rising Chunk (vertical arena setpiece).** Advika's full pitch:
   - Curiosity enters the realm → walks in on **flat, even ground** (reads like a

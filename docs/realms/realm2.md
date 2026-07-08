@@ -65,19 +65,31 @@ Ingredients to gather on the island mid-fight → brew → the **orb**, Curiosit
 first ranged weapon. *Forces the decision: is orb-brewing the realm's "puzzle"
 beat, or a side weapon?*
 
-### R2-M7 — Sky door finale
-The ascent tops out at the door in the sky. Arrival beat, one-line exit lore
-(needs the realm's emotional word — Advika), hub return, save/persistence
-(RealmBase).
+### R2-M7 — The Wizard (boss)
+The ascent tops out — and the storm's author is waiting. Boss fight against
+the wizard (`BlueWizard Animations` pack, Downloads): a dark mirror of
+Curiosity — hooded, hidden face, glowing eyes. Caster boss: the pack only has
+idle/walk/jump-dash frames, so attacks are storm magic (projectiles,
+lightning), teleport-blinks reuse jump/dash, hurt = flash/knockback, death =
+dissolve. First consumer of the reusable `Boss` base (milestone M2).
+Small enemies come FIRST (R2-M3/M4) — the waves teach the combat verbs the
+boss then tests. *(Advika, 2026-07-08)*
 
-### R2-M8 — Sound + polish
+### R2-M8 — Sky door finale
+Defeating the wizard calms the storm; the door in the sky reveals itself.
+Arrival beat, one-line exit lore (needs the realm's emotional word — Advika),
+hub return, save/persistence (RealmBase).
+
+### R2-M9 — Sound + polish
 Storm ambience + SFX (thunder, slime, orb, lightning), particle/feel pass,
 A/B against `assets/_reference/realm2_bg_target_2026-07-04.png`, full
 end-to-end playthrough on the live web build.
 
 ## Open questions
 - Enemy design: slimes settled as the wave creature? What do they look like —
-  and how do they reach a floating island? *(forced by R2-M3)*
+  and how do they reach a floating island? *(forced by R2-M3; candidate
+  answer since the wizard became the boss: he conjures them / drops them
+  from the storm)*
 - Chunk pacing: continuous rise, or rise-between-waves? *(forced by R2-M4)*
 - Is orb-brewing the realm's puzzle beat? *(forced by R2-M6)*
 - The realm's emotional word — palette is set, the *feeling* is unnamed.

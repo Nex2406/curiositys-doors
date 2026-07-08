@@ -49,6 +49,7 @@ func _ready() -> void:
 	_bg.include_chunk = false  # OUR chunk is a physics body, not decor
 	add_child(_bg)
 	_build_ground()
+	_build_ascent_dressing()
 	_build_chunk()
 	_build_player()
 	_build_camera()
@@ -217,6 +218,146 @@ void fragment() {
 				fm.shader = flat
 				fm.set_shader_parameter("tint", tints[c.get_meta("dbg")])
 				c.material = fm
+
+
+# ASCENT SIDE DRESSING — the corridor the island rises through. Empty sky
+# reads as a void (Advika, 2026-07-08); the reference look is moss masses
+# hugging both screen edges. Three passes, all Mossy-pack elements sliced +
+# violet-shifted by tools/slice_mossy_pack.gd, all pure decor (no collision):
+#   1. vine trunks — near-continuous vertical bones along each edge
+#   2. overhang platforms — slabs jutting in, moss beards/ferns dangling off
+#      their undersides, an occasional mossy rock perched on top
+#   3. foreground silhouettes — a few near-black slabs at the extreme edges
+#      drawn OVER the hero (z13) for layered depth
+# Density tapers off near the top so the arrival opens into sky.
+const _DRESS_SEED := 20260708  # fixed: the corridor is level design
+const _VIEW_HALF_X := 1130.0   # half view width at the lift camera's zoom (16:9)
+
+func _build_ascent_dressing() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _DRESS_SEED
+	var plats: Array[Texture2D] = []
+	for n in ["platform_wide_0", "platform_wide_1", "platform_wide_2", "platform_grand"]:
+		plats.append(load(BASE + n + ".png"))
+	var beards: Array[Texture2D] = []
+	for n in ["hang_beard_0", "hang_beard_1"]:
+		beards.append(load(BASE + n + ".png"))
+	var ferns: Array[Texture2D] = []
+	for n in ["hang_fern_0", "hang_fern_1", "hang_fern_2", "hang_fern_3", "hang_fern_4",
+			"hang_curl_0", "hang_curl_1", "hang_curl_2"]:
+		ferns.append(load(BASE + n + ".png"))
+	var vines: Array[Texture2D] = []
+	for n in ["vine_trunk_0", "vine_trunk_1", "vine_trunk_2", "vine_trunk_3"]:
+		vines.append(load(BASE + n + ".png"))
+	var rocks: Array[Texture2D] = []
+	for n in ["rock_moss_0", "rock_moss_1", "rock_moss_2"]:
+		rocks.append(load(BASE + n + ".png"))
+
+	# 1. vine trunks: stacked with slight overlap so each edge reads as one
+	# continuous twisted growth from the ground up to just short of arrival
+	for s in [-1.0, 1.0]:
+		var vy := 150.0
+		while vy > -2200.0:
+			var t: Texture2D = vines[rng.randi() % vines.size()]
+			var sc := rng.randf_range(0.55, 0.8)
+			var v := Sprite2D.new()
+			v.texture = t
+			v.scale = Vector2(sc, sc)
+			v.flip_h = s > 0.0
+			v.flip_v = rng.randf() < 0.5  # breaks the repeat when a trunk recurs
+			v.rotation = rng.randf_range(-0.07, 0.07)
+			v.position = Vector2(CHUNK_X + s * rng.randf_range(1020.0, 1140.0), vy)
+			var b := rng.randf_range(0.30, 0.42)
+			v.modulate = Color(b, b * 0.95, b * 1.25)
+			v.set_meta("dbg", "dress_vine")
+			add_child(v)
+			vy -= t.get_height() * sc * rng.randf_range(0.72, 0.92)
+
+	# 2. overhang platforms with hangers — each side walks the corridor
+	# independently so neither edge ever goes bare for a full screen height
+	for s in [-1.0, 1.0]:
+		var py := -180.0 if s < 0.0 else -420.0  # offset phases, no mirroring
+		while py > -1900.0:
+			_spawn_overhang(rng, s, py, plats, beards, ferns, rocks)
+			py -= rng.randf_range(420.0, 640.0)
+
+	# 3. sparse near-black foreground slabs over the hero for depth
+	var fy := -350.0
+	while fy > -1700.0:
+		var s := -1.0 if rng.randf() < 0.5 else 1.0
+		var t: Texture2D = plats[rng.randi() % plats.size()]
+		var sc := rng.randf_range(0.7, 0.95)
+		var f := Sprite2D.new()
+		f.texture = t
+		f.scale = Vector2(sc, sc)
+		f.flip_h = s > 0.0
+		# only the inner ~140px of the slab pokes on-screen — a frame, not a wall
+		f.position = Vector2(
+				CHUNK_X + s * (_VIEW_HALF_X + t.get_width() * sc * 0.5
+				- rng.randf_range(60.0, 140.0)), fy)
+		var b := rng.randf_range(0.09, 0.14)
+		f.modulate = Color(b, b, b * 1.4)
+		f.z_index = 13
+		f.set_meta("dbg", "dress_fg")
+		add_child(f)
+		fy -= rng.randf_range(700.0, 1100.0)
+
+
+func _spawn_overhang(rng: RandomNumberGenerator, side: float, y: float,
+		plats: Array[Texture2D], beards: Array[Texture2D],
+		ferns: Array[Texture2D], rocks: Array[Texture2D]) -> void:
+	var tex: Texture2D = plats[rng.randi() % plats.size()]
+	var depth := rng.randf()  # 0 = far/dim, 1 = near/lit
+	var sc := rng.randf_range(0.42, 0.60) * lerpf(0.72, 1.0, depth)
+	var half := tex.get_width() * sc * 0.5
+	# inner tip lands 60..320px inside the screen edge; island channel stays clear
+	var tip_x := CHUNK_X + side * (_VIEW_HALF_X - rng.randf_range(60.0, 320.0))
+	if absf(tip_x - CHUNK_X) < 820.0:
+		tip_x = CHUNK_X + side * 820.0
+	var slab := Sprite2D.new()
+	slab.texture = tex
+	slab.scale = Vector2(sc, sc)
+	slab.flip_h = side > 0.0
+	slab.rotation = rng.randf_range(-0.05, 0.05) * side
+	slab.position = Vector2(tip_x + side * half, y)
+	var b := lerpf(0.34, 0.60, depth)
+	slab.modulate = Color(b, b * 0.95, b * 1.22)
+	slab.set_meta("dbg", "dress_slab")
+	add_child(slab)
+	var slab_h := tex.get_height() * sc
+	# hangers dangle from the slab's underside, biased toward its inner reach
+	var n_hang := 1 + (rng.randi() % 2)
+	for i in n_hang:
+		var hb := rng.randf() < 0.45
+		var ht: Texture2D = beards[rng.randi() % beards.size()] if hb \
+				else ferns[rng.randi() % ferns.size()]
+		var hsc := rng.randf_range(0.38, 0.58) * sc / 0.5
+		var hg := Sprite2D.new()
+		hg.texture = ht
+		hg.centered = false
+		hg.scale = Vector2(hsc, hsc)
+		hg.flip_h = rng.randf() < 0.5
+		# never past the slab's inner tip — a hanger needs a slab above it
+		var hx := tip_x - side * rng.randf_range(40.0, half * 0.85)
+		hg.position = Vector2(hx - ht.get_width() * hsc * 0.5, y + slab_h * 0.22)
+		var hbr := b * rng.randf_range(0.8, 1.05)
+		hg.modulate = Color(hbr, hbr * 0.95, hbr * 1.22)
+		hg.set_meta("dbg", "dress_hang")
+		add_child(hg)
+	# an occasional mossy rock perched on the slab
+	if rng.randf() < 0.4:
+		var rt: Texture2D = rocks[rng.randi() % rocks.size()]
+		var rsc := rng.randf_range(0.22, 0.34) * sc / 0.5
+		var rk := Sprite2D.new()
+		rk.texture = rt
+		rk.scale = Vector2(rsc, rsc)
+		rk.flip_h = rng.randf() < 0.5
+		rk.position = Vector2(tip_x - side * rng.randf_range(80.0, half * 0.9),
+				y - slab_h * 0.30 - rt.get_height() * rsc * 0.35)
+		var rb := b * rng.randf_range(0.85, 1.0)
+		rk.modulate = Color(rb, rb * 0.95, rb * 1.18)
+		rk.set_meta("dbg", "dress_rock")
+		add_child(rk)
 
 
 func _build_chunk() -> void:
