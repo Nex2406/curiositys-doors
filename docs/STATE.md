@@ -22,7 +22,11 @@ Credits: `CREDITS.md` (root) — keep updated per asset, college-portfolio gate.
 ## Live loop
 Hub.tscn ↔ Realm1 (cave traversal) ↔ Hub return. Door 1 wired.
 Realm 1 exit plays a one-line lore moment before the fade.
-Door 2 / Door 3: stubs.
+Door 2 (middle) → Realm 2 liftoff setpiece (`Realm2LiftTest.tscn`): the
+arrival beat holds ~8s then auto-fades back to the Hub; ESC also returns
+to the Hub at any time (was `quit()`, a no-op on web). Respawn lands under
+Door2 via `Transition.last_door_id`.
+Door 3: stub.
 
 ## Hub — door-selection scene
 Reframed to a full-bleed painterly composition (target ref:

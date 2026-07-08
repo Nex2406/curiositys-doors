@@ -3,12 +3,18 @@ extends Node2D
 ## Flat mossy ground → walk right onto the half-buried chunk → the storm
 ## builds (wind, shake, dark sky) → the ground TEARS → the chunk rises with
 ## Curiosity aboard → high above the canopy: sequence complete.
-## Controls: Curiosity's own (move/jump/dash). R restarts. ESC quits.
+## Controls: Curiosity's own (move/jump/dash). R restarts. ESC returns to
+## the Hub (works headless/editor too — the Hub is just another scene).
+## Reached in-game via the Hub's middle door (Door2 → "realm_2"); after the
+## arrival beat holds for a few seconds the scene fades home on its own so a
+## web player is never stranded above the canopy.
 ## R2_SHOT env: screenshot at 1s + quit. R2_SHOT_LIFT: jump to mid-ascent first.
 
 const BASE := "res://assets/realms/realm2_moss/"
 const LIVES_HUD := preload("res://scenes/UI/LivesHUD.tscn")
 const STARTING_LIVES: int = 3  # same rules as Realm 1
+const HUB_SCENE := "res://scenes/Hub.tscn"
+const DONE_HOLD := 8.0  # seconds to breathe above the canopy before fading home
 const FLOOR_Y := 300.0
 const CHUNK_X := 1500.0
 const CHUNK_START_Y := 420.0
@@ -33,6 +39,7 @@ var _trauma := 0.0
 var _lbl: Label
 var _lives: LivesHUD
 var _dying := false
+var _leaving := false
 var _hedge_dissolve: ShaderMaterial
 var _wake := 0.0  # 0 = embedded/dormant island, 1 = fully awake (glow breathes)
 
@@ -309,7 +316,7 @@ func _build_ui() -> void:
 	vr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cl.add_child(vr)
 	_lbl = Label.new()
-	_lbl.text = "R2-M1 LIFT TEST — walk right →   (R restart · ESC quit)"
+	_lbl.text = "R2-M1 LIFT TEST — walk right →   (R restart · ESC hub)"
 	_lbl.position = Vector2(16, 12)
 	_lbl.add_theme_color_override("font_color", Color(0.78, 0.73, 0.92, 0.6))
 	cl.add_child(_lbl)
@@ -358,7 +365,7 @@ func _self_screenshot(path: String) -> void:
 # Realm 1's death beat, verbatim rules: eye closes, respawn with full health;
 # last eye → whole scene restarts.
 func _die() -> void:
-	if _dying:
+	if _dying or _leaving:
 		return
 	_dying = true
 	if _curi.has_method("hurt"):
@@ -383,10 +390,21 @@ func _die() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _leaving:
+		return
 	if event.is_action_pressed("ui_cancel"):
-		get_tree().quit()
+		_return_to_hub()
 	if event is InputEventKey and event.pressed and event.keycode == KEY_R:
 		get_tree().reload_current_scene()
+
+
+func _return_to_hub() -> void:
+	if _leaving:
+		return
+	_leaving = true
+	# Transition.last_door_id was set by Door2 on the way in and hub-bound
+	# trips leave it intact, so the Hub respawns Curiosity under Door2.
+	Transition.transition_to(HUB_SCENE)
 
 
 func _set_phase(p: Phase) -> void:
@@ -398,7 +416,7 @@ func _set_phase(p: Phase) -> void:
 		Phase.RIDE:
 			_trauma = 1.0
 		Phase.DONE:
-			_lbl.text = "above the canopy — R2-M1 complete   (R restart · ESC quit)"
+			_lbl.text = "above the canopy — R2-M1 complete   (R restart · ESC hub)"
 
 
 func _physics_process(delta: float) -> void:
@@ -431,6 +449,9 @@ func _physics_process(delta: float) -> void:
 			# walking off the hovering island at the top is a fall like any other
 			if _curi.global_position.y > _cam.global_position.y + 700.0:
 				_die()
+			# the beat has landed — breathe, then fade home to the Hub
+			elif _pt >= DONE_HOLD and not _dying:
+				_return_to_hub()
 
 
 func _process(delta: float) -> void:
