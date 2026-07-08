@@ -7,7 +7,48 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 
 ---
 
-## 2026-07-07 — The island tears loose (R2-M1 shipped)
+## 2026-07-08 — The middle door opens, the climb never ends
+
+**Shipped** (PRs #140, #142, #144, #146, #147, #149, #150 — all deploy green)
+- **Door 2 wired**: Hub middle door → Realm 2 liftoff, ESC returns to the
+  Hub, respawn under Door2. The live link plays Realm 2 end to end.
+- **Ascent corridor dressed from the FULL Mossy pack** (Advika: "use the
+  pack to its fullest") — new `tools/slice_mossy_pack.gd` slices any sheet
+  into elements and hue-shifts green→violet by MEASURING the delta from
+  shipped assets. 22 new elements committed; thorn arcs + sprouts staged
+  for R2-M5/M6.
+- **The corridor lives**: grouped overhang assemblies (slab + hangers +
+  rock + plant + vine as ONE bobbing node), storm-responsive hanger sway,
+  animated pack plants, whole vine trunks grown through slabs.
+- **Endless boss-gated rise** (Advika's design): the island climbs until
+  the wizard falls — `LevitatingIsland.endless` + `stop_levitation()` for
+  the R2-M7 defeat beat. Corridor recycles seamlessly (wrap-above-view).
+  Both arbitrary timers (8s auto-return, 24s rise stop) are dead.
+- **Artifact extermination** (five annotated screenshots): bark gaps (vine
+  tiling removed), sky slivers (assemblies interlock 70px+), inverted
+  leaves (flip_v banned), black corner blobs (z13 foreground pass cut).
+  Law recorded in memory: nothing floats, everything is rooted.
+- **Wizard = R2-M7 boss** (BlueWizard pack — dark mirror of Curiosity;
+  caster, storm = his weapon); ladder renumbered (door M8, polish M9).
+- **Enemy audition rig** (`tests/EnemyAttackPreview.tscn`): drop any pack
+  folder into `assets/enemies/preview/` → attack cycle beside Curiosity at
+  in-game treatment. First verdict: FlyingForestEnemies REJECTED (pixel
+  art clash); slimes stay the R2-M3 creature.
+- LivesHUD eyes brightened.
+
+**Didn't work / lessons**
+- First dressing pass decorated for the ride camera only — orphaned leaves,
+  gaps, and blob artifacts from every other viewpoint. Cost four fix
+  rounds and real frustration; the grouped-assembly law now prevents the
+  class, and screenshots must cover every camera the player actually has.
+- FlyingForestEnemies free pack: wrong style family, rejected in minutes
+  by the audition rig (that speed is the rig's whole point).
+
+**Next 3 safe candidates**
+1. **R2-M3 — reusable `Enemy` base + first slime** (confirm with Advika:
+   wizard conjures slimes from the storm?)
+2. **R2-M4 — wave director** against the open-ended ascent
+3. **R2-M5 — storm hazards** (thorn arcs are already sliced + violet)
 
 **Shipped**
 - **R2-M1 merged to main (PR #138 / issue #137, deploy green)** — the quake +

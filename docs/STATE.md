@@ -1,5 +1,5 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-07-07_
+_Last updated: 2026-07-08_
 
 ## Realm 2 — R2-M1 quake + liftoff SHIPPED (test scene)
 `scenes/realms/Realm2LiftTest.tscn` (+`scripts/Realm2LiftTest.gd`,
