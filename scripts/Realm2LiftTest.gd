@@ -5,16 +5,15 @@ extends Node2D
 ## Curiosity aboard → high above the canopy: sequence complete.
 ## Controls: Curiosity's own (move/jump/dash). R restarts. ESC returns to
 ## the Hub (works headless/editor too — the Hub is just another scene).
-## Reached in-game via the Hub's middle door (Door2 → "realm_2"); after the
-## arrival beat holds for a few seconds the scene fades home on its own so a
-## web player is never stranded above the canopy.
+## Reached in-game via the Hub's middle door (Door2 → "realm_2"). The arrival
+## has no timer: the player sits above the canopy as long as they like and
+## leaves via ESC (on-screen label) until the wizard + sky door land (R2-M7+).
 ## R2_SHOT env: screenshot at 1s + quit. R2_SHOT_LIFT: jump to mid-ascent first.
 
 const BASE := "res://assets/realms/realm2_moss/"
 const LIVES_HUD := preload("res://scenes/UI/LivesHUD.tscn")
 const STARTING_LIVES: int = 3  # same rules as Realm 1
 const HUB_SCENE := "res://scenes/Hub.tscn"
-const DONE_HOLD := 8.0  # seconds to breathe above the canopy before fading home
 const FLOOR_Y := 300.0
 const CHUNK_X := 1500.0
 const CHUNK_START_Y := 420.0
@@ -656,9 +655,10 @@ func _physics_process(delta: float) -> void:
 			# walking off the hovering island at the top is a fall like any other
 			if _curi.global_position.y > _cam.global_position.y + 700.0:
 				_die()
-			# the beat has landed — breathe, then fade home to the Hub
-			elif _pt >= DONE_HOLD and not _dying:
-				_return_to_hub()
+			# NO auto-return (Advika, 2026-07-08: being yanked home after a
+			# timer felt terrible). The player leaves when THEY decide — ESC,
+			# per the on-screen label. The real ending is the wizard + sky
+			# door (R2-M7/M8); until then the arrival is theirs to sit in.
 
 
 func _process(delta: float) -> void:
