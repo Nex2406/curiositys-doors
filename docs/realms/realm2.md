@@ -54,7 +54,10 @@ the storm?*
 ### R2-M4 — Wave director
 Waves of slimes tied to the ascent — the climb IS the difficulty curve.
 Spawn timing, escalation, breathing room between waves.
-*Forces the decision: continuous rise vs rise-between-waves.*
+**Pacing DECIDED (Advika, 2026-07-08): continuous rise, boss-gated — the
+island keeps climbing until the wizard falls (wired at R2-M7).** The wave
+director paces spawns against an open-ended ascent, and the corridor
+dressing must generate/recycle procedurally past its hand-tuned span.
 
 ### R2-M5 — Storm hazards
 Telegraphed lightning strikes on the island — see it coming, dodge it — plus
@@ -90,7 +93,9 @@ end-to-end playthrough on the live web build.
   and how do they reach a floating island? *(forced by R2-M3; candidate
   answer since the wizard became the boss: he conjures them / drops them
   from the storm)*
-- Chunk pacing: continuous rise, or rise-between-waves? *(forced by R2-M4)*
+- ~~Chunk pacing: continuous rise, or rise-between-waves?~~ **Answered
+  2026-07-08: continuous, boss-gated — the island rises until the wizard
+  is defeated.**
 - Is orb-brewing the realm's puzzle beat? *(forced by R2-M6)*
 - The realm's emotional word — palette is set, the *feeling* is unnamed.
   *(needed before the R2-M7 lore line)*
