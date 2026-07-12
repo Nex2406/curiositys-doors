@@ -7,6 +7,51 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 
 ---
 
+## 2026-07-12 (pt. 2) — The wizard's trial: he conjures, she hunts, the island stops
+
+**Shipped** (PR: `feat/r2-runeorb-hazard`, closes #155 — one long live
+playtest loop with Advika steering every dial)
+- **Rune-orb hazard chain**: OrbConjure ground-ring → orb_ready → RuneOrb.
+  Invulnerable (own layer 16, not "enemies", no damage path — structural),
+  rolling with real inertia, shoves via `Curiosity.shove()` (new: velocity
+  like hurt()'s knockback, no flinch/damage/invuln), rides moving planks
+  like the hero, rolls off edges, overstays 8-14s then commits + leaves.
+  Palette-shifted onto the realm violet (`tools/tint_runeorb_pack.gd`).
+- **The wizard is THE conjurer** (Advika's law): orbs are born in front of
+  him, max 2, wherever he teleport-lands. Landings scatter (240px+ hops),
+  avoid Curiosity (380px+), escape-reflex with per-landing grace. FIVE
+  strikes fell him (tuned 1→5→3→5 live); each hit = panic-teleport.
+- **The boss gate CLOSED**: died → stop_levitation() → arrived → DONE.
+  First full Realm 2 loop: walk → tear → endless climb → trial → the storm
+  relents. Difficulty cranked per "make it HARD" (storm sway 40px, orbs
+  240px/s + 540 shove, jump +15% for fairness).
+- **Forest dressed to the max**: grounded tree assemblies (trunk + canopy +
+  no-twin hangers + rocks + breathing plants), boulder piles, undergrowth
+  carpet every ~150px, edge to edge -1500..3800.
+- Wizard entrance timing settled at 7s airborne (#154, #156 earlier today).
+
+**What didn't work / dead ends**
+- Orbs rolling off the island LANDED on the intro ground far below and
+  squatted in the hazards group forever → the max-2 cap wedged ("he only
+  spawns 2 then stops"). Kill plane now rides 900px under the island and
+  is checked floor-or-no-floor. R2_TRIAL_LOG (45s soak) is the regression
+  guard.
+- Uniform-random teleports read as "not random" (kept landing on her);
+  snap velocity reversals read weightless. Both fixed with constraints
+  (avoid-her re-roll) and inertia, not more randomness.
+- Twin hang-ferns on one canopy (circled by Advika) — hangers now draw
+  without replacement; same law applied to the ascent corridor.
+
+**Next 3 safe candidates**
+1. The intro beat: wizard dialogue (DialogueCard vs existing DialogueBox —
+   Advika's call) + instructions window gating start_trial().
+2. R2-M3 slimes — or fold them into the trial as the wizard's second
+   conjuration; the ladder should be revisited now the trial exists.
+3. Realm 1 leftovers (standing): jade motivation, real hub art, sound,
+   shorter prologue, custom text-box anim.
+
+---
+
 ## 2026-07-12 — The wizard shows himself
 
 **Shipped** (PR: `feat/r2-wizard-actor`, closes #151)

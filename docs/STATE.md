@@ -23,11 +23,25 @@ foreground slabs (z13) — all sliced + violet-shifted from the full Mossy
 pack by `tools/slice_mossy_pack.gd` (repeatable; thorn arcs + sprouts left
 uncommitted until R2-M5/M6). Density tapers so the arrival opens into sky.
 Phase ladder: [`docs/realms/realm2.md`](realms/realm2.md) — R2-M0 ✅ R2-M1 ✅;
-next R2-M3 (Enemy base + first slime; R2-M2 combat was already shipped by the
-golem work). Boss: the Wizard (dark mirror of Curiosity) at R2-M7 — and he
-already APPEARS (2026-07-12): ~2.5s after the island is truly airborne he
-flickers into existence standing at the island's far end and watches
-Curiosity across the moss as it climbs. Presence only, no combat yet. His art is the BlueWizard
+R2-M2 combat was already shipped by the golem work. **THE WIZARD'S TRIAL IS
+LIVE (2026-07-12 pt.2):** 7s into the true climb the wizard flickers in ON
+the island and fights — he teleports across the deck (landings scatter, avoid
+Curiosity, escape-reflex when she closes in with a 0.6s grace beat per
+landing), conjures RUNE ORBS in front of himself (max 2; invulnerable rolling
+shove-hazards with real inertia — push, never damage; they overstay 8-14s
+then commit to a direction and roll off; kill plane rides 900px under the
+climbing island), and FIVE strikes (J/Z, EnemyHealthBar over his head, he
+panic-teleports per hit) fell him → `stop_levitation()` → `arrived` → DONE:
+"the wizard falls — the storm relents". The boss gate is closed. Her jump is
++15% this level; storm sway sharpens (40px/2.7s) once he's aboard. The intro
+forest is fully dressed from the Mossy pack (grounded tree assemblies,
+boulder piles, undergrowth carpet every ~150px, edge to edge -1500..3800,
+island keeps only its clearing). Trial dials are consts atop
+`Realm2LiftTest.gd`; wizard temperament exports on `Wizard.gd`.
+Isolation rig: `scenes/RuneOrbTest.tscn` (swaying plank, T trial, K debug
+strike). Harness knobs: ORB_SHOT / ORB_TRIAL / ORB_KILL / R2_TRIAL_LOG
+(45s economy soak). Rune-orb art palette-shifted by
+`tools/tint_runeorb_pack.gd` (repeatable, measured). His art is the BlueWizard
 pack palette-shifted in-house by `tools/tint_wizard_pack.gd` (repeatable):
 cloak navy→realm violet (measured against `vine_trunk_0`), eye glow
 yellow→RED (Advika: evil at a glance). 96 frames in `assets/enemies/wizard/`
@@ -148,7 +162,7 @@ placeholder arch — ornate door / eyed moon / silhouettes are the next art lift
 - Per-realm ambient audio
 
 ## Last session
-[2026-07-12 — The wizard shows himself](SESSIONS.md#2026-07-12--the-wizard-shows-himself)
+[2026-07-12 (pt. 2) — The wizard's trial](SESSIONS.md#2026-07-12-pt-2--the-wizards-trial-he-conjures-she-hunts-the-island-stops)
 
 ## Next 3 safe candidates
 _**M1 — Core engine foundations is COMPLETE** (SaveManager · Dialogue ·
