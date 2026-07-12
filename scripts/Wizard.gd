@@ -53,7 +53,7 @@ const FLICKER_INTERVAL := 0.045
 @export var trial_idle_min := 2.0   # beat between teleports (calmer — he lingers, Advika)
 @export var trial_idle_max := 3.5
 @export var max_orbs := 2           # he conjures at most this many onto the deck
-@export var strikes_to_fell := 3    # blows it takes to bring him down (Advika, 2026-07-12)
+@export var strikes_to_fell := 5    # blows it takes to bring him down (Advika, 2026-07-12: settled at five)
 @export var escape_range := 280.0   # global px: Curiosity this close while he idles -> he blinks away
 @export var escape_grace := 0.9     # seconds after landing before the escape reflex arms —
                                     # he stands his ground a beat even with her bearing down
@@ -63,7 +63,7 @@ const FLICKER_INTERVAL := 0.045
 enum Trial { OFF, IDLE, VANISH, APPEAR, CAST }
 
 # The trial's win rule (Advika, 2026-07-12): reach him and strike (her normal
-# J/Z swing) — THREE blows fell him, and every non-fatal hit sends him
+# J/Z swing) — FIVE blows fell him, and every non-fatal hit sends him
 # panic-teleporting away, so each strike must be earned fresh. Reaching him
 # is the hard part: while he idles he escape-teleports when she closes in —
 # but the reflex arms only after a grace beat each landing, so the windows
