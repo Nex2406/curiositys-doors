@@ -80,13 +80,28 @@ boss then tests. *(Advika, 2026-07-08)*
 
 **Groundwork SHIPPED 2026-07-12 (#151):** his look is settled — cloak
 purple (measured shift onto the realm violet), eyes RED (Advika: the player
-reads evil at a glance) — and he already HAUNTS the ascent: ~2.5s after the
-island is airborne he flickers into existence ON it, standing at the far
-end, and watches Curiosity as it climbs (Advika's beat). Presence only — no combat, no health,
-no bolts yet. Assets: `assets/enemies/wizard/` (96 frames, repeatable shift
-via `tools/tint_wizard_pack.gd`); actor: `scenes/Wizard.tscn`; review
-window: `tools/WizardAnimReview.tscn`. Open: which blink variant (A full
-smear / B / C readable blur) becomes his teleport.
+reads evil at a glance). Assets: `assets/enemies/wizard/` (96 frames,
+repeatable shift via `tools/tint_wizard_pack.gd`); actor:
+`scenes/Wizard.tscn`; review window: `tools/WizardAnimReview.tscn`.
+
+**THE TRIAL SHIPPED 2026-07-12 pt.2 (#155):** the wizard FIGHTS in the
+ascent now — the design crystallized in live playtest with Advika:
+- He is THE CONJURER: teleport-blinks across the island (blink_a smear
+  fwd/back = tp out/in; landings scatter, avoid Curiosity, escape-reflex
+  at 340px with a 0.6s per-landing grace), casting RUNE ORBS in front of
+  himself — max 2 on deck, in-flight smoke counts.
+- Rune orbs (`RuneOrb.tscn` + `OrbConjure.tscn` + `OrbSpawner.gd`):
+  INVULNERABLE rolling shove-hazards — real inertia, push (never damage,
+  `Curiosity.shove()`), ride the island like she does, overstay 8-14s then
+  commit to a direction and roll off the edge. Movement is the only
+  counterplay; her jump is +15% this level.
+- WIN: five strikes (her normal swing; he panic-teleports per hit;
+  EnemyHealthBar) → died → `stop_levitation()` → arrived → DONE — **the
+  boss gate is closed**: "the wizard falls — the storm relents".
+This trial IS the wizard fight's first playable form; R2-M7 proper deepens
+it (real phases, storm magic). Still open: the intro dialogue beat
+(DialogueCard vs existing DialogueBox — Advika decides) + instructions
+window that should gate `start_trial()`.
 
 ### R2-M8 — Sky door finale
 Defeating the wizard calms the storm; the door in the sky reveals itself.
