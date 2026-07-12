@@ -24,6 +24,10 @@ var _announced := false
 
 
 func _ready() -> void:
+	# A conjure-in-flight already counts as an orb: the wizard's max-2 cap
+	# scans the "hazards" group, and this is an orb that just hasn't finished
+	# arriving. Prevents a third orb sneaking in mid-smoke.
+	add_to_group("hazards")
 	_visual = AnimatedSprite2D.new()
 	var frames := SpriteFrames.new()
 	frames.remove_animation(&"default")

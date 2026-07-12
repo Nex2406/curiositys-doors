@@ -39,6 +39,11 @@ const GRAVITY := 460.0
 @export var push_cooldown := 0.4      # overlap doesn't machine-gun pushes
 @export var airborne_lifetime := 4.0  # rolled off: free after this long falling
 @export var kill_y := 100000.0        # …or below this global y, whichever first
+# Orbs don't overstay (Advika, 2026-07-12): after a random spell on deck the
+# orb commits to its current direction — no more reversals, no more bumps —
+# and rolls off the nearest open edge, clearing room for the wizard's next one.
+@export var leave_after_min := 5.0
+@export var leave_after_max := 10.0
 
 var _visual: AnimatedSprite2D
 var _dir := 1.0
@@ -46,6 +51,8 @@ var _reverse_timer := 0.0
 var _push_cd := 0.0
 var _bump_cd := 0.0     # orb-vs-orb: brief pause so one contact = one reversal, not jitter
 var _air_t := 0.0
+var _leave_t := 0.0     # deck time left before it commits to rolling off
+var _leaving := false
 var _push_zone: Area2D
 
 
@@ -90,6 +97,7 @@ func _ready() -> void:
 		add_collision_exception_with(player)
 
 	_arm_reverse_timer()
+	_leave_t = randf_range(leave_after_min, leave_after_max)
 	_apply_facing()
 
 
@@ -101,7 +109,7 @@ func set_direction(dir: int) -> void:
 
 # Reversed by a sibling orb bumping into us (see the slide-collision scan).
 func bump_reverse() -> void:
-	if _bump_cd > 0.0:
+	if _bump_cd > 0.0 or _leaving:
 		return
 	_bump_cd = 0.25
 	_dir = -_dir
@@ -113,13 +121,18 @@ func _physics_process(delta: float) -> void:
 	_push_cd = maxf(0.0, _push_cd - delta)
 	_bump_cd = maxf(0.0, _bump_cd - delta)
 
-	# The randomized whim: reverse on a timer while grounded.
+	# The randomized whim: reverse on a timer while grounded — until its deck
+	# time runs out, then it commits to one direction and rolls off the edge.
 	if is_on_floor():
 		_air_t = 0.0
-		_reverse_timer -= delta
-		if _reverse_timer <= 0.0:
-			_dir = -_dir
-			_arm_reverse_timer()
+		if not _leaving:
+			_leave_t -= delta
+			if _leave_t <= 0.0:
+				_leaving = true
+			_reverse_timer -= delta
+			if _reverse_timer <= 0.0:
+				_dir = -_dir
+				_arm_reverse_timer()
 	else:
 		# Off the edge: gravity owns it now. Keep rolling in the air (it reads
 		# as tumbling), despawn once clearly gone.
@@ -137,15 +150,17 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	# Walls turn it around; a sibling orb turns BOTH around (reads as playful).
-	for i in range(get_slide_collision_count()):
-		var other := get_slide_collision(i).get_collider()
-		if other is RuneOrb:
-			(other as RuneOrb).bump_reverse()
-			bump_reverse()
-			break
-	if is_on_wall() and _bump_cd <= 0.0:
-		_dir = -_dir
-		_arm_reverse_timer()
+	# A leaving orb is done negotiating — nothing turns it back.
+	if not _leaving:
+		for i in range(get_slide_collision_count()):
+			var other := get_slide_collision(i).get_collider()
+			if other is RuneOrb:
+				(other as RuneOrb).bump_reverse()
+				bump_reverse()
+				break
+		if is_on_wall() and _bump_cd <= 0.0:
+			_dir = -_dir
+			_arm_reverse_timer()
 
 	_apply_facing()
 	_try_push()

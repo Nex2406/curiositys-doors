@@ -1,23 +1,22 @@
 extends Node2D
 
-# Isolation test for the rune-orb hazard chain + the wizard's teleport-cast
-# trial (boot straight into it): a floating plank sways side to side like the
-# Realm 2 islands (AnimatableBody2D + sync_to_physics), real Curiosity stands
-# on it, the wizard stands at the far end.
+# Isolation test for the wizard's rune-orb trial (boot straight into it):
+# a floating plank sways side to side like the Realm 2 islands
+# (AnimatableBody2D + sync_to_physics), real Curiosity on deck, the wizard at
+# the far end. THE WIZARD IS THE CONJURER (Advika, 2026-07-12): every orb on
+# the plank came out of his cast — the smoke ring appears WHERE HE STANDS.
 #
-# ORBS (on by default — O toggles): the chain keeps orbs conjured on deck.
-# They roll, ride the plank, SHOVE her (no damage, invulnerable to her swing),
-# and fall off edges; the keeper conjures replacements.
+# The trial (T starts it): he conjures max 2 orbs; each rolls the deck for a
+# random spell then commits to a direction and rolls off, clearing room for
+# his next. He teleports on a whim AND whenever Curiosity closes in — the
+# only kill windows are the appear/cast beats, when conjuring commits him.
+# WIN: reach him and strike (J/Z) — one blow. Orbs shove, never damage, and
+# her swing can't touch them; movement is the whole game.
 #
-# WIZARD TRIAL (T toggles, never auto-starts): idle beat -> tp_disappear
-# (blink smear + fade) -> reappears at a random spot ON the moving plank
-# (plank-local space) -> tp_appear -> cast flourish -> cast_committed prints
-# the conjure position. No orbs from HIM yet — the spawner hookup is next.
-#
-# DIFFICULTY (Advika, 2026-07-12: NOT easy): 3 orbs, faster + more erratic
-# rolls, stronger shoves. Her jump is boosted for this level so clearing an
-# orb stays honest but doable. Fall off and you're blinked back on.
-# ORB_SHOT env: screenshot at 3.5s + quit. ORB_TRIAL env: auto-start trial.
+# DIFFICULTY: fast erratic orbs, strong shoves, swaying deck; her jump is
+# boosted for this level so clearing an orb stays honest but doable.
+# ORB_SHOT env: screenshot + quit. ORB_TRIAL: auto-start. ORB_KILL: debug-
+# strike the wizard at 6s (win-beat verification). K key = same, live.
 
 const CURIOSITY := preload("res://scenes/Curiosity.tscn")
 const WIZARD := preload("res://scenes/Wizard.tscn")
@@ -29,7 +28,6 @@ const PLANK_PERIOD := 6.0
 const ORB_SCALE := 0.42      # ball ~88px next to the ~125px hero
 
 # The level's difficulty dials (Advika: hard, movement is the only counterplay).
-const ORB_POPULATION := 3
 const ORB_ROLL_SPEED := 195.0
 const ORB_REVERSE_MIN := 1.0     # more erratic than the defaults
 const ORB_REVERSE_MAX := 2.4
@@ -43,9 +41,8 @@ var _plank: AnimatableBody2D
 var _hero: CharacterBody2D
 var _wizard: Wizard
 var _t := 0.0
-var _pending := 0   # conjures in flight (so the keeper doesn't over-spawn)
-var _keeper_cd := 0.0
-var _orbs_on := true
+var _won := false
+var _status: Label
 
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(Color(0.055, 0.045, 0.09))
@@ -95,8 +92,15 @@ func _ready() -> void:
 	_wizard.appear_instant()
 	_wizard.configure_trial(PLANK_SIZE.x * 0.5,
 			-PLANK_SIZE.y * 0.5 - Wizard.FEET_Y * WIZARD_SCALE)
+	# THE chain: his cast conjures the smoke ring at his own feet — wherever
+	# he lands, that's where the next orb is born.
 	_wizard.cast_committed.connect(func(pos: Vector2) -> void:
-		print("[WizardTrial] cast_committed at ", pos, "  (plank at ", _plank.global_position, ")"))
+		print("[WizardTrial] cast at ", pos, "  (plank at ", _plank.global_position, ")")
+		OrbSpawner.conjure_orb(_plank, _plank.to_local(pos), self, ORB_SCALE, 0, KILL_Y))
+	_wizard.died.connect(func() -> void:
+		_won = true
+		_status.text = "the wizard falls — the deck is yours   (R to run it again)"
+		print("[WizardTrial] WON"))
 
 	var cam := Camera2D.new()
 	cam.position = PLANK_BASE + Vector2(0.0, -170.0)
@@ -105,15 +109,22 @@ func _ready() -> void:
 	cam.make_current()
 
 	var label := Label.new()
-	label.text = "RUNE ORB TEST — A/D or arrows move, SPACE jump (boosted this level).\n" \
-		+ "3 orbs on deck: fast, erratic, INVULNERABLE — your swing does nothing; jump/slip past. They shove, never damage.\n" \
-		+ "T start/stop the wizard's teleport-cast trial (casts print, no orbs from him yet)   O orbs on/off   R restart   ESC quit"
+	label.text = "WIZARD TRIAL — A/D or arrows move, SPACE jump (boosted), J/Z strike.\n" \
+		+ "T begins it: HE conjures the orbs (max 2) wherever he lands; they're INVULNERABLE — dodge, don't fight.\n" \
+		+ "He teleports when you close in. Catch him mid-appear or mid-cast and one blow wins.   R restart   ESC quit"
 	label.position = Vector2(-620, PLANK_BASE.y - 620.0)
 	label.add_theme_color_override("font_color", Color(0.85, 0.82, 0.92))
 	add_child(label)
 
+	_status = Label.new()
+	_status.position = Vector2(-620, PLANK_BASE.y - 540.0)
+	_status.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
+	add_child(_status)
+
 	if OS.get_environment("ORB_TRIAL") != "":
 		_wizard.start_trial()
+	if OS.get_environment("ORB_KILL") != "":
+		get_tree().create_timer(6.0).timeout.connect(func() -> void: _wizard._on_struck())
 	if OS.get_environment("ORB_SHOT") != "":
 		_self_screenshot(OS.get_environment("ORB_SHOT"))
 
@@ -124,24 +135,13 @@ func _physics_process(delta: float) -> void:
 	# every rider (hero, orbs, and wizard alike).
 	_plank.position = PLANK_BASE + Vector2(sin(_t * TAU / PLANK_PERIOD) * PLANK_AMP, 0.0)
 
-	# Population keeper: count live orbs, conjure replacements onto the deck.
-	_keeper_cd -= delta
-	if _orbs_on and _keeper_cd <= 0.0:
-		_keeper_cd = 0.9
-		var alive := get_tree().get_nodes_in_group("hazards").size()
-		if alive + _pending < ORB_POPULATION:
-			_pending += 1
-			var local_x := randf_range(-PLANK_SIZE.x * 0.5 + 130.0, PLANK_SIZE.x * 0.5 - 130.0)
-			var fx := OrbSpawner.conjure_orb(_plank,
-					Vector2(local_x, -PLANK_SIZE.y * 0.5), self, ORB_SCALE, 0, KILL_Y)
-			fx.orb_ready.connect(func(_p: Vector2) -> void: _pending -= 1)
-
 	# The difficulty dials ride on every live orb (the scene defaults stay gentle).
 	for orb in get_tree().get_nodes_in_group("hazards"):
-		orb.roll_speed = ORB_ROLL_SPEED
-		orb.reverse_time_min = ORB_REVERSE_MIN
-		orb.reverse_time_max = ORB_REVERSE_MAX
-		orb.push_force = ORB_PUSH_FORCE
+		if orb is RuneOrb:
+			orb.roll_speed = ORB_ROLL_SPEED
+			orb.reverse_time_min = ORB_REVERSE_MIN
+			orb.reverse_time_max = ORB_REVERSE_MAX
+			orb.push_force = ORB_PUSH_FORCE
 
 	# Fell off the plank: blink back on deck (test loop, not a death beat).
 	if _hero.global_position.y > KILL_Y:
@@ -154,15 +154,16 @@ func _unhandled_key_input(e: InputEvent) -> void:
 		return
 	match e.keycode:
 		KEY_T:
-			if _wizard._trial == Wizard.Trial.OFF:
+			if _wizard != null and is_instance_valid(_wizard) and _wizard._trial == Wizard.Trial.OFF:
 				_wizard.start_trial()
 				print("[WizardTrial] START")
-			else:
+			elif _wizard != null and is_instance_valid(_wizard):
 				_wizard.stop_trial()
 				print("[WizardTrial] STOP")
-		KEY_O:
-			_orbs_on = not _orbs_on
-			print("[OrbKeeper] ", "ON" if _orbs_on else "OFF")
+		KEY_K:
+			# Debug: verify the win beat without earning it.
+			if _wizard != null and is_instance_valid(_wizard):
+				_wizard._on_struck()
 		KEY_R:
 			get_tree().reload_current_scene()
 		KEY_ESCAPE:
@@ -174,7 +175,8 @@ func _self_screenshot(path: String) -> void:
 	var delay := 6.5 if OS.get_environment("ORB_TRIAL") != "" else 3.5
 	await get_tree().create_timer(delay).timeout
 	var orbs := get_tree().get_nodes_in_group("hazards")
+	var wiz := str(_wizard.global_position) if (_wizard != null and is_instance_valid(_wizard)) else "FELLED"
 	print("SHOT orbs=", orbs.size(), " hero=", _hero.global_position,
-			" plank=", _plank.global_position, " wizard=", _wizard.global_position)
+			" plank=", _plank.global_position, " wizard=", wiz)
 	get_viewport().get_texture().get_image().save_png(path)
 	get_tree().quit()

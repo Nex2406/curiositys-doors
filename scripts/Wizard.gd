@@ -23,6 +23,7 @@ class_name Wizard
 signal materialized()
 signal intro_finished()
 signal cast_committed(pos: Vector2)
+signal died()
 
 const FRAME_DIR := "res://assets/enemies/wizard/"
 const IDLE_FRAMES := 20
@@ -34,6 +35,7 @@ const CAST_FRAMES := 8           # the jump set doubling as the conjure flourish
 const CAST_FPS := 10.0
 const CAST_COMMIT_FRAME := 4     # gesture peak: the orb is committed here
 const FEET_Y := 134.0            # feet row below the 512-frame center (pre-scale)
+const CONJURE_AHEAD := 160.0     # the orb is born slightly IN FRONT of him (pre-scale px)
 const TRIAL_EDGE_MARGIN := 110.0 # never lands closer than this to the plank lip
 
 # Spawn flicker: the apparition blinks in — same visual language as the
@@ -49,10 +51,24 @@ const FLICKER_INTERVAL := 0.045
 ]
 @export var trial_idle_min := 0.8   # beat between teleports
 @export var trial_idle_max := 1.6
+@export var max_orbs := 2           # he conjures at most this many onto the deck
+@export var escape_range := 280.0   # global px: Curiosity this close while he idles -> he blinks away
 @export var hover_amplitude := 14.0 # apparition mode: px of levitation bob
 @export var hover_period := 2.6
 
 enum Trial { OFF, IDLE, VANISH, APPEAR, CAST }
+
+# The trial's win rule (Advika, 2026-07-12): reach him and strike (her normal
+# J/Z swing) — one blow fells him. Reaching him is the hard part: while he
+# idles he escape-teleports the moment she closes in, so the only real kill
+# windows are the appear + cast beats, when the conjuring commits him.
+# The hurtbox is what her attack scans: layer 4 ("enemies" group + take_damage,
+# exactly like the Golem), forwarding the blow to the wizard.
+class Hurtbox extends StaticBody2D:
+	var wizard: Wizard
+	func take_damage(_amount: int, _knockback: Vector2 = Vector2.ZERO) -> void:
+		if wizard != null:
+			wizard._on_struck()
 
 var _visual: AnimatedSprite2D
 var _conjure_point: Marker2D
@@ -69,6 +85,9 @@ var _cast_emitted := false
 var _half_extent_x := 0.0       # trial: plank half-width (local space)
 var _surface_local_y := 0.0     # trial: his standing y on the plank (local)
 var _fade_tween: Tween
+var _hurtbox: Hurtbox
+var _hurt_shape: CollisionShape2D
+var _dead := false
 
 
 func _ready() -> void:
@@ -99,8 +118,25 @@ func _ready() -> void:
 
 	_conjure_point = Marker2D.new()
 	_conjure_point.name = "ConjurePoint"
-	_conjure_point.position = Vector2(0.0, FEET_Y)
+	# Ahead of his feet, not under them — _face_watch_now() flips the side.
+	_conjure_point.position = Vector2(CONJURE_AHEAD, FEET_Y)
 	add_child(_conjure_point)
+
+	# Disabled until the trial starts — the lift-scene apparition can't be hit.
+	_hurtbox = Hurtbox.new()
+	_hurtbox.name = "Hurtbox"
+	_hurtbox.wizard = self
+	_hurtbox.collision_layer = 4   # the layer her attack hitbox scans
+	_hurtbox.collision_mask = 0
+	_hurtbox.add_to_group("enemies")
+	_hurt_shape = CollisionShape2D.new()
+	var hrect := RectangleShape2D.new()
+	hrect.size = Vector2(160.0, 250.0)   # his figure, pre-scale
+	_hurt_shape.shape = hrect
+	_hurt_shape.position = Vector2(0.0, 10.0)
+	_hurt_shape.disabled = true
+	_hurtbox.add_child(_hurt_shape)
+	add_child(_hurtbox)
 
 
 # ---------- apparition mode (Realm2LiftTest) ----------
@@ -142,21 +178,25 @@ func configure_trial(half_extent_x: float, surface_local_y: float) -> void:
 	_surface_local_y = surface_local_y
 
 
-# Begin the idle -> vanish -> reappear elsewhere -> cast loop. Level calls this
+# Begin the loop. He opens by conjuring on the spot — when the wizard comes,
+# a ball comes with him (Advika) — then: idle -> escape/whim teleport ->
+# reappear elsewhere -> cast (if under the cap) -> idle. Level calls this
 # after the instructions window closes — never auto-started.
 func start_trial() -> void:
-	if _trial != Trial.OFF or _half_extent_x <= 0.0:
+	if _trial != Trial.OFF or _dead or _half_extent_x <= 0.0:
 		if _half_extent_x <= 0.0:
 			push_warning("Wizard.start_trial() before configure_trial()")
 		return
 	appear_instant()
-	_enter_trial_idle()
+	_hurt_shape.set_deferred("disabled", false)
+	_begin_cast()
 
 
 func stop_trial() -> void:
 	if _trial == Trial.OFF:
 		return
 	_trial = Trial.OFF
+	_hurt_shape.set_deferred("disabled", true)
 	if _fade_tween != null:
 		_fade_tween.kill()
 	modulate.a = 1.0
@@ -171,6 +211,7 @@ func _enter_trial_idle() -> void:
 
 func _begin_vanish() -> void:
 	_trial = Trial.VANISH
+	_hurt_shape.set_deferred("disabled", true)   # mid-smear he's nowhere to hit
 	_visual.play(&"blink")
 	_fade_to(0.0, BLINK_FRAMES / BLINK_FPS)
 
@@ -182,6 +223,7 @@ func _begin_appear() -> void:
 			randf_range(-_half_extent_x + TRIAL_EDGE_MARGIN, _half_extent_x - TRIAL_EDGE_MARGIN),
 			_surface_local_y)
 	_face_watch_now()
+	_hurt_shape.set_deferred("disabled", false)  # materializing = catchable
 	_visual.play_backwards(&"blink")
 	_fade_to(1.0, BLINK_FRAMES / BLINK_FPS)
 
@@ -208,11 +250,19 @@ func _fade_to(alpha: float, dur: float) -> void:
 
 
 func _on_anim_finished() -> void:
+	if _dead:
+		queue_free()
+		return
 	match _trial:
 		Trial.VANISH:
 			_begin_appear()
 		Trial.APPEAR:
-			_begin_cast()
+			# Conjure only under the cap (in-flight smoke counts as an orb);
+			# at the cap he just prowls — teleporting is its own menace.
+			if get_tree().get_nodes_in_group("hazards").size() < max_orbs:
+				_begin_cast()
+			else:
+				_enter_trial_idle()
 		Trial.CAST:
 			_enter_trial_idle()
 
@@ -227,6 +277,27 @@ func _on_frame_changed() -> void:
 func _face_watch_now() -> void:
 	if _watch != null and is_instance_valid(_watch):
 		_visual.flip_h = _watch.global_position.x < global_position.x
+		# The conjure point rides his facing: the orb is born in FRONT of him.
+		_conjure_point.position.x = -CONJURE_AHEAD if _visual.flip_h else CONJURE_AHEAD
+
+
+# One clean blow fells him (the trial's win). Bright flash, then he dissolves
+# out through his own blink smear — and this time nothing reappears.
+func _on_struck() -> void:
+	if _dead or _trial == Trial.OFF:
+		return
+	_dead = true
+	_trial = Trial.OFF
+	_hurt_shape.set_deferred("disabled", true)
+	if _fade_tween != null:
+		_fade_tween.kill()
+	_visual.modulate = Color(2.4, 2.0, 2.6)   # the strike registers
+	_visual.play(&"blink")
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(_visual, "modulate", Color(1, 1, 1), 0.2)
+	_fade_tween.parallel().tween_property(self, "modulate:a", 0.0, BLINK_FRAMES / BLINK_FPS)
+	died.emit()
+	print("[Wizard] struck down")
 
 
 # ---------- shared ----------
@@ -241,7 +312,10 @@ func _physics_process(delta: float) -> void:
 
 	if _trial == Trial.IDLE:
 		_idle_timer -= delta
-		if _idle_timer <= 0.0:
+		# She's closing in — he will not be reached while he has the initiative.
+		var threatened: bool = _watch != null and is_instance_valid(_watch) \
+				and global_position.distance_to(_watch.global_position) < escape_range
+		if _idle_timer <= 0.0 or threatened:
 			_begin_vanish()
 
 	if _mat_t >= 0.0:
