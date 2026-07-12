@@ -10,10 +10,13 @@ extends Node2D
 ## Reached in-game via the Hub's middle door (Door2 → "realm_2"). The arrival
 ## has no timer: the player sits above the canopy as long as they like and
 ## leaves via ESC (on-screen label) until the wizard + sky door land (R2-M7+).
+## The wizard himself already APPEARS: ~2.5s into the airborne climb he
+## flickers into existence beside the island and rides along, watching.
 ## R2_SHOT env: screenshot at 1s + quit. R2_SHOT_LIFT: jump to mid-ascent first.
 
 const BASE := "res://assets/realms/realm2_moss/"
 const LIVES_HUD := preload("res://scenes/UI/LivesHUD.tscn")
+const WIZARD_SCENE := preload("res://scenes/Wizard.tscn")
 const STARTING_LIVES: int = 3  # same rules as Realm 1
 const HUB_SCENE := "res://scenes/Hub.tscn"
 const FLOOR_Y := 300.0
@@ -25,6 +28,13 @@ const LIFT_TOP_Y := -2400.0
 # rendered brightness
 const CAMO_TINT := Color(0.26, 0.245, 0.34)
 const WAKE_TIME := 7.0  # seconds to blossom to full color during the rise
+
+# The storm's author shows himself: once the island has been AIRBORNE this
+# long (RISING state, not the pre-tear shake), the wizard flickers into
+# existence beside it and rides the ascent, watching (Advika, 2026-07-12).
+const WIZARD_APPEAR_DELAY := 2.5
+const WIZARD_OFFSET := Vector2(590.0, -430.0)  # hover post: open sky, clear of the fringe
+const WIZARD_SCALE := 0.55                     # Curiosity is ~110px here; he reads taller
 
 enum Phase { INTRO, BUILD, RIDE, DONE }
 
@@ -43,6 +53,8 @@ var _dying := false
 var _leaving := false
 var _hedge_dissolve: ShaderMaterial
 var _wake := 0.0  # 0 = embedded/dormant island, 1 = fully awake (glow breathes)
+var _wizard: Wizard = null
+var _airborne_t := 0.0  # seconds the island has been RISING (wizard spawn clock)
 
 
 func _ready() -> void:
@@ -567,6 +579,7 @@ func _self_screenshot(path: String) -> void:
 		_curi.velocity = Vector2.ZERO
 		_bg.set_storm(0.75)
 		_cam.position = Vector2(CHUNK_X, _chunk.global_position.y - 120.0)
+		_spawn_wizard(true)  # mid-ascent = he's long since appeared
 	# fall mode needs the ride guard (1s) + death beat (0.45s) to play out first
 	var delay := 2.5 if OS.get_environment("R2_SHOT_FALL") != "" else 1.0
 	await get_tree().create_timer(delay).timeout
@@ -612,6 +625,24 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().reload_current_scene()
 
 
+# The apparition: the wizard blinks in at his hover post beside the island,
+# rides the climb, and keeps his red eyes on Curiosity. Instant (no flicker)
+# for the screenshot harness.
+func _spawn_wizard(instant := false) -> void:
+	if _wizard != null:
+		return
+	_wizard = WIZARD_SCENE.instantiate()
+	_wizard.scale = Vector2(WIZARD_SCALE, WIZARD_SCALE)
+	add_child(_wizard)
+	_wizard.global_position = _chunk.global_position + WIZARD_OFFSET
+	_wizard.follow(_chunk, WIZARD_OFFSET)
+	_wizard.watch(_curi)
+	if instant:
+		_wizard.appear_instant()
+	else:
+		_wizard.materialize()
+
+
 func _return_to_hub() -> void:
 	if _leaving:
 		return
@@ -651,6 +682,11 @@ func _physics_process(delta: float) -> void:
 		Phase.RIDE:
 			_bg.set_storm(0.8)
 			_trauma = maxf(_trauma, 0.15)
+			# the wizard appears once the island has truly been in the sky a beat
+			if _wizard == null and _chunk.state == LevitatingIsland.State.RISING:
+				_airborne_t += delta
+				if _airborne_t >= WIZARD_APPEAR_DELAY:
+					_spawn_wizard()
 			# fell off mid-ascent: the fall plays out PAST the bottom of the frame
 			# (view half-height is 1080/(2*zoom) ≈ 635px), THEN the eye closes and
 			# the respawn blinks in. Frame-relative so it can never strand the hero
