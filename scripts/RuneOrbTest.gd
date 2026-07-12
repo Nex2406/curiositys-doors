@@ -96,7 +96,8 @@ func _ready() -> void:
 	# he lands, that's where the next orb is born.
 	_wizard.cast_committed.connect(func(pos: Vector2) -> void:
 		print("[WizardTrial] cast at ", pos, "  (plank at ", _plank.global_position, ")")
-		OrbSpawner.conjure_orb(_plank, _plank.to_local(pos), self, ORB_SCALE, 0, KILL_Y))
+		OrbSpawner.conjure_orb(_plank, _plank.to_local(pos), self, ORB_SCALE,
+				_wizard.facing_dir(), KILL_Y))  # the orb rolls the way it was cast
 	_wizard.died.connect(func() -> void:
 		_won = true
 		_status.text = "the wizard falls — the deck is yours   (R to run it again)"
@@ -111,7 +112,7 @@ func _ready() -> void:
 	var label := Label.new()
 	label.text = "WIZARD TRIAL — A/D or arrows move, SPACE jump (boosted), J/Z strike.\n" \
 		+ "T begins it: HE conjures the orbs (max 2) wherever he lands; they're INVULNERABLE — dodge, don't fight.\n" \
-		+ "He teleports when you close in. Catch him mid-appear or mid-cast and one blow wins.   R restart   ESC quit"
+		+ "He teleports when you close in. Catch him mid-appear or mid-cast — FIVE blows fell him, he flees after each.   R restart   ESC quit"
 	label.position = Vector2(-620, PLANK_BASE.y - 620.0)
 	label.add_theme_color_override("font_color", Color(0.85, 0.82, 0.92))
 	add_child(label)
@@ -124,7 +125,10 @@ func _ready() -> void:
 	if OS.get_environment("ORB_TRIAL") != "":
 		_wizard.start_trial()
 	if OS.get_environment("ORB_KILL") != "":
-		get_tree().create_timer(6.0).timeout.connect(func() -> void: _wizard._on_struck())
+		for i in range(5):
+			get_tree().create_timer(3.5 + i * 0.5).timeout.connect(func() -> void:
+				if _wizard != null and is_instance_valid(_wizard):
+					_wizard._on_struck())
 	if OS.get_environment("ORB_SHOT") != "":
 		_self_screenshot(OS.get_environment("ORB_SHOT"))
 

@@ -664,7 +664,8 @@ func _spawn_wizard(instant := false) -> void:
 	# His cast births an orb in front of him, on the island's deck. Fallen
 	# orbs despawn by airborne_lifetime — the island's height is ever-changing.
 	_wizard.cast_committed.connect(func(pos: Vector2) -> void:
-		OrbSpawner.conjure_orb(_chunk, _chunk.to_local(pos), self, ORB_SCALE, 0))
+		OrbSpawner.conjure_orb(_chunk, _chunk.to_local(pos), self, ORB_SCALE,
+				_wizard.facing_dir()))  # the orb rolls the way it was cast
 	# THE BOSS GATE: his fall is what finally stops the climb.
 	_wizard.died.connect(func() -> void:
 		_chunk.stop_levitation())

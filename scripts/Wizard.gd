@@ -52,6 +52,7 @@ const FLICKER_INTERVAL := 0.045
 @export var trial_idle_min := 0.8   # beat between teleports
 @export var trial_idle_max := 1.6
 @export var max_orbs := 2           # he conjures at most this many onto the deck
+@export var strikes_to_fell := 5    # blows it takes to bring him down (Advika, 2026-07-12)
 @export var escape_range := 280.0   # global px: Curiosity this close while he idles -> he blinks away
 @export var hover_amplitude := 14.0 # apparition mode: px of levitation bob
 @export var hover_period := 2.6
@@ -59,9 +60,11 @@ const FLICKER_INTERVAL := 0.045
 enum Trial { OFF, IDLE, VANISH, APPEAR, CAST }
 
 # The trial's win rule (Advika, 2026-07-12): reach him and strike (her normal
-# J/Z swing) — one blow fells him. Reaching him is the hard part: while he
-# idles he escape-teleports the moment she closes in, so the only real kill
-# windows are the appear + cast beats, when the conjuring commits him.
+# J/Z swing) — FIVE blows fell him, and every non-fatal hit sends him
+# panic-teleporting away, so each strike must be earned fresh. Reaching him
+# is the hard part: while he idles he escape-teleports the moment she closes
+# in, so the only real kill windows are the appear + cast beats, when the
+# conjuring commits him. A floating EnemyHealthBar tracks the strikes.
 # The hurtbox is what her attack scans: layer 4 ("enemies" group + take_damage,
 # exactly like the Golem), forwarding the blow to the wizard.
 class Hurtbox extends StaticBody2D:
@@ -87,6 +90,8 @@ var _surface_local_y := 0.0     # trial: his standing y on the plank (local)
 var _fade_tween: Tween
 var _hurtbox: Hurtbox
 var _hurt_shape: CollisionShape2D
+var _hpbar: EnemyHealthBar
+var _strikes_left := 0
 var _dead := false
 
 
@@ -138,6 +143,11 @@ func _ready() -> void:
 	_hurtbox.add_child(_hurt_shape)
 	add_child(_hurtbox)
 
+	# Floating strike counter — hidden until the first blow lands (house style).
+	_hpbar = EnemyHealthBar.new()
+	_hpbar.y_offset = -120.0
+	add_child(_hpbar)
+
 
 # ---------- apparition mode (Realm2LiftTest) ----------
 
@@ -188,6 +198,8 @@ func start_trial() -> void:
 			push_warning("Wizard.start_trial() before configure_trial()")
 		return
 	appear_instant()
+	_strikes_left = strikes_to_fell
+	_hpbar.set_ratio(1.0)
 	_hurt_shape.set_deferred("disabled", false)
 	_begin_cast()
 
@@ -281,23 +293,41 @@ func _face_watch_now() -> void:
 		_conjure_point.position.x = -CONJURE_AHEAD if _visual.flip_h else CONJURE_AHEAD
 
 
-# One clean blow fells him (the trial's win). Bright flash, then he dissolves
-# out through his own blink smear — and this time nothing reappears.
+# A blow lands. Non-fatal: flash, panic-teleport — the next strike must be
+# earned fresh. The fifth: bright flash, then he dissolves out through his
+# own blink smear — and this time nothing reappears.
 func _on_struck() -> void:
 	if _dead or _trial == Trial.OFF:
+		return
+	_strikes_left -= 1
+	_hpbar.set_ratio(float(_strikes_left) / float(strikes_to_fell))
+	if _strikes_left > 0:
+		_visual.modulate = Color(2.4, 2.0, 2.6)   # the strike registers
+		var flash := create_tween()
+		flash.tween_property(_visual, "modulate", Color(1, 1, 1), 0.25)
+		print("[Wizard] struck — %d/%d blows remain" % [_strikes_left, strikes_to_fell])
+		if _trial != Trial.VANISH:
+			_begin_vanish()   # struck = gone; catch him again
 		return
 	_dead = true
 	_trial = Trial.OFF
 	_hurt_shape.set_deferred("disabled", true)
+	_hpbar.hide()
 	if _fade_tween != null:
 		_fade_tween.kill()
-	_visual.modulate = Color(2.4, 2.0, 2.6)   # the strike registers
+	_visual.modulate = Color(2.4, 2.0, 2.6)
 	_visual.play(&"blink")
 	_fade_tween = create_tween()
 	_fade_tween.tween_property(_visual, "modulate", Color(1, 1, 1), 0.2)
 	_fade_tween.parallel().tween_property(self, "modulate:a", 0.0, BLINK_FRAMES / BLINK_FPS)
 	died.emit()
 	print("[Wizard] struck down")
+
+
+# Which way he's looking (art faces right): +1 right, -1 left. Orbs are
+# conjured in front of him and must ROLL that way too.
+func facing_dir() -> int:
+	return -1 if _visual.flip_h else 1
 
 
 # ---------- shared ----------
