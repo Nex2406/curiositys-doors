@@ -363,16 +363,23 @@ func _build_forest_dressing() -> void:
 	for n in ["boulder_0", "boulder_1", "boulder_2"]:
 		boulders.append(load(BASE + n + ".png"))
 
-	var x := -650.0
-	while x < 2250.0:
-		# the island owns its own silhouette — stay out of its channel
-		if absf(x - CHUNK_X) > 850.0:
+	# Edge to edge of everything the camera can ever see (walls sit at -750 /
+	# 2250 but the view reaches ~1130 past the hero) — the forest doesn't end
+	# where the walkable map does. (Advika: the right side was hella plain.)
+	var x := -1500.0
+	while x < 3600.0:
+		var dx := absf(x - CHUNK_X)
+		# the island keeps only its OWN clearing: no tall trees against its
+		# silhouette, but low boulder masses may hug its skirts
+		if dx > 800.0:
 			var roll := rng.randf()
-			if roll < 0.55:
+			if roll < 0.6:
 				_spawn_forest_tree(rng, x, vines, plats, ferns, beards, rocks)
 			else:
 				_spawn_forest_boulders(rng, x, boulders, rocks)
-		x += rng.randf_range(420.0, 680.0)
+		elif dx > 700.0:
+			_spawn_forest_boulders(rng, x, boulders, rocks)
+		x += rng.randf_range(340.0, 560.0)
 
 
 # One grounded tree: trunk rooted in the moss line, optional canopy slab on
@@ -422,11 +429,18 @@ func _spawn_forest_tree(rng: RandomNumberGenerator, x: float,
 		canopy.modulate = Color(b * 1.04, b, b * 1.24)
 		canopy.set_meta("dbg", "forest_canopy")
 		grp.add_child(canopy)
-		# hangers under the canopy fringe, tops tucked in, tips storm-swaying
+		# hangers under the canopy fringe, tops tucked in, tips storm-swaying.
+		# NO TWINS (Advika, 2026-07-12, circled): one assembly never hangs the
+		# same texture twice — picks come from the pool without replacement —
+		# and two hangers split the canopy's halves so they can't stack.
 		var n_hang := 1 + (rng.randi() % 2)
+		var pool: Array[Texture2D] = []
+		pool.append_array(ferns)
+		pool.append_array(beards)
 		for i in n_hang:
-			var ht: Texture2D = beards[rng.randi() % beards.size()] if rng.randf() < 0.4 \
-					else ferns[rng.randi() % ferns.size()]
+			var pick := rng.randi() % pool.size()
+			var ht: Texture2D = pool[pick]
+			pool.remove_at(pick)
 			var hsc := rng.randf_range(0.30, 0.48) * psc / 0.4
 			var hg := Sprite2D.new()
 			hg.texture = ht
@@ -434,9 +448,11 @@ func _spawn_forest_tree(rng: RandomNumberGenerator, x: float,
 			hg.offset = Vector2(-ht.get_width() * 0.5, -24.0)
 			hg.scale = Vector2(hsc, hsc)
 			hg.flip_h = rng.randf() < 0.5
-			hg.position = canopy.position + Vector2(
-					rng.randf_range(-pt.get_width() * psc * 0.32, pt.get_width() * psc * 0.32),
-					ph * 0.24)
+			var span := pt.get_width() * psc * 0.32
+			var hx := rng.randf_range(-span, -span * 0.2) if (n_hang == 2 and i == 0) \
+					else (rng.randf_range(span * 0.2, span) if n_hang == 2 \
+					else rng.randf_range(-span, span))
+			hg.position = canopy.position + Vector2(hx, ph * 0.24)
 			var hbr := b * rng.randf_range(0.8, 1.05)
 			hg.modulate = Color(hbr, hbr * 0.95, hbr * 1.22)
 			hg.material = _bg._sway_material(rng.randf_range(7.0, 15.0),
@@ -458,6 +474,17 @@ func _spawn_forest_tree(rng: RandomNumberGenerator, x: float,
 		rk.modulate = Color(rb, rb * 0.95, rb * 1.18)
 		rk.set_meta("dbg", "forest_rock")
 		grp.add_child(rk)
+
+	# an animated pack plant breathing at the roots — the same living plants
+	# the island and corridor wear (use the pack to the max, Advika)
+	if rng.randf() < 0.5:
+		var pdir: String = ["flower", "plant1", "plant_wind"][rng.randi() % 3]
+		var plant := _dress_plant(pdir, rng.randf_range(7.0, 10.0),
+				rng.randf_range(0.16, 0.26) * lerpf(0.75, 1.0, depth), rng)
+		plant.position = Vector2((-1.0 if flip else 1.0) * rng.randf_range(50.0, 110.0), -6.0)
+		plant.modulate = Color(b * 1.05, b, b * 1.25)
+		plant.set_meta("dbg", "forest_plant")
+		grp.add_child(plant)
 
 
 # A boulder cluster: two-three mossy masses half-buried in the moss line,
@@ -558,10 +585,14 @@ func _spawn_overhang(rng: RandomNumberGenerator, side: float, y: float,
 	# Storm-responsive sway shader: the tops stay pinned, the tips whip.
 	if inset >= 140.0:
 		var n_hang := 1 + (rng.randi() % 2)
+		# no twins on one assembly (same law as the forest trees)
+		var pool: Array[Texture2D] = []
+		pool.append_array(ferns)
+		pool.append_array(beards)
 		for i in n_hang:
-			var hb := rng.randf() < 0.45
-			var ht: Texture2D = beards[rng.randi() % beards.size()] if hb \
-					else ferns[rng.randi() % ferns.size()]
+			var pick := rng.randi() % pool.size()
+			var ht: Texture2D = pool[pick]
+			pool.remove_at(pick)
 			var hsc := rng.randf_range(0.38, 0.58) * sc / 0.5
 			var hg := Sprite2D.new()
 			hg.texture = ht
