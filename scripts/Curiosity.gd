@@ -392,6 +392,18 @@ func hurt(knockback: Vector2 = Vector2.ZERO) -> void:
 	_set_state(State.HURT)
 
 
+# Public: a damage-less push (rune orbs, gusts). Sets the velocity the same way
+# hurt()'s knockback does but WITHOUT the flinch state, damage, or invuln — input
+# stays live and re-takes the x axis at the normal acceleration rate (~accel_time),
+# so it reads as a shove she recovers from, not a hit. Action states (dash/attack/
+# hurt) drive their own velocity and are deliberately not interrupted by a shove.
+func shove(impulse: Vector2) -> void:
+	if _state in [State.DASH, State.ATTACK, State.HURT]:
+		return
+	velocity.x = impulse.x
+	velocity.y = minf(velocity.y, impulse.y)  # upward kick; never cancels a stronger rise
+
+
 # Public: grant a mercy invulnerability window (e.g. right after a respawn) so the hit
 # that just killed you can't immediately land again. Never shortens an active window.
 func grant_invuln(t: float) -> void:
