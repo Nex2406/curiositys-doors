@@ -40,6 +40,9 @@ const ROLL_ACCEL := 380.0
 @export var roll_speed := 140.0
 @export var reverse_time_min := 1.5   # randomized whim: how long before it changes its mind
 @export var reverse_time_max := 3.5
+@export var seek_bias := 0.0          # 0..1: on a whim reversal, odds the new direction is
+                                      # TOWARD the player — harder to dodge by standing still
+                                      # (Advika, 2026-07-12); 0 = pure coin flip
 @export var push_force := 420.0       # horizontal shove on Curiosity, in the orb's travel direction
 @export var push_up_kick := 150.0     # slight upward component — a shove, not a slide
 @export var push_cooldown := 0.4      # overlap doesn't machine-gun pushes
@@ -150,7 +153,15 @@ func _physics_process(delta: float) -> void:
 				_leaving = true
 			_reverse_timer -= delta
 			if _reverse_timer <= 0.0:
-				_dir = -_dir
+				# the whim — but a seek-biased orb usually "changes its mind"
+				# toward Curiosity, so standing still is never safe
+				var player := get_tree().get_first_node_in_group("player")
+				if player != null and randf() < seek_bias:
+					_dir = signf(player.global_position.x - global_position.x)
+					if _dir == 0.0:
+						_dir = 1.0
+				else:
+					_dir = -_dir
 				_arm_reverse_timer()
 	else:
 		# Off the edge: gravity owns it now. Keep rolling in the air (it reads

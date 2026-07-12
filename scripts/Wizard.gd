@@ -32,7 +32,7 @@ const BLINK_SET := "blink_a"
 const BLINK_FRAMES := 16
 const BLINK_FPS := 24.0          # 16 frames -> ~0.67s vanish/appear
 const CAST_FRAMES := 8           # the jump set doubling as the conjure flourish
-const CAST_FPS := 10.0
+const CAST_FPS := 12.0           # was 10 — refills must not dawdle (Advika)
 const CAST_COMMIT_FRAME := 4     # gesture peak: the orb is committed here
 const FEET_Y := 134.0            # feet row below the 512-frame center (pre-scale)
 const CONJURE_AHEAD := 160.0     # the orb is born slightly IN FRONT of him (pre-scale px)
@@ -248,6 +248,11 @@ func _begin_appear() -> void:
 	var parent := get_parent() as Node2D
 	if _watch != null and is_instance_valid(_watch) and parent != null:
 		her_x = parent.to_local(_watch.global_position).x
+		# She's mid-death-fall (far below the deck)? Her body is meaningless —
+		# she's about to blink back in at the RESPAWN POST (deck center).
+		# Avoid THAT, or he camps her respawn (Advika, 2026-07-12).
+		if parent.to_local(_watch.global_position).y > 500.0:
+			her_x = 0.0
 	if randf() < edge_lure_chance:
 		# THE EDGE LURE (Advika, 2026-07-12): sometimes he lands right at the
 		# platform's lip — chasing him there is the risk. Prefers the edge
