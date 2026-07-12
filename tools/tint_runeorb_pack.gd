@@ -8,10 +8,12 @@ extends SceneTree
 #
 # Usage:
 #   godot --headless --script tools/tint_runeorb_pack.gd -- \
-#       <src_dir> <out_dir> <ref_violet.png>
+#       <src_dir> <out_dir> <ref_violet.png> [sat_floor] [val_scale]
 #
 # <src_dir> holds runeorb1..12.png + runeorbspawn1..12.png (Downloads).
 # Overwrites <out_dir> in place with the shifted frames, same names.
+# sat_floor (default 0.7): lowest allowed sat multiplier toward the ref's.
+# val_scale (default 1.0): darkens the purple band (the realm is DIM).
 
 const PURPLE_LO := 0.60   # violet through magenta — the crystal + its smoke
 const PURPLE_HI := 0.97
@@ -37,11 +39,13 @@ func _init() -> void:
 		return
 	var orb := _mean_hue_sat(sample, PURPLE_LO, PURPLE_HI)
 	var delta := wrapf(target.x - orb.x, -0.5, 0.5)
-	# Ease the saturation toward the realm's muted read, but never below 70%
-	# of its own — the orb is a hazard, it must not dissolve into the moss.
-	var sat_scale := clampf(target.y / maxf(orb.y, 0.01), 0.7, 1.0)
-	print("[orbtint] orb_hue=%.3f (%.0f deg)  target=%.3f (%.0f deg)  delta=%.0f deg  sat_scale=%.2f" %
-			[orb.x, orb.x * 360.0, target.x, target.x * 360.0, delta * 360.0, sat_scale])
+	# Ease the saturation toward the realm's muted read; sat_floor bounds how
+	# far — the orb is a hazard, it must not dissolve into the moss entirely.
+	var sat_floor := float(args[3]) if args.size() > 3 else 0.7
+	var val_scale := float(args[4]) if args.size() > 4 else 1.0
+	var sat_scale := clampf(target.y / maxf(orb.y, 0.01), sat_floor, 1.0)
+	print("[orbtint] orb_hue=%.3f (%.0f deg)  target=%.3f (%.0f deg)  delta=%.0f deg  sat=%.2f  val=%.2f" %
+			[orb.x, orb.x * 360.0, target.x, target.x * 360.0, delta * 360.0, sat_scale, val_scale])
 
 	DirAccess.make_dir_recursive_absolute(args[1])
 	var n := 0
@@ -54,7 +58,7 @@ func _init() -> void:
 				quit(1)
 				return
 			img.convert(Image.FORMAT_RGBA8)
-			_shift_band(img, PURPLE_LO, PURPLE_HI, delta, sat_scale)
+			_shift_band(img, PURPLE_LO, PURPLE_HI, delta, sat_scale, val_scale)
 			img.save_png(args[1] + "/" + name)
 			n += 1
 	print("[orbtint] %d frames -> %s  DONE" % [n, args[1]])
@@ -91,8 +95,9 @@ func _mean_hue_sat(img: Image, lo: float, hi: float) -> Vector2:
 	return Vector2(hue, sat_sum / n)
 
 
-# Rotate pixels whose hue falls in [lo, hi] by delta and scale their sat.
-func _shift_band(img: Image, lo: float, hi: float, delta: float, sat_scale: float) -> void:
+# Rotate pixels whose hue falls in [lo, hi] by delta; scale their sat + val.
+func _shift_band(img: Image, lo: float, hi: float, delta: float, sat_scale: float,
+		val_scale := 1.0) -> void:
 	var d := img.get_data()
 	for i in range(0, d.size(), 4):
 		if d[i + 3] == 0:
@@ -103,7 +108,7 @@ func _shift_band(img: Image, lo: float, hi: float, delta: float, sat_scale: floa
 		if c.h < lo or c.h > hi:
 			continue
 		var out := Color.from_hsv(wrapf(c.h + delta, 0.0, 1.0),
-				clampf(c.s * sat_scale, 0.0, 1.0), c.v)
+				clampf(c.s * sat_scale, 0.0, 1.0), clampf(c.v * val_scale, 0.0, 1.0))
 		d[i] = int(out.r * 255.0)
 		d[i + 1] = int(out.g * 255.0)
 		d[i + 2] = int(out.b * 255.0)
