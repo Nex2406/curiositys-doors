@@ -15,7 +15,7 @@ signal orb_ready(ground_pos: Vector2)
 
 const FRAME_DIR := "res://assets/hazards/runeorb/"
 const FRAME_COUNT := 12
-const FPS := 14.0
+const FPS := 16.0   # was 14 — the smoke clears quicker, the ball arrives sooner (Advika)
 const FRAME_SIZE := Vector2(266.0, 375.0)
 const ORB_READY_FRAME := 8   # 0-indexed: the 9th frame — flash done, orb sitting in the fading smoke
 

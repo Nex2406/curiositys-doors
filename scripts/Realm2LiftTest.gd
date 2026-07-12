@@ -48,12 +48,13 @@ const WIZARD_TRIAL_HALF_X := 470.0             # teleport span: inside the hedge
 # The trial's difficulty (Advika, second pass: "this level isnt hard"):
 # orbs are fast, twitchy, long-lived and shove HARD; the deck is rarely
 # quiet. Orb scale tracks the smaller hero here (0.24 vs the test's 0.28).
-const ORB_SCALE := 0.44  # big but not eye-to-eye (Advika: a bit smaller than the 0.5 pass)
-const ORB_ROLL_SPEED := 265.0  # harder to evade (Advika) — outruns her walk; dash/jump to escape
+const ORB_SCALE := 0.48  # settled up from 0.44 (Advika: a bit bigger again)
+const ORB_ROLL_SPEED := 280.0  # harder to evade (Advika) — outruns her walk; dash/jump to escape
 const ORB_REVERSE_MIN := 1.4   # was 0.8-1.8: with rolling inertia, reversals breathe
 const ORB_REVERSE_MAX := 2.8
 const ORB_PUSH_FORCE := 540.0
 const ORB_PUSH_COOLDOWN := 0.3 # shoves chain a beat quicker
+const ORB_SEEK_BIAS := 0.7     # most whim-reversals turn TOWARD her — standing still isn't safe
 const ORB_LEAVE_MIN := 8.0    # they overstay — the deck stays saturated
 const ORB_LEAVE_MAX := 14.0
 const JUMP_BOOST := 1.15   # this level jumps slightly higher — orbs must be clearable
@@ -1178,6 +1179,7 @@ func _physics_process(delta: float) -> void:
 						orb.reverse_time_max = ORB_REVERSE_MAX
 						orb.push_force = ORB_PUSH_FORCE
 						orb.push_cooldown = ORB_PUSH_COOLDOWN
+						orb.seek_bias = ORB_SEEK_BIAS
 						orb.set_leave_window(ORB_LEAVE_MIN, ORB_LEAVE_MAX)
 					orb.kill_y = _chunk.global_position.y + 900.0
 			# fell off mid-ascent: the fall plays out PAST the bottom of the frame
