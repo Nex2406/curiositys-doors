@@ -3,32 +3,72 @@ class_name Wizard
 
 # The Wizard — Realm 2's boss, the storm's author, a dark mirror of Curiosity
 # (docs/realms/realm2.md R2-M7). Purple-shifted, red-eyed BlueWizard pack art
-# (tools/tint_wizard_pack.gd). For now he is a PRESENCE, not a fight: he
-# flickers into existence over the rising island a few seconds into the
-# ascent, hovers with it, and watches. Combat (BossBase, storm bolts,
-# teleport-blinks, stop_levitation() on defeat) lands with R2-M7 proper.
+# (tools/tint_wizard_pack.gd). Two lives so far:
+#
+# 1. APPARITION (Realm2LiftTest): materialize() / follow() / watch() — he
+#    flickers in on the rising island and rides it, watching. Presence only.
+# 2. TRIAL CONJURER (the rune-orb level): parent him to the plank, call
+#    configure_trial() then start_trial() — he idles a beat, teleport-blinks
+#    to a random spot ON the plank (local space, so the moving plank carries
+#    the landing), reappears, casts, and emits cast_committed at the gesture
+#    peak. The OrbSpawner connects to that later. stop_trial() halts it.
+#
+# Anim mapping (the pack has no cast/teleport sheets — verified 2026-07-12):
+#   tp_disappear = "blink" played FORWARD while he fades out
+#   tp_appear    = "blink" played BACKWARDS while he fades in
+#   cast         = the jump flourish + an eye-glow modulate pulse
+# Blink variant: blink_a (full smear — reads as dematerializing). Advika can
+# re-pick via tools/WizardAnimReview.tscn; it's the one BLINK_SET constant.
 
 signal materialized()
+signal intro_finished()
+signal cast_committed(pos: Vector2)
 
 const FRAME_DIR := "res://assets/enemies/wizard/"
 const IDLE_FRAMES := 20
 const IDLE_FPS := 16.0
+const BLINK_SET := "blink_a"
+const BLINK_FRAMES := 16
+const BLINK_FPS := 24.0          # 16 frames -> ~0.67s vanish/appear
+const CAST_FRAMES := 8           # the jump set doubling as the conjure flourish
+const CAST_FPS := 10.0
+const CAST_COMMIT_FRAME := 4     # gesture peak: the orb is committed here
+const FEET_Y := 134.0            # feet row below the 512-frame center (pre-scale)
+const TRIAL_EDGE_MARGIN := 110.0 # never lands closer than this to the plank lip
 
-# Spawn flicker: the apparition blinks in — sprite toggling on/off while its
-# alpha climbs, same visual language as the Golem's hit flicker / Curiosity's
-# respawn blink, so "flicker = threshold between being and not" stays one idea.
+# Spawn flicker: the apparition blinks in — same visual language as the
+# Golem's hit flicker / Curiosity's respawn blink.
 const FLICKER_INTERVAL := 0.045
 
-@export var hover_amplitude := 14.0   # px of his own levitation bob
-@export var hover_period := 2.6       # seconds per bob cycle (out of phase with the island)
+# The intro beat (dialogue through the UI card) is wired by the level; these
+# are his canonical opening lines, editable per scene.
+@export var dialogue_lines: Array[String] = [
+	"Another little wanderer, come to test the doors?",
+	"My orbs are ever so fond of pushing things. Do try to keep your footing.",
+	"Dodge well, little light. They cannot be broken — and neither, I suspect, can you.",
+]
+@export var trial_idle_min := 0.8   # beat between teleports
+@export var trial_idle_max := 1.6
+@export var hover_amplitude := 14.0 # apparition mode: px of levitation bob
+@export var hover_period := 2.6
+
+enum Trial { OFF, IDLE, VANISH, APPEAR, CAST }
 
 var _visual: AnimatedSprite2D
-var _follow: Node2D = null      # what he rides (the island)
+var _conjure_point: Marker2D
+var _follow: Node2D = null      # apparition mode: what he rides (the island)
 var _follow_offset := Vector2.ZERO
 var _watch: Node2D = null       # who he faces (Curiosity)
 var _ht := 0.0                  # hover clock
 var _mat_t := -1.0              # >=0 → materialize flicker running
 var _mat_dur := 0.9
+
+var _trial := Trial.OFF
+var _idle_timer := 0.0
+var _cast_emitted := false
+var _half_extent_x := 0.0       # trial: plank half-width (local space)
+var _surface_local_y := 0.0     # trial: his standing y on the plank (local)
+var _fade_tween: Tween
 
 
 func _ready() -> void:
@@ -40,11 +80,30 @@ func _ready() -> void:
 	frames.set_animation_loop(&"idle", true)
 	for i in range(IDLE_FRAMES):
 		frames.add_frame(&"idle", load(FRAME_DIR + "idle/idle_%02d.png" % i))
+	frames.add_animation(&"blink")
+	frames.set_animation_speed(&"blink", BLINK_FPS)
+	frames.set_animation_loop(&"blink", false)
+	for i in range(BLINK_FRAMES):
+		frames.add_frame(&"blink", load(FRAME_DIR + "%s/%s_%02d.png" % [BLINK_SET, BLINK_SET, i]))
+	frames.add_animation(&"cast")
+	frames.set_animation_speed(&"cast", CAST_FPS)
+	frames.set_animation_loop(&"cast", false)
+	for i in range(CAST_FRAMES):
+		frames.add_frame(&"cast", load(FRAME_DIR + "jump/jump_%02d.png" % i))
 	_visual.sprite_frames = frames
 	add_child(_visual)
+	_visual.animation_finished.connect(_on_anim_finished)
+	_visual.frame_changed.connect(_on_frame_changed)
 	_visual.play(&"idle")
-	visible = false   # nothing until materialize() (or appear_instant())
+	visible = false   # nothing until materialize() / appear_instant()
 
+	_conjure_point = Marker2D.new()
+	_conjure_point.name = "ConjurePoint"
+	_conjure_point.position = Vector2(0.0, FEET_Y)
+	add_child(_conjure_point)
+
+
+# ---------- apparition mode (Realm2LiftTest) ----------
 
 # Ride a node (the island) at a fixed offset; his own bob rides on top.
 func follow(target: Node2D, offset: Vector2) -> void:
@@ -73,14 +132,117 @@ func appear_instant() -> void:
 	visible = true
 
 
+# ---------- trial mode (the rune-orb level) ----------
+
+# Call before start_trial(). He must already be a CHILD of the plank: teleport
+# targets are picked in the plank's local space so a moving plank carries the
+# landing spot with it.
+func configure_trial(half_extent_x: float, surface_local_y: float) -> void:
+	_half_extent_x = half_extent_x
+	_surface_local_y = surface_local_y
+
+
+# Begin the idle -> vanish -> reappear elsewhere -> cast loop. Level calls this
+# after the instructions window closes — never auto-started.
+func start_trial() -> void:
+	if _trial != Trial.OFF or _half_extent_x <= 0.0:
+		if _half_extent_x <= 0.0:
+			push_warning("Wizard.start_trial() before configure_trial()")
+		return
+	appear_instant()
+	_enter_trial_idle()
+
+
+func stop_trial() -> void:
+	if _trial == Trial.OFF:
+		return
+	_trial = Trial.OFF
+	if _fade_tween != null:
+		_fade_tween.kill()
+	modulate.a = 1.0
+	_visual.play(&"idle")
+
+
+func _enter_trial_idle() -> void:
+	_trial = Trial.IDLE
+	_idle_timer = randf_range(trial_idle_min, trial_idle_max)
+	_visual.play(&"idle")
+
+
+func _begin_vanish() -> void:
+	_trial = Trial.VANISH
+	_visual.play(&"blink")
+	_fade_to(0.0, BLINK_FRAMES / BLINK_FPS)
+
+
+func _begin_appear() -> void:
+	_trial = Trial.APPEAR
+	# New spot in the PLANK's local space — the plank has moved; so has this.
+	position = Vector2(
+			randf_range(-_half_extent_x + TRIAL_EDGE_MARGIN, _half_extent_x - TRIAL_EDGE_MARGIN),
+			_surface_local_y)
+	_face_watch_now()
+	_visual.play_backwards(&"blink")
+	_fade_to(1.0, BLINK_FRAMES / BLINK_FPS)
+
+
+func _begin_cast() -> void:
+	_trial = Trial.CAST
+	_cast_emitted = false
+	_visual.play(&"cast")
+	# The conjuring glow: eyes and cloak flare toward violet-white across the
+	# gesture, peaking at the commit frame, then settle.
+	var dur := CAST_FRAMES / CAST_FPS
+	if _fade_tween != null:
+		_fade_tween.kill()
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(_visual, "modulate", Color(1.7, 1.45, 2.3), dur * 0.5)
+	_fade_tween.tween_property(_visual, "modulate", Color(1, 1, 1), dur * 0.5)
+
+
+func _fade_to(alpha: float, dur: float) -> void:
+	if _fade_tween != null:
+		_fade_tween.kill()
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(self, "modulate:a", alpha, dur)
+
+
+func _on_anim_finished() -> void:
+	match _trial:
+		Trial.VANISH:
+			_begin_appear()
+		Trial.APPEAR:
+			_begin_cast()
+		Trial.CAST:
+			_enter_trial_idle()
+
+
+func _on_frame_changed() -> void:
+	if _trial == Trial.CAST and not _cast_emitted \
+			and _visual.animation == &"cast" and _visual.frame >= CAST_COMMIT_FRAME:
+		_cast_emitted = true
+		cast_committed.emit(_conjure_point.global_position)
+
+
+func _face_watch_now() -> void:
+	if _watch != null and is_instance_valid(_watch):
+		_visual.flip_h = _watch.global_position.x < global_position.x
+
+
+# ---------- shared ----------
+
 func _physics_process(delta: float) -> void:
 	_ht += delta
 	if _follow != null and is_instance_valid(_follow):
 		var bob := sin(_ht * TAU / hover_period) * hover_amplitude
 		var drift := sin(_ht * TAU / (hover_period * 2.7) + 0.7) * hover_amplitude * 0.6
 		global_position = _follow.global_position + _follow_offset + Vector2(drift, bob)
-	if _watch != null and is_instance_valid(_watch):
-		_visual.flip_h = _watch.global_position.x < global_position.x
+	_face_watch_now()
+
+	if _trial == Trial.IDLE:
+		_idle_timer -= delta
+		if _idle_timer <= 0.0:
+			_begin_vanish()
 
 	if _mat_t >= 0.0:
 		_mat_t += delta
