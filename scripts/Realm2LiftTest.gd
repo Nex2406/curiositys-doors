@@ -48,7 +48,7 @@ const WIZARD_TRIAL_HALF_X := 470.0             # teleport span: inside the hedge
 # The trial's difficulty (Advika, second pass: "this level isnt hard"):
 # orbs are fast, twitchy, long-lived and shove HARD; the deck is rarely
 # quiet. Orb scale tracks the smaller hero here (0.24 vs the test's 0.28).
-const ORB_SCALE := 0.5   # BIG (Advika) — the ball stands eye to eye with the hero; jumps are tight
+const ORB_SCALE := 0.44  # big but not eye-to-eye (Advika: a bit smaller than the 0.5 pass)
 const ORB_ROLL_SPEED := 240.0
 const ORB_REVERSE_MIN := 0.8
 const ORB_REVERSE_MAX := 1.8
@@ -367,19 +367,23 @@ func _build_forest_dressing() -> void:
 	# 2250 but the view reaches ~1130 past the hero) — the forest doesn't end
 	# where the walkable map does. (Advika: the right side was hella plain.)
 	var x := -1500.0
-	while x < 3600.0:
+	while x < 3800.0:
 		var dx := absf(x - CHUNK_X)
-		# the island keeps only its OWN clearing: no tall trees against its
-		# silhouette, but low boulder masses may hug its skirts
-		if dx > 800.0:
-			var roll := rng.randf()
-			if roll < 0.6:
+		var right_side := x > CHUNK_X
+		# the island keeps a TIGHT clearing (just past its own fringe at ±550):
+		# no trees against its silhouette, low boulders may hug its skirts.
+		# The right flank leans tree-heavy — it only has the wall-to-backdrop
+		# span to work with, so every spot there must pull weight (Advika:
+		# one side still read plain).
+		if dx > 650.0:
+			var tree_p := 0.75 if right_side else 0.6
+			if rng.randf() < tree_p:
 				_spawn_forest_tree(rng, x, vines, plats, ferns, beards, rocks)
 			else:
 				_spawn_forest_boulders(rng, x, boulders, rocks)
-		elif dx > 700.0:
+		elif dx > 580.0:
 			_spawn_forest_boulders(rng, x, boulders, rocks)
-		x += rng.randf_range(340.0, 560.0)
+		x += rng.randf_range(280.0, 470.0) if right_side else rng.randf_range(340.0, 560.0)
 
 
 # One grounded tree: trunk rooted in the moss line, optional canopy slab on

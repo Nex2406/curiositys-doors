@@ -25,7 +25,7 @@ const PLANK_SIZE := Vector2(980.0, 44.0)
 const PLANK_BASE := Vector2(0.0, 260.0)
 const PLANK_AMP := 240.0     # side-to-side sweep, Realm-2-island-ish
 const PLANK_PERIOD := 6.0
-const ORB_SCALE := 0.58      # BIG (parity with the lift level's 0.5 at its smaller hero scale)
+const ORB_SCALE := 0.51      # parity with the lift level's 0.44 at its smaller hero scale
 
 # The level's difficulty dials (Advika: hard, movement is the only counterplay).
 const ORB_ROLL_SPEED := 195.0
