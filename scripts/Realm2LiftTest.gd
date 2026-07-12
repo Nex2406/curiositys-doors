@@ -87,6 +87,7 @@ var _hedge_dissolve: ShaderMaterial
 var _wake := 0.0  # 0 = embedded/dormant island, 1 = fully awake (glow breathes)
 var _wizard: Wizard = null
 var _airborne_t := 0.0  # seconds the island has been RISING (wizard spawn clock)
+var _far_layer: Node2D = null  # distant islands / treeline / clouds (own parallax)
 
 
 func _ready() -> void:
@@ -94,6 +95,7 @@ func _ready() -> void:
 	_bg.include_chunk = false  # OUR chunk is a physics body, not decor
 	add_child(_bg)
 	_build_ground()
+	_build_far_background()
 	_build_ascent_dressing()
 	_build_forest_dressing()
 	_build_fireflies()
@@ -371,6 +373,75 @@ func _build_fireflies() -> void:
 		ff.position = s[0]
 		ff.z_index = 40
 		add_child(ff)
+
+
+# THE DISTANCE (Advika, 2026-07-12: the plain purple center background needs
+# more than fuzzy tufts). A hazy far layer with its own parallax: OTHER
+# floating islands adrift in the haze (this realm has torn chunks loose
+# before — the sky remembers), a distant treeline of trunk+canopy
+# silhouettes, and slow clouds. Everything tinted toward the sky so it
+# reads as distance, not clutter.
+func _build_far_background() -> void:
+	_far_layer = Node2D.new()
+	_far_layer.z_index = -5  # behind every ground/dressing sprite, over the bg sky
+	add_child(_far_layer)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260713
+
+	# distant floating islands — faint echoes of the one we ride. Big enough
+	# that the silhouette READS as an island (tiny chunks looked like debris).
+	var chunk_tex: Texture2D = load(BASE + "chunk.png")
+	for p in [[-900.0, -400.0, 0.52], [900.0, -560.0, 0.38], [2700.0, -340.0, 0.58]]:
+		var isl := Sprite2D.new()
+		isl.texture = chunk_tex
+		isl.scale = Vector2(p[2], p[2])
+		isl.flip_h = rng.randf() < 0.5
+		isl.position = Vector2(p[0], p[1])
+		# sunk toward the sky color: pale, cold, half-there
+		isl.modulate = Color(0.42, 0.38, 0.56, 0.62)
+		isl.set_meta("far_bob_ph", rng.randf() * TAU)
+		isl.set_meta("far_bob_amp", rng.randf_range(6.0, 12.0))
+		isl.set_meta("far_base_y", p[1])
+		_far_layer.add_child(isl)
+
+	# a distant treeline: trunk + canopy silhouettes along a far ridge
+	var vt0: Texture2D = load(BASE + "vine_trunk_0.png")
+	var vt2: Texture2D = load(BASE + "vine_trunk_2.png")
+	var pw0: Texture2D = load(BASE + "platform_wide_0.png")
+	var tx := -1400.0
+	while tx < 3800.0:
+		var tsc := rng.randf_range(0.16, 0.26)
+		var trunk := Sprite2D.new()
+		trunk.texture = vt0 if rng.randf() < 0.5 else vt2
+		trunk.scale = Vector2(tsc, tsc)
+		trunk.flip_h = rng.randf() < 0.5
+		var th := trunk.texture.get_height() * tsc
+		trunk.position = Vector2(tx, 40.0 - th * 0.5)
+		trunk.modulate = Color(0.30, 0.27, 0.44, 0.75)
+		_far_layer.add_child(trunk)
+		if rng.randf() < 0.7:
+			var cap := Sprite2D.new()
+			cap.texture = pw0
+			var csc := tsc * rng.randf_range(0.9, 1.3)
+			cap.scale = Vector2(csc, csc)
+			cap.flip_h = rng.randf() < 0.5
+			cap.position = Vector2(tx + rng.randf_range(-14.0, 14.0),
+					40.0 - th + pw0.get_height() * csc * 0.30)
+			cap.modulate = Color(0.30, 0.27, 0.44, 0.75)
+			_far_layer.add_child(cap)
+		tx += rng.randf_range(260.0, 480.0)
+
+	# slow clouds through the band
+	var cloud_tex: Texture2D = load(BASE + "cloud.png")
+	for p in [[-400.0, -380.0, 0.9], [1700.0, -240.0, 1.2], [3300.0, -430.0, 0.8]]:
+		var cl := Sprite2D.new()
+		cl.texture = cloud_tex
+		cl.scale = Vector2(p[2], p[2])
+		cl.position = Vector2(p[0], p[1])
+		cl.modulate = Color(0.55, 0.50, 0.72, 0.30)
+		cl.set_meta("far_drift", rng.randf_range(3.0, 7.0))
+		cl.set_meta("far_base_x", p[0])
+		_far_layer.add_child(cl)
 
 
 func _build_forest_dressing() -> void:
@@ -1201,6 +1272,20 @@ func _physics_process(delta: float) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	_trauma = maxf(_trauma - delta * 0.8, 0.0)
+
+	# the distance recedes: the far layer tracks the camera at 0.78/0.88 so
+	# it crawls past — the sky band always has something adrift in it.
+	# Islands bob very slowly; clouds drift sideways forever.
+	if _far_layer != null and _cam != null:
+		_far_layer.position = Vector2(_cam.global_position.x * 0.78,
+				(_cam.global_position.y - (FLOOR_Y - 220.0)) * 0.88)
+		for c in _far_layer.get_children():
+			if c.has_meta("far_base_y"):
+				c.position.y = c.get_meta("far_base_y") \
+						+ sin(_t * 0.35 + c.get_meta("far_bob_ph")) * c.get_meta("far_bob_amp")
+			elif c.has_meta("far_drift"):
+				c.position.x = wrapf(c.get_meta("far_base_x") + _t * c.get_meta("far_drift"),
+						-1600.0, 4000.0)
 
 	# the corridor breathes AND recycles: overhang assemblies bob + tilt, and
 	# any assembly a screen below the camera wraps to above the view shifted
