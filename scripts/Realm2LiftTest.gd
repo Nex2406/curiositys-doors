@@ -50,8 +50,8 @@ const WIZARD_TRIAL_HALF_X := 470.0             # teleport span: inside the hedge
 # quiet. Orb scale tracks the smaller hero here (0.24 vs the test's 0.28).
 const ORB_SCALE := 0.44  # big but not eye-to-eye (Advika: a bit smaller than the 0.5 pass)
 const ORB_ROLL_SPEED := 240.0
-const ORB_REVERSE_MIN := 0.8
-const ORB_REVERSE_MAX := 1.8
+const ORB_REVERSE_MIN := 1.4   # was 0.8-1.8: with rolling inertia, reversals breathe
+const ORB_REVERSE_MAX := 2.8
 const ORB_PUSH_FORCE := 540.0
 const ORB_LEAVE_MIN := 8.0    # they overstay — the deck stays saturated
 const ORB_LEAVE_MAX := 14.0
@@ -384,6 +384,51 @@ func _build_forest_dressing() -> void:
 		elif dx > 580.0:
 			_spawn_forest_boulders(rng, x, boulders, rocks)
 		x += rng.randf_range(280.0, 470.0) if right_side else rng.randf_range(340.0, 560.0)
+
+	# UNDERGROWTH CARPET (Advika, 2026-07-12: "jass up this side" — the seam
+	# right of the island rolled thin). Trees are the big beats; this is the
+	# guarantee: a small tuft/rock/plant cluster every ~150px across the WHOLE
+	# map, deterministic, so no stretch can ever roll bare. Skips only the
+	# island's own art footprint (it lifts away — nothing may pop from behind).
+	var tufts: Array[Texture2D] = []
+	for n in ["tuft_0", "tuft_1", "tuft_2"]:
+		tufts.append(load(BASE + n + ".png"))
+	var ux := -1500.0
+	while ux < 3800.0:
+		if absf(ux - CHUNK_X) > 600.0:
+			var b := rng.randf_range(0.30, 0.50)
+			var roll := rng.randf()
+			if roll < 0.5:
+				var tt: Texture2D = tufts[rng.randi() % tufts.size()]
+				var tsc := rng.randf_range(0.16, 0.30)
+				var tf := Sprite2D.new()
+				tf.texture = tt
+				tf.scale = Vector2(tsc, tsc)
+				tf.flip_h = rng.randf() < 0.5
+				tf.position = Vector2(ux, FLOOR_Y + 16.0 - tt.get_height() * tsc * 0.38)
+				tf.modulate = Color(b, b * 0.96, b * 1.22)
+				tf.set_meta("dbg", "under_tuft")
+				add_child(tf)
+			elif roll < 0.75:
+				var rt: Texture2D = rocks[rng.randi() % rocks.size()]
+				var rsc := rng.randf_range(0.12, 0.22)
+				var rk := Sprite2D.new()
+				rk.texture = rt
+				rk.scale = Vector2(rsc, rsc)
+				rk.flip_h = rng.randf() < 0.5
+				rk.position = Vector2(ux, FLOOR_Y + 14.0 - rt.get_height() * rsc * 0.30)
+				rk.modulate = Color(b, b * 0.95, b * 1.18)
+				rk.set_meta("dbg", "under_rock")
+				add_child(rk)
+			else:
+				var pdir: String = ["flower", "plant1", "plant_wind"][rng.randi() % 3]
+				var plant := _dress_plant(pdir, rng.randf_range(7.0, 10.0),
+						rng.randf_range(0.12, 0.20), rng)
+				plant.position = Vector2(ux, FLOOR_Y + 8.0)
+				plant.modulate = Color(b * 1.05, b, b * 1.25)
+				plant.set_meta("dbg", "under_plant")
+				add_child(plant)
+		ux += rng.randf_range(120.0, 210.0)
 
 
 # One grounded tree: trunk rooted in the moss line, optional canopy slab on

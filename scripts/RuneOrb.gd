@@ -31,6 +31,12 @@ const PUSH_ZONE_RADIUS := 128.0   # a shade wider so the shove lands before over
 # orb falls off an edge with the same weight she does.
 const GRAVITY := 460.0
 
+# Rolling inertia (Advika, 2026-07-12: the mechanics didn't feel right — snap
+# reversals read weightless). The ball accelerates toward its roll direction
+# instead of teleporting to full speed: a reversal decelerates through a
+# momentary stop and gathers back up, like mass.
+const ROLL_ACCEL := 380.0
+
 @export var roll_speed := 140.0
 @export var reverse_time_min := 1.5   # randomized whim: how long before it changes its mind
 @export var reverse_time_max := 3.5
@@ -158,7 +164,7 @@ func _physics_process(delta: float) -> void:
 			queue_free()
 			return
 
-	velocity.x = _dir * roll_speed
+	velocity.x = move_toward(velocity.x, _dir * roll_speed, ROLL_ACCEL * delta)
 	if not is_on_floor():
 		velocity.y += GRAVITY * delta
 	else:

@@ -236,13 +236,20 @@ func _begin_vanish() -> void:
 func _begin_appear() -> void:
 	_trial = Trial.APPEAR
 	# New spot in the PLANK's local space — the plank has moved; so has this.
-	# Re-roll until it's a real hop away from where he vanished, so landings
-	# scatter across the whole deck instead of shuffling in place.
+	# Re-roll until it's a real hop from where he vanished AND clear of
+	# Curiosity (Advika: half the time he landed right on her — an evasive
+	# caster does not blink into the blade). If the deck is too crowded to
+	# satisfy both, the last roll stands — he's arrogant, not stuck.
 	var old_x := position.x
 	var new_x := old_x
-	for _i in range(8):
+	var her_x := INF
+	var parent := get_parent() as Node2D
+	if _watch != null and is_instance_valid(_watch) and parent != null:
+		her_x = parent.to_local(_watch.global_position).x
+	for _i in range(12):
 		new_x = randf_range(-_half_extent_x + TRIAL_EDGE_MARGIN, _half_extent_x - TRIAL_EDGE_MARGIN)
-		if absf(new_x - old_x) >= TELEPORT_MIN_HOP:
+		if absf(new_x - old_x) >= TELEPORT_MIN_HOP \
+				and (her_x == INF or absf(new_x - her_x) >= 380.0):
 			break
 	position = Vector2(new_x, _surface_local_y)
 	_face_watch_now()
