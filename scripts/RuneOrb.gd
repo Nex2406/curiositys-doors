@@ -84,8 +84,7 @@ func _ready() -> void:
 	_push_zone = Area2D.new()
 	_push_zone.name = "PushZone"
 	# Sense-only: reports nothing (layer 0), senses layer 1 bodies — the shove
-	# path filters those down to the "player" group. This is the ONLY way an
-	# orb and Curiosity interact.
+	# path filters those down to the "player" group.
 	_push_zone.collision_layer = 0
 	_push_zone.collision_mask = 1
 	var zcol := CollisionShape2D.new()
@@ -95,12 +94,11 @@ func _ready() -> void:
 	_push_zone.add_child(zcol)
 	add_child(_push_zone)
 
-	# Curiosity shares layer 1 with terrain, so the mask alone can't exclude
-	# her — carve a body exception so the ball never physically blocks her.
-	# All contact with the player goes through the PushZone shove instead.
-	var player := get_tree().get_first_node_in_group("player")
-	if player is PhysicsBody2D:
-		add_collision_exception_with(player)
+	# SOLID to Curiosity (Advika, 2026-07-12: she sometimes phased straight
+	# through a ball — a body she can't fight must at least be a body). The
+	# orb sits on layers 16+2: her mask (3 = terrain+2) collides with it, so
+	# it blocks her — and the PushZone shove throws her off it. Her attack
+	# (mask 4) still can't touch it. No more ghost balls.
 
 	_arm_reverse_timer()
 	_leave_t = randf_range(leave_after_min, leave_after_max)

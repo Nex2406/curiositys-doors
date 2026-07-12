@@ -57,6 +57,8 @@ const FLICKER_INTERVAL := 0.045
 @export var escape_range := 280.0   # global px: Curiosity this close while he idles -> he blinks away
 @export var escape_grace := 0.9     # seconds after landing before the escape reflex arms —
                                     # he stands his ground a beat even with her bearing down
+@export var edge_lure_chance := 0.3 # some landings sit right at the platform's lip — the
+                                    # chase becomes the risk (Advika, 2026-07-12)
 @export var hover_amplitude := 14.0 # apparition mode: px of levitation bob
 @export var hover_period := 2.6
 
@@ -246,11 +248,19 @@ func _begin_appear() -> void:
 	var parent := get_parent() as Node2D
 	if _watch != null and is_instance_valid(_watch) and parent != null:
 		her_x = parent.to_local(_watch.global_position).x
-	for _i in range(12):
-		new_x = randf_range(-_half_extent_x + TRIAL_EDGE_MARGIN, _half_extent_x - TRIAL_EDGE_MARGIN)
-		if absf(new_x - old_x) >= TELEPORT_MIN_HOP \
-				and (her_x == INF or absf(new_x - her_x) >= 380.0):
-			break
+	if randf() < edge_lure_chance:
+		# THE EDGE LURE (Advika, 2026-07-12): sometimes he lands right at the
+		# platform's lip — chasing him there is the risk. Prefers the edge
+		# away from her, so the hunt crosses the whole swaying deck.
+		var side := (1.0 if her_x < 0.0 else -1.0) if her_x != INF \
+				else (1.0 if randf() < 0.5 else -1.0)
+		new_x = side * (_half_extent_x - randf_range(15.0, 55.0))
+	else:
+		for _i in range(12):
+			new_x = randf_range(-_half_extent_x + TRIAL_EDGE_MARGIN, _half_extent_x - TRIAL_EDGE_MARGIN)
+			if absf(new_x - old_x) >= TELEPORT_MIN_HOP \
+					and (her_x == INF or absf(new_x - her_x) >= 380.0):
+				break
 	position = Vector2(new_x, _surface_local_y)
 	_face_watch_now()
 	_hurt_shape.set_deferred("disabled", false)  # materializing = catchable
@@ -361,6 +371,13 @@ func _physics_process(delta: float) -> void:
 	if _trial == Trial.IDLE:
 		_idle_timer -= delta
 		_escape_lock = maxf(0.0, _escape_lock - delta)
+		# A ball rolled off? He refills IMMEDIATELY, casting from where he
+		# stands — the deck never sits quiet waiting out his idle ritual
+		# (Advika, 2026-07-12: re-conjuring took too long). In-flight smoke
+		# counts in the group, so this can't double-cast.
+		if get_tree().get_nodes_in_group("hazards").size() < max_orbs:
+			_begin_cast()
+			return
 		# She's closing in — he blinks away, but only once the reflex has
 		# armed: the grace beat after each landing is her honest window.
 		var threatened: bool = _escape_lock <= 0.0 \
