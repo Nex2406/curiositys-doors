@@ -27,7 +27,8 @@ work is not reviewed).
 |---|---|---|
 | Cave tilemaps + backgrounds | **Szadi art** — itch.io | Realm 1 (Crimson Hollow) |
 | Mossy tileset: terrain, floating platforms, hills, background decoration, hanging plants, decorations & hazards | **Maaot** — itch.io | Realm 2 backgrounds + terrain (purple hue-shift applied in-house) |
-| Slimes, animated plants, BlueWizard (unused for now) | **Maaot** — itch.io (same pack family — confirm exact pack page before submission) | Realm 2 (planned) |
+| BlueWizard Animations (idle / walk / jump / dash) | **Maaot** — itch.io (same pack family — confirm exact pack page before submission) | Realm 2 boss, the Wizard — purple cloak + red eyes shifted in-house (`tools/tint_wizard_pack.gd`) |
+| Slimes, animated plants | **Maaot** — itch.io (same pack family — confirm exact pack page before submission) | Realm 2 (planned) |
 
 ### Procedural / generated in-repo
 - Hub sky, nebula, moon glow, door arches, lantern halo, flame, fireflies,

@@ -31,9 +31,12 @@ const WAKE_TIME := 7.0  # seconds to blossom to full color during the rise
 
 # The storm's author shows himself: once the island has been AIRBORNE this
 # long (RISING state, not the pre-tear shake), the wizard flickers into
-# existence beside it and rides the ascent, watching (Advika, 2026-07-12).
+# existence ON the island — planted at its far end, facing Curiosity across
+# the moss (Advika, 2026-07-12: on the platform, not hovering beside it).
 const WIZARD_APPEAR_DELAY := 2.5
-const WIZARD_OFFSET := Vector2(590.0, -430.0)  # hover post: open sky, clear of the fringe
+# Feet on the moss top: collider top is -120 rel chunk; the figure's feet sit
+# ~134px below the 512-frame center, so origin rides 134*scale above the top.
+const WIZARD_OFFSET := Vector2(255.0, -194.0)  # open moss, clear of the right hedge's dark mass
 const WIZARD_SCALE := 0.55                     # Curiosity is ~110px here; he reads taller
 
 enum Phase { INTRO, BUILD, RIDE, DONE }
@@ -625,14 +628,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().reload_current_scene()
 
 
-# The apparition: the wizard blinks in at his hover post beside the island,
-# rides the climb, and keeps his red eyes on Curiosity. Instant (no flicker)
-# for the screenshot harness.
+# The apparition: the wizard blinks in standing on the island's far end,
+# rides the climb with it, and keeps his red eyes on Curiosity. Instant
+# (no flicker) for the screenshot harness.
 func _spawn_wizard(instant := false) -> void:
 	if _wizard != null:
 		return
 	_wizard = WIZARD_SCENE.instantiate()
 	_wizard.scale = Vector2(WIZARD_SCALE, WIZARD_SCALE)
+	_wizard.hover_amplitude = 0.0  # planted on the moss, not floating — the island carries him
 	add_child(_wizard)
 	_wizard.global_position = _chunk.global_position + WIZARD_OFFSET
 	_wizard.follow(_chunk, WIZARD_OFFSET)

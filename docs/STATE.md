@@ -1,5 +1,5 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-07-08_
+_Last updated: 2026-07-12_
 
 ## Realm 2 — R2-M1 quake + liftoff SHIPPED (test scene)
 `scenes/realms/Realm2LiftTest.tscn` (+`scripts/Realm2LiftTest.gd`,
@@ -24,8 +24,18 @@ pack by `tools/slice_mossy_pack.gd` (repeatable; thorn arcs + sprouts left
 uncommitted until R2-M5/M6). Density tapers so the arrival opens into sky.
 Phase ladder: [`docs/realms/realm2.md`](realms/realm2.md) — R2-M0 ✅ R2-M1 ✅;
 next R2-M3 (Enemy base + first slime; R2-M2 combat was already shipped by the
-golem work). Boss: the BlueWizard (dark mirror of Curiosity) at R2-M7 — see
-the ladder. The older `Realm2BgTest.tscn` remains as the background gallery.
+golem work). Boss: the Wizard (dark mirror of Curiosity) at R2-M7 — and he
+already APPEARS (2026-07-12): ~2.5s after the island is truly airborne he
+flickers into existence standing at the island's far end and watches
+Curiosity across the moss as it climbs. Presence only, no combat yet. His art is the BlueWizard
+pack palette-shifted in-house by `tools/tint_wizard_pack.gd` (repeatable):
+cloak navy→realm violet (measured against `vine_trunk_0`), eye glow
+yellow→RED (Advika: evil at a glance). 96 frames in `assets/enemies/wizard/`
+(idle/walk/jump + 3 blink variants — teleport-blink pick pending);
+`tools/WizardAnimReview.tscn` flips through them live (keys 1-6).
+Actor: `scenes/Wizard.tscn` + `scripts/Wizard.gd` — flicker-materialize,
+hover bob, `follow()`/`watch()`. The older `Realm2BgTest.tscn` remains as
+the background gallery.
 Credits: `CREDITS.md` (root) — keep updated per asset, college-portfolio gate.
 
 ## Live loop
@@ -138,7 +148,7 @@ placeholder arch — ornate door / eyed moon / silhouettes are the next art lift
 - Per-realm ambient audio
 
 ## Last session
-[2026-05-17 — Close the agentic loop](SESSIONS.md#2026-05-17--close-the-agentic-loop)
+[2026-07-12 — The wizard shows himself](SESSIONS.md#2026-07-12--the-wizard-shows-himself)
 
 ## Next 3 safe candidates
 _**M1 — Core engine foundations is COMPLETE** (SaveManager · Dialogue ·
