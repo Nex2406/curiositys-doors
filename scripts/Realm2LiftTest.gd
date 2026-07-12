@@ -32,12 +32,27 @@ const WAKE_TIME := 7.0  # seconds to blossom to full color during the rise
 # The storm's author shows himself: once the island has been AIRBORNE this
 # long (RISING state, not the pre-tear shake), the wizard flickers into
 # existence ON the island — planted at its far end, facing Curiosity across
-# the moss (Advika, 2026-07-12: on the platform, not hovering beside it).
-const WIZARD_APPEAR_DELAY := 5.0  # was 2.5 — Advika 2026-07-12: let the ride breathe first
+# the moss (Advika, 2026-07-12: on the platform, not hovering beside it) —
+# and begins his TRIAL: teleporting across the island, conjuring rune orbs
+# (max 2, born in front of him) that harry Curiosity toward the edges.
+# Strike him (J/Z, one blow — catch him mid-appear/cast, he escape-teleports
+# when you close in) and the island finally stops: died -> stop_levitation()
+# -> arrived -> DONE. The boss gate, closed at last.
+const WIZARD_APPEAR_DELAY := 7.0  # Advika 2026-07-12: a good 7s alone with the climb first
 # Feet on the moss top: collider top is -120 rel chunk; the figure's feet sit
 # ~134px below the 512-frame center, so origin rides 134*scale above the top.
 const WIZARD_OFFSET := Vector2(255.0, -194.0)  # open moss, clear of the right hedge's dark mass
 const WIZARD_SCALE := 0.55                     # Curiosity is ~110px here; he reads taller
+const WIZARD_TRIAL_HALF_X := 470.0             # teleport span: inside the hedges' dark masses
+
+# The trial's difficulty (Advika: hard — movement is the only counterplay).
+# Orb scale tracks the smaller hero here (0.24 vs the test's 0.28).
+const ORB_SCALE := 0.36
+const ORB_ROLL_SPEED := 195.0
+const ORB_REVERSE_MIN := 1.0
+const ORB_REVERSE_MAX := 2.4
+const ORB_PUSH_FORCE := 460.0
+const JUMP_BOOST := 1.15   # this level jumps slightly higher — orbs must be clearable
 
 enum Phase { INTRO, BUILD, RIDE, DONE }
 
@@ -500,7 +515,9 @@ func _build_chunk() -> void:
 		for c in _chunk.get_children():
 			if c is AnimatedSprite2D:
 				c.play())
-	# `arrived` only fires from stop_levitation() — the wizard's defeat (R2-M7)
+	# `arrived` only fires from stop_levitation() — the wizard's defeat.
+	_chunk.arrived.connect(func() -> void:
+		_set_phase(Phase.DONE))
 
 
 func _build_player() -> void:
@@ -508,6 +525,8 @@ func _build_player() -> void:
 	_curi.position = Vector2(150, FLOOR_Y - 120)
 	# the world is authored at 1080-scale; shrink the hero to stand ~110px tall
 	_curi.scale = Vector2(0.24, 0.24)
+	# this level jumps slightly higher (Advika) — the wizard's orbs must be clearable
+	_curi.jump_velocity *= JUMP_BOOST
 	add_child(_curi)
 
 	# the SAME eye lifeline counter as Realm 1 — shared scene, same rules
@@ -628,23 +647,37 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().reload_current_scene()
 
 
-# The apparition: the wizard blinks in standing on the island's far end,
-# rides the climb with it, and keeps his red eyes on Curiosity. Instant
-# (no flicker) for the screenshot harness.
+# The conjurer takes the island: the wizard blinks in standing on the far
+# end AS A CHILD OF THE CHUNK (teleports land in island-local space, the
+# climb carries him), then begins the trial — teleport, conjure, repeat —
+# until Curiosity's blade finds him. Instant (no flicker) for the harness.
 func _spawn_wizard(instant := false) -> void:
 	if _wizard != null:
 		return
 	_wizard = WIZARD_SCENE.instantiate()
 	_wizard.scale = Vector2(WIZARD_SCALE, WIZARD_SCALE)
-	_wizard.hover_amplitude = 0.0  # planted on the moss, not floating — the island carries him
-	add_child(_wizard)
-	_wizard.global_position = _chunk.global_position + WIZARD_OFFSET
-	_wizard.follow(_chunk, WIZARD_OFFSET)
+	_wizard.hover_amplitude = 0.0  # planted on the moss — the island carries him
+	_wizard.position = WIZARD_OFFSET
+	_chunk.add_child(_wizard)
 	_wizard.watch(_curi)
+	_wizard.configure_trial(WIZARD_TRIAL_HALF_X, WIZARD_OFFSET.y)
+	# His cast births an orb in front of him, on the island's deck. Fallen
+	# orbs despawn by airborne_lifetime — the island's height is ever-changing.
+	_wizard.cast_committed.connect(func(pos: Vector2) -> void:
+		OrbSpawner.conjure_orb(_chunk, _chunk.to_local(pos), self, ORB_SCALE, 0))
+	# THE BOSS GATE: his fall is what finally stops the climb.
+	_wizard.died.connect(func() -> void:
+		_chunk.stop_levitation())
 	if instant:
 		_wizard.appear_instant()
+		_wizard.start_trial()
 	else:
 		_wizard.materialize()
+		# One breath after the flicker settles, the trial begins.
+		_wizard.materialized.connect(func() -> void:
+			get_tree().create_timer(1.0).timeout.connect(func() -> void:
+				if _wizard != null and is_instance_valid(_wizard):
+					_wizard.start_trial()))
 
 
 func _return_to_hub() -> void:
@@ -665,7 +698,7 @@ func _set_phase(p: Phase) -> void:
 		Phase.RIDE:
 			_trauma = 1.0
 		Phase.DONE:
-			_lbl.text = "above the canopy — R2-M1 complete   (R restart · ESC hub)"
+			_lbl.text = "the wizard falls — the storm relents   (R restart · ESC hub)"
 
 
 func _physics_process(delta: float) -> void:
@@ -691,6 +724,13 @@ func _physics_process(delta: float) -> void:
 				_airborne_t += delta
 				if _airborne_t >= WIZARD_APPEAR_DELAY:
 					_spawn_wizard()
+			# the trial's difficulty dials ride on every live orb
+			for orb in get_tree().get_nodes_in_group("hazards"):
+				if orb is RuneOrb:
+					orb.roll_speed = ORB_ROLL_SPEED
+					orb.reverse_time_min = ORB_REVERSE_MIN
+					orb.reverse_time_max = ORB_REVERSE_MAX
+					orb.push_force = ORB_PUSH_FORCE
 			# fell off mid-ascent: the fall plays out PAST the bottom of the frame
 			# (view half-height is 1080/(2*zoom) ≈ 635px), THEN the eye closes and
 			# the respawn blinks in. Frame-relative so it can never strand the hero
