@@ -35,7 +35,7 @@ const WAKE_TIME := 7.0  # seconds to blossom to full color during the rise
 # the moss (Advika, 2026-07-12: on the platform, not hovering beside it) —
 # and begins his TRIAL: teleporting across the island, conjuring rune orbs
 # (max 2, born in front of him) that harry Curiosity toward the edges.
-# Strike him (J/Z, one blow — catch him mid-appear/cast, he escape-teleports
+# Strike him (J/Z, five blows — catch him mid-appear/cast, he escape-teleports
 # when you close in) and the island finally stops: died -> stop_levitation()
 # -> arrived -> DONE. The boss gate, closed at last.
 const WIZARD_APPEAR_DELAY := 7.0  # Advika 2026-07-12: a good 7s alone with the climb first
