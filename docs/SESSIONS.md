@@ -7,6 +7,41 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 
 ---
 
+## 2026-07-12 — The wizard shows himself
+
+**Shipped** (PR: `feat/r2-wizard-actor`, closes #151)
+- **The wizard's look is settled**: BlueWizard pack (Maaot, Downloads)
+  palette-shifted in-house — cloak navy→realm violet (measured 219°→248°
+  against `vine_trunk_0`, same measured-not-guessed method as the Mossy
+  slicer), eye glow yellow→**red** (Advika: the player reads evil at a
+  glance). Repeatable tool: `tools/tint_wizard_pack.gd`. 96 frames in
+  `assets/enemies/wizard/` (idle/walk/jump + 3 blink variants).
+- **The apparition beat** (Advika's design): ~2.5s after the island is
+  truly airborne (RISING, not the pre-tear shake) the wizard flickers into
+  existence standing ON the island's far end — planted in the moss, riding
+  the climb, red eyes on Curiosity. Flicker-in reuses the Golem-flicker /
+  respawn-blink visual language.
+- **Wizard actor**: `scenes/Wizard.tscn` + `scripts/Wizard.gd` — presence
+  only (materialize / follow / watch); BossBase, storm bolts, teleports
+  land with R2-M7 proper.
+- **Anim review window**: `tools/WizardAnimReview.tscn` — keys 1-6 flip
+  through every set live; how Advika reviewed the purple + red-eye pass.
+
+**What didn't work / dead ends**
+- First hover post floated him beside the island — Advika: he spawns ON
+  the platform. Second post clipped his robe into the right hedge's dark
+  mass (silhouette law); final post is the open moss stretch at +255.
+
+**Next 3 safe candidates**
+1. R2-M3 — Enemy base + the first slime (waves teach the combat verbs the
+   boss later tests; wizard conjuring them is the candidate spawn fiction).
+2. Advika picks the teleport-blink variant (A smear / B / C readable blur)
+   in the review window — unblocks the boss's reposition move.
+3. Realm 1 leftovers (standing reminder): jade motivation, real hub art,
+   sound, shorter prologue, custom text-box anim.
+
+---
+
 ## 2026-07-08 — The middle door opens, the climb never ends
 
 **Shipped** (PRs #140, #142, #144, #146, #147, #149, #150 — all deploy green)

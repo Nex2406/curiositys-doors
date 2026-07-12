@@ -1,6 +1,6 @@
 # Realm 2 — The Rising Chunk *(working name)*
 
-> Living spec. Last updated: 2026-07-07. Vertical arena setpiece — the storm
+> Living spec. Last updated: 2026-07-12. Vertical arena setpiece — the storm
 > tears the ground loose and Curiosity rides it into the sky. Full pitch:
 > [SKETCHBOOK 2026-07-04](../SKETCHBOOK.md).
 
@@ -77,6 +77,16 @@ lightning), teleport-blinks reuse jump/dash, hurt = flash/knockback, death =
 dissolve. First consumer of the reusable `Boss` base (milestone M2).
 Small enemies come FIRST (R2-M3/M4) — the waves teach the combat verbs the
 boss then tests. *(Advika, 2026-07-08)*
+
+**Groundwork SHIPPED 2026-07-12 (#151):** his look is settled — cloak
+purple (measured shift onto the realm violet), eyes RED (Advika: the player
+reads evil at a glance) — and he already HAUNTS the ascent: ~2.5s after the
+island is airborne he flickers into existence ON it, standing at the far
+end, and watches Curiosity as it climbs (Advika's beat). Presence only — no combat, no health,
+no bolts yet. Assets: `assets/enemies/wizard/` (96 frames, repeatable shift
+via `tools/tint_wizard_pack.gd`); actor: `scenes/Wizard.tscn`; review
+window: `tools/WizardAnimReview.tscn`. Open: which blink variant (A full
+smear / B / C readable blur) becomes his teleport.
 
 ### R2-M8 — Sky door finale
 Defeating the wizard calms the storm; the door in the sky reveals itself.
