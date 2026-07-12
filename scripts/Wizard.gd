@@ -52,7 +52,8 @@ func follow(target: Node2D, offset: Vector2) -> void:
 	_follow_offset = offset
 
 
-# Keep facing a node (Curiosity). Pack art faces left; flip when she's right.
+# Keep facing a node (Curiosity). Pack art faces RIGHT natively (confirmed
+# live 2026-07-12 — he spawned looking away from her); flip when she's left.
 func watch(target: Node2D) -> void:
 	_watch = target
 
@@ -79,7 +80,7 @@ func _physics_process(delta: float) -> void:
 		var drift := sin(_ht * TAU / (hover_period * 2.7) + 0.7) * hover_amplitude * 0.6
 		global_position = _follow.global_position + _follow_offset + Vector2(drift, bob)
 	if _watch != null and is_instance_valid(_watch):
-		_visual.flip_h = _watch.global_position.x > global_position.x
+		_visual.flip_h = _watch.global_position.x < global_position.x
 
 	if _mat_t >= 0.0:
 		_mat_t += delta
