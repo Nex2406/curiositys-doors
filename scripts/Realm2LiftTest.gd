@@ -94,6 +94,7 @@ func _ready() -> void:
 	_build_ground()
 	_build_ascent_dressing()
 	_build_forest_dressing()
+	_build_fireflies()
 	_build_chunk()
 	_build_player()
 	_build_camera()
@@ -340,6 +341,36 @@ func _build_ascent_dressing() -> void:
 # hangers tucked under the fringe, a mossy rock or animated plant at the
 # base. Rooted = STATIC: earth doesn't bob; only the corridor floats.
 # Fixed seed — the forest is level design, not weather.
+# Fireflies EVERYWHERE (Advika, 2026-07-12): the background's own emitter
+# only covers x -900..900, so everything beyond the island sat dark. Gold
+# motes now drift across the whole forest span — and a column rides above
+# the island so liftoff doesn't snuff them all at once.
+func _build_fireflies() -> void:
+	var spans := [
+		[Vector2(-750.0, FLOOR_Y - 180.0), Vector2(1300.0, 400.0), 14],
+		[Vector2(1500.0, FLOOR_Y - 180.0), Vector2(1300.0, 400.0), 14],
+		[Vector2(3050.0, FLOOR_Y - 180.0), Vector2(1300.0, 400.0), 14],
+		[Vector2(CHUNK_X, -900.0), Vector2(900.0, 700.0), 10],  # the early climb
+	]
+	for s in spans:
+		var ff := CPUParticles2D.new()
+		ff.texture = load(BASE + "firefly.png")
+		ff.amount = s[2]
+		ff.lifetime = 9.0
+		ff.preprocess = 9.0
+		ff.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+		ff.emission_rect_extents = s[1]
+		ff.gravity = Vector2.ZERO
+		ff.initial_velocity_min = 6.0
+		ff.initial_velocity_max = 18.0
+		ff.spread = 180.0
+		ff.scale_amount_min = 0.35
+		ff.scale_amount_max = 0.8
+		ff.position = s[0]
+		ff.z_index = 40
+		add_child(ff)
+
+
 func _build_forest_dressing() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20260712
