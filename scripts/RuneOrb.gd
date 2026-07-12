@@ -107,6 +107,15 @@ func set_direction(dir: int) -> void:
 	_apply_facing()
 
 
+# Level tuning: replace the deck-time window. Re-rolls the remaining time —
+# the _ready() roll used the scene defaults, before the level's dials landed.
+func set_leave_window(min_s: float, max_s: float) -> void:
+	leave_after_min = min_s
+	leave_after_max = max_s
+	if not _leaving:
+		_leave_t = randf_range(min_s, max_s)
+
+
 # Reversed by a sibling orb bumping into us (see the slide-collision scan).
 func bump_reverse() -> void:
 	if _bump_cd > 0.0 or _leaving:
@@ -118,6 +127,12 @@ func bump_reverse() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# Below the kill plane = gone, floor or no floor. (The plane can be
+	# dynamic — the lift level rides it 900px under the climbing island — so
+	# an orb that landed on old ground below must still die when it sweeps by.)
+	if global_position.y > kill_y:
+		queue_free()
+		return
 	_push_cd = maxf(0.0, _push_cd - delta)
 	_bump_cd = maxf(0.0, _bump_cd - delta)
 
@@ -135,9 +150,11 @@ func _physics_process(delta: float) -> void:
 				_arm_reverse_timer()
 	else:
 		# Off the edge: gravity owns it now. Keep rolling in the air (it reads
-		# as tumbling), despawn once clearly gone.
+		# as tumbling), despawn once clearly gone. (An orb that lands on some
+		# OTHER floor far below resets this clock — the kill plane above is
+		# what guarantees it still dies; see the lift level's dynamic plane.)
 		_air_t += delta
-		if _air_t >= airborne_lifetime or global_position.y > kill_y:
+		if _air_t >= airborne_lifetime:
 			queue_free()
 			return
 

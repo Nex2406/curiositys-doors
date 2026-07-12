@@ -45,14 +45,26 @@ const WIZARD_OFFSET := Vector2(255.0, -194.0)  # open moss, clear of the right h
 const WIZARD_SCALE := 0.55                     # Curiosity is ~110px here; he reads taller
 const WIZARD_TRIAL_HALF_X := 470.0             # teleport span: inside the hedges' dark masses
 
-# The trial's difficulty (Advika: hard — movement is the only counterplay).
-# Orb scale tracks the smaller hero here (0.24 vs the test's 0.28).
+# The trial's difficulty (Advika, second pass: "this level isnt hard"):
+# orbs are fast, twitchy, long-lived and shove HARD; the deck is rarely
+# quiet. Orb scale tracks the smaller hero here (0.24 vs the test's 0.28).
 const ORB_SCALE := 0.36
-const ORB_ROLL_SPEED := 195.0
-const ORB_REVERSE_MIN := 1.0
-const ORB_REVERSE_MAX := 2.4
-const ORB_PUSH_FORCE := 460.0
+const ORB_ROLL_SPEED := 240.0
+const ORB_REVERSE_MIN := 0.8
+const ORB_REVERSE_MAX := 1.8
+const ORB_PUSH_FORCE := 540.0
+const ORB_LEAVE_MIN := 8.0    # they overstay — the deck stays saturated
+const ORB_LEAVE_MAX := 14.0
 const JUMP_BOOST := 1.15   # this level jumps slightly higher — orbs must be clearable
+
+# The wizard fights dirtier here: quicker cast cadence, wider escape sense,
+# a slimmer grace beat — and the storm itself sharpens when he takes the deck.
+const WIZ_IDLE_MIN := 1.5
+const WIZ_IDLE_MAX := 2.5
+const WIZ_ESCAPE_RANGE := 340.0
+const WIZ_ESCAPE_GRACE := 0.6
+const STORM_SWAY_AMP := 40.0     # island sway once he's aboard (calm was 22)
+const STORM_SWAY_PERIOD := 2.7   # (calm was 3.4)
 
 enum Phase { INTRO, BUILD, RIDE, DONE }
 
@@ -602,6 +614,19 @@ func _self_screenshot(path: String) -> void:
 		_bg.set_storm(0.75)
 		_cam.position = Vector2(CHUNK_X, _chunk.global_position.y - 120.0)
 		_spawn_wizard(true)  # mid-ascent = he's long since appeared
+	# R2_TRIAL_LOG: don't screenshot — observe the trial economy for 45s
+	# (casts must keep coming as orbs vacate; regression guard for the
+	# "wizard stops conjuring" wedge) and quit.
+	if OS.get_environment("R2_TRIAL_LOG") != "":
+		var casts: Array[int] = [0]
+		_wizard.cast_committed.connect(func(_p: Vector2) -> void: casts[0] += 1)
+		for i in range(15):
+			await get_tree().create_timer(3.0).timeout
+			print("TRIALLOG t=%d casts=%d hazards=%d island_y=%.0f" %
+					[(i + 1) * 3, casts[0], get_tree().get_nodes_in_group("hazards").size(),
+					_chunk.global_position.y])
+		get_tree().quit()
+		return
 	# fall mode needs the ride guard (1s) + death beat (0.45s) to play out first
 	var delay := 2.5 if OS.get_environment("R2_SHOT_FALL") != "" else 1.0
 	await get_tree().create_timer(delay).timeout
@@ -661,6 +686,14 @@ func _spawn_wizard(instant := false) -> void:
 	_chunk.add_child(_wizard)
 	_wizard.watch(_curi)
 	_wizard.configure_trial(WIZARD_TRIAL_HALF_X, WIZARD_OFFSET.y)
+	# hard-mode temperament (see the difficulty consts)
+	_wizard.trial_idle_min = WIZ_IDLE_MIN
+	_wizard.trial_idle_max = WIZ_IDLE_MAX
+	_wizard.escape_range = WIZ_ESCAPE_RANGE
+	_wizard.escape_grace = WIZ_ESCAPE_GRACE
+	# the storm answers its author: the island pitches harder under everyone
+	_chunk.sway_amplitude = STORM_SWAY_AMP
+	_chunk.sway_period = STORM_SWAY_PERIOD
 	# His cast births an orb in front of him, on the island's deck. Fallen
 	# orbs despawn by airborne_lifetime — the island's height is ever-changing.
 	_wizard.cast_committed.connect(func(pos: Vector2) -> void:
@@ -725,13 +758,21 @@ func _physics_process(delta: float) -> void:
 				_airborne_t += delta
 				if _airborne_t >= WIZARD_APPEAR_DELAY:
 					_spawn_wizard()
-			# the trial's difficulty dials ride on every live orb
+			# the trial's difficulty dials ride on every live orb — and so does
+			# the KILL PLANE: a fallen orb must die once it's clearly gone, or
+			# it lands on the old intro ground far below and squats in the
+			# "hazards" group forever, wedging the wizard's max-2 cap (the
+			# "he stops conjuring" bug). 900px under the deck is off-frame.
 			for orb in get_tree().get_nodes_in_group("hazards"):
 				if orb is RuneOrb:
-					orb.roll_speed = ORB_ROLL_SPEED
-					orb.reverse_time_min = ORB_REVERSE_MIN
-					orb.reverse_time_max = ORB_REVERSE_MAX
-					orb.push_force = ORB_PUSH_FORCE
+					if not orb.has_meta("tuned"):
+						orb.set_meta("tuned", true)
+						orb.roll_speed = ORB_ROLL_SPEED
+						orb.reverse_time_min = ORB_REVERSE_MIN
+						orb.reverse_time_max = ORB_REVERSE_MAX
+						orb.push_force = ORB_PUSH_FORCE
+						orb.set_leave_window(ORB_LEAVE_MIN, ORB_LEAVE_MAX)
+					orb.kill_y = _chunk.global_position.y + 900.0
 			# fell off mid-ascent: the fall plays out PAST the bottom of the frame
 			# (view half-height is 1080/(2*zoom) ≈ 635px), THEN the eye closes and
 			# the respawn blinks in. Frame-relative so it can never strand the hero
