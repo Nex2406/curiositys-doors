@@ -12,6 +12,13 @@ class_name RuneOrb
 # 374x282, radius ~109) with the golden sparkle trail baked in streaking away —
 # so the node origin IS the ball center and no offset juggling is needed when
 # flipping. Frames 4..12 are the seamless rolling loop.
+#
+# INVULNERABLE (Advika, 2026-07-12): the player cannot destroy, damage, or stop
+# an orb — no take_damage() exists here, the node is NOT in the "enemies" group
+# her swing filters on, and it lives on its own physics layer 16 (mask 17 =
+# terrain + sibling orbs) that her attack hitbox (mask 4) never scans. The only
+# ways an orb leaves play: it rolls off the edge and falls, or the level ends.
+# Counterplay is movement — jump over it, slip past it, reposition.
 
 const FRAME_DIR := "res://assets/hazards/runeorb/"
 const ROLL_FIRST := 4
@@ -63,6 +70,11 @@ func _ready() -> void:
 
 	_push_zone = Area2D.new()
 	_push_zone.name = "PushZone"
+	# Sense-only: reports nothing (layer 0), senses layer 1 bodies — the shove
+	# path filters those down to the "player" group. This is the ONLY way an
+	# orb and Curiosity interact.
+	_push_zone.collision_layer = 0
+	_push_zone.collision_mask = 1
 	var zcol := CollisionShape2D.new()
 	var zone := CircleShape2D.new()
 	zone.radius = PUSH_ZONE_RADIUS
