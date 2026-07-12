@@ -37,6 +37,7 @@ const CAST_COMMIT_FRAME := 4     # gesture peak: the orb is committed here
 const FEET_Y := 134.0            # feet row below the 512-frame center (pre-scale)
 const CONJURE_AHEAD := 160.0     # the orb is born slightly IN FRONT of him (pre-scale px)
 const TRIAL_EDGE_MARGIN := 110.0 # never lands closer than this to the plank lip
+const TELEPORT_MIN_HOP := 240.0  # each landing is a genuinely NEW place, not a shuffle
 
 # Spawn flicker: the apparition blinks in — same visual language as the
 # Golem's hit flicker / Curiosity's respawn blink.
@@ -49,22 +50,24 @@ const FLICKER_INTERVAL := 0.045
 	"My orbs are ever so fond of pushing things. Do try to keep your footing.",
 	"Dodge well, little light. They cannot be broken — and neither, I suspect, can you.",
 ]
-@export var trial_idle_min := 0.8   # beat between teleports
-@export var trial_idle_max := 1.6
+@export var trial_idle_min := 2.0   # beat between teleports (calmer — he lingers, Advika)
+@export var trial_idle_max := 3.5
 @export var max_orbs := 2           # he conjures at most this many onto the deck
-@export var strikes_to_fell := 5    # blows it takes to bring him down (Advika, 2026-07-12)
+@export var strikes_to_fell := 3    # blows it takes to bring him down (Advika, 2026-07-12)
 @export var escape_range := 280.0   # global px: Curiosity this close while he idles -> he blinks away
+@export var escape_grace := 0.9     # seconds after landing before the escape reflex arms —
+                                    # he stands his ground a beat even with her bearing down
 @export var hover_amplitude := 14.0 # apparition mode: px of levitation bob
 @export var hover_period := 2.6
 
 enum Trial { OFF, IDLE, VANISH, APPEAR, CAST }
 
 # The trial's win rule (Advika, 2026-07-12): reach him and strike (her normal
-# J/Z swing) — FIVE blows fell him, and every non-fatal hit sends him
+# J/Z swing) — THREE blows fell him, and every non-fatal hit sends him
 # panic-teleporting away, so each strike must be earned fresh. Reaching him
-# is the hard part: while he idles he escape-teleports the moment she closes
-# in, so the only real kill windows are the appear + cast beats, when the
-# conjuring commits him. A floating EnemyHealthBar tracks the strikes.
+# is the hard part: while he idles he escape-teleports when she closes in —
+# but the reflex arms only after a grace beat each landing, so the windows
+# are appear + cast + that beat. A floating EnemyHealthBar tracks strikes.
 # The hurtbox is what her attack scans: layer 4 ("enemies" group + take_damage,
 # exactly like the Golem), forwarding the blow to the wizard.
 class Hurtbox extends StaticBody2D:
@@ -84,6 +87,7 @@ var _mat_dur := 0.9
 
 var _trial := Trial.OFF
 var _idle_timer := 0.0
+var _escape_lock := 0.0   # >0 → the escape reflex hasn't armed yet this landing
 var _cast_emitted := false
 var _half_extent_x := 0.0       # trial: plank half-width (local space)
 var _surface_local_y := 0.0     # trial: his standing y on the plank (local)
@@ -218,6 +222,7 @@ func stop_trial() -> void:
 func _enter_trial_idle() -> void:
 	_trial = Trial.IDLE
 	_idle_timer = randf_range(trial_idle_min, trial_idle_max)
+	_escape_lock = escape_grace
 	_visual.play(&"idle")
 
 
@@ -231,9 +236,15 @@ func _begin_vanish() -> void:
 func _begin_appear() -> void:
 	_trial = Trial.APPEAR
 	# New spot in the PLANK's local space — the plank has moved; so has this.
-	position = Vector2(
-			randf_range(-_half_extent_x + TRIAL_EDGE_MARGIN, _half_extent_x - TRIAL_EDGE_MARGIN),
-			_surface_local_y)
+	# Re-roll until it's a real hop away from where he vanished, so landings
+	# scatter across the whole deck instead of shuffling in place.
+	var old_x := position.x
+	var new_x := old_x
+	for _i in range(8):
+		new_x = randf_range(-_half_extent_x + TRIAL_EDGE_MARGIN, _half_extent_x - TRIAL_EDGE_MARGIN)
+		if absf(new_x - old_x) >= TELEPORT_MIN_HOP:
+			break
+	position = Vector2(new_x, _surface_local_y)
 	_face_watch_now()
 	_hurt_shape.set_deferred("disabled", false)  # materializing = catchable
 	_visual.play_backwards(&"blink")
@@ -342,8 +353,11 @@ func _physics_process(delta: float) -> void:
 
 	if _trial == Trial.IDLE:
 		_idle_timer -= delta
-		# She's closing in — he will not be reached while he has the initiative.
-		var threatened: bool = _watch != null and is_instance_valid(_watch) \
+		_escape_lock = maxf(0.0, _escape_lock - delta)
+		# She's closing in — he blinks away, but only once the reflex has
+		# armed: the grace beat after each landing is her honest window.
+		var threatened: bool = _escape_lock <= 0.0 \
+				and _watch != null and is_instance_valid(_watch) \
 				and global_position.distance_to(_watch.global_position) < escape_range
 		if _idle_timer <= 0.0 or threatened:
 			_begin_vanish()

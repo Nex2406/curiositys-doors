@@ -112,7 +112,7 @@ func _ready() -> void:
 	var label := Label.new()
 	label.text = "WIZARD TRIAL — A/D or arrows move, SPACE jump (boosted), J/Z strike.\n" \
 		+ "T begins it: HE conjures the orbs (max 2) wherever he lands; they're INVULNERABLE — dodge, don't fight.\n" \
-		+ "He teleports when you close in. Catch him mid-appear or mid-cast — FIVE blows fell him, he flees after each.   R restart   ESC quit"
+		+ "He teleports when you close in (a breath of grace after each landing). THREE blows fell him, he flees after each.   R restart   ESC quit"
 	label.position = Vector2(-620, PLANK_BASE.y - 620.0)
 	label.add_theme_color_override("font_color", Color(0.85, 0.82, 0.92))
 	add_child(label)
@@ -125,7 +125,7 @@ func _ready() -> void:
 	if OS.get_environment("ORB_TRIAL") != "":
 		_wizard.start_trial()
 	if OS.get_environment("ORB_KILL") != "":
-		for i in range(5):
+		for i in range(3):
 			get_tree().create_timer(3.5 + i * 0.5).timeout.connect(func() -> void:
 				if _wizard != null and is_instance_valid(_wizard):
 					_wizard._on_struck())
