@@ -363,6 +363,14 @@ func _build_forest_dressing() -> void:
 	for n in ["boulder_0", "boulder_1", "boulder_2"]:
 		boulders.append(load(BASE + n + ".png"))
 
+	# GRAND FEATURES (Advika, 2026-07-12: more jazz beyond the island itself):
+	# landmark growths at fixed posts — twin trunks carrying a grand moss
+	# ledge, a dark cascade spilling off its lip, hangers and a perched rock.
+	# Rooted like everything else; the island's clearing stays untouched.
+	for gx in [-1050.0, -80.0, 2550.0, 3250.0]:
+		if absf(gx - CHUNK_X) > 750.0:
+			_spawn_forest_grand(rng, gx, vines, ferns, beards, rocks)
+
 	# Edge to edge of everything the camera can ever see (walls sit at -750 /
 	# 2250 but the view reaches ~1130 past the hero) — the forest doesn't end
 	# where the walkable map does. (Advika: the right side was hella plain.)
@@ -478,6 +486,31 @@ func _spawn_forest_tree(rng: RandomNumberGenerator, x: float,
 		canopy.modulate = Color(b * 1.04, b, b * 1.24)
 		canopy.set_meta("dbg", "forest_canopy")
 		grp.add_child(canopy)
+		# the canopy is a place, not a lid: a mossy rock perched on the crown
+		# and/or an animated plant breathing up there (corridor grammar)
+		if rng.randf() < 0.4:
+			var prt: Texture2D = rocks[rng.randi() % rocks.size()]
+			var prsc := rng.randf_range(0.16, 0.26) * psc / 0.4
+			var prk := Sprite2D.new()
+			prk.texture = prt
+			prk.scale = Vector2(prsc, prsc)
+			prk.flip_h = rng.randf() < 0.5
+			prk.position = canopy.position + Vector2(
+					rng.randf_range(-pt.get_width() * psc * 0.25, pt.get_width() * psc * 0.25),
+					-ph * 0.30 - prt.get_height() * prsc * 0.35)
+			prk.modulate = Color(b, b * 0.95, b * 1.18)
+			prk.set_meta("dbg", "forest_perch")
+			grp.add_child(prk)
+		if rng.randf() < 0.45:
+			var cpd: String = ["flower", "plant1", "plant_wind"][rng.randi() % 3]
+			var cplant := _dress_plant(cpd, rng.randf_range(7.0, 10.0),
+					rng.randf_range(0.16, 0.24) * psc / 0.4, rng)
+			cplant.position = canopy.position + Vector2(
+					rng.randf_range(-pt.get_width() * psc * 0.3, pt.get_width() * psc * 0.3),
+					-ph * 0.32)
+			cplant.modulate = Color(b * 1.05, b, b * 1.25)
+			cplant.set_meta("dbg", "forest_canopy_plant")
+			grp.add_child(cplant)
 		# hangers under the canopy fringe, tops tucked in, tips storm-swaying.
 		# NO TWINS (Advika, 2026-07-12, circled): one assembly never hangs the
 		# same texture twice — picks come from the pool without replacement —
@@ -534,6 +567,110 @@ func _spawn_forest_tree(rng: RandomNumberGenerator, x: float,
 		plant.modulate = Color(b * 1.05, b, b * 1.25)
 		plant.set_meta("dbg", "forest_plant")
 		grp.add_child(plant)
+
+
+# A grand landmark: TWIN trunks (distinct textures) carrying a grand moss
+# ledge across their crowns, a dark cascade spilling off the lip (top tucked
+# under the fringe — it falls FROM somewhere), storm-sway hangers, a rock
+# perched on the ledge. The forest's occasional exclamation mark.
+func _spawn_forest_grand(rng: RandomNumberGenerator, x: float,
+		vines: Array[Texture2D], ferns: Array[Texture2D],
+		beards: Array[Texture2D], rocks: Array[Texture2D]) -> void:
+	var b := rng.randf_range(0.40, 0.55)  # landmarks sit a touch nearer/brighter
+	var grp := Node2D.new()
+	grp.position = Vector2(x, FLOOR_Y + 18.0)
+	add_child(grp)
+
+	# twin trunks, distinct pieces, leaning slightly apart
+	var vi := rng.randi() % vines.size()
+	var trunk_h := 0.0
+	for t in 2:
+		var vt: Texture2D = vines[(vi + 1 + t) % vines.size()]
+		var vsc := rng.randf_range(0.50, 0.62)
+		var vh := vt.get_height() * vsc
+		if vh > 560.0:
+			vsc *= 560.0 / vh
+			vh = 560.0
+		trunk_h = maxf(trunk_h, vh)
+		var trunk := Sprite2D.new()
+		trunk.texture = vt
+		trunk.scale = Vector2(vsc, vsc)
+		trunk.flip_h = t == 1
+		trunk.position = Vector2(-70.0 + 140.0 * t, -vh * 0.5 + 26.0)
+		var tb := b * rng.randf_range(0.85, 1.0)
+		trunk.modulate = Color(tb, tb * 0.95, tb * 1.22)
+		trunk.set_meta("dbg", "grand_trunk")
+		grp.add_child(trunk)
+
+	# the grand ledge laid across both crowns, fringe sunk into them
+	var lt: Texture2D = load(BASE + ("platform_grand.png" if rng.randf() < 0.6 else "platform_tall.png"))
+	var lsc := rng.randf_range(0.40, 0.50)
+	var lh := lt.get_height() * lsc
+	var ledge := Sprite2D.new()
+	ledge.texture = lt
+	ledge.scale = Vector2(lsc, lsc)
+	ledge.flip_h = rng.randf() < 0.5
+	ledge.position = Vector2(0.0, -trunk_h + 26.0 + lh * 0.28)
+	ledge.modulate = Color(b * 1.04, b, b * 1.24)
+	ledge.set_meta("dbg", "grand_ledge")
+	grp.add_child(ledge)
+
+	# the cascade: dark moss-fall spilling off the ledge lip, top buried in
+	# the fringe so it falls FROM the growth, tail dissolving toward the moss
+	var ct: Texture2D = load(BASE + ("cascade_dark.png" if rng.randf() < 0.7 else "cascade.png"))
+	var csc := rng.randf_range(0.34, 0.44)
+	var ch := ct.get_height() * csc
+	var casc := Sprite2D.new()
+	casc.texture = ct
+	casc.scale = Vector2(csc, csc)
+	casc.flip_h = rng.randf() < 0.5
+	casc.position = Vector2(rng.randf_range(-lt.get_width() * lsc * 0.25, lt.get_width() * lsc * 0.25),
+			ledge.position.y + lh * 0.20 + ch * 0.42)
+	var cb := b * rng.randf_range(0.7, 0.85)
+	casc.modulate = Color(cb, cb * 0.95, cb * 1.25)
+	casc.set_meta("dbg", "grand_cascade")
+	casc.show_behind_parent = false
+	grp.add_child(casc)
+
+	# hangers off the ledge — no twins, halves split
+	var pool: Array[Texture2D] = []
+	pool.append_array(ferns)
+	pool.append_array(beards)
+	for i in 2:
+		var pick := rng.randi() % pool.size()
+		var ht: Texture2D = pool[pick]
+		pool.remove_at(pick)
+		var hsc := rng.randf_range(0.36, 0.52)
+		var hg := Sprite2D.new()
+		hg.texture = ht
+		hg.centered = false
+		hg.offset = Vector2(-ht.get_width() * 0.5, -24.0)
+		hg.scale = Vector2(hsc, hsc)
+		hg.flip_h = rng.randf() < 0.5
+		var span := lt.get_width() * lsc * 0.34
+		var hx := rng.randf_range(-span, -span * 0.25) if i == 0 \
+				else rng.randf_range(span * 0.25, span)
+		hg.position = ledge.position + Vector2(hx, lh * 0.22)
+		var hbr := b * rng.randf_range(0.8, 1.0)
+		hg.modulate = Color(hbr, hbr * 0.95, hbr * 1.22)
+		hg.material = _bg._sway_material(rng.randf_range(7.0, 15.0),
+				rng.randf_range(0.7, 1.3), rng.randf() * TAU)
+		hg.set_meta("dbg", "grand_hang")
+		grp.add_child(hg)
+
+	# a rock perched on the ledge crown
+	var prt: Texture2D = rocks[rng.randi() % rocks.size()]
+	var prsc := rng.randf_range(0.20, 0.30)
+	var prk := Sprite2D.new()
+	prk.texture = prt
+	prk.scale = Vector2(prsc, prsc)
+	prk.flip_h = rng.randf() < 0.5
+	prk.position = ledge.position + Vector2(
+			rng.randf_range(-lt.get_width() * lsc * 0.2, lt.get_width() * lsc * 0.2),
+			-lh * 0.30 - prt.get_height() * prsc * 0.35)
+	prk.modulate = Color(b, b * 0.95, b * 1.18)
+	prk.set_meta("dbg", "grand_perch")
+	grp.add_child(prk)
 
 
 # A boulder cluster: two-three mossy masses half-buried in the moss line,
