@@ -33,7 +33,7 @@ const WAKE_TIME := 7.0  # seconds to blossom to full color during the rise
 # long (RISING state, not the pre-tear shake), the wizard flickers into
 # existence ON the island — planted at its far end, facing Curiosity across
 # the moss (Advika, 2026-07-12: on the platform, not hovering beside it).
-const WIZARD_APPEAR_DELAY := 2.5
+const WIZARD_APPEAR_DELAY := 5.0  # was 2.5 — Advika 2026-07-12: let the ride breathe first
 # Feet on the moss top: collider top is -120 rel chunk; the figure's feet sit
 # ~134px below the 512-frame center, so origin rides 134*scale above the top.
 const WIZARD_OFFSET := Vector2(255.0, -194.0)  # open moss, clear of the right hedge's dark mass
