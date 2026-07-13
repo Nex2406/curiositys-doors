@@ -8,15 +8,20 @@ extends SceneTree
 #
 # Usage:
 #   godot --headless --script tools/tint_runeorb_pack.gd -- \
-#       <src_dir> <out_dir> <ref_violet.png> [sat_floor] [val_scale]
+#       <src_dir> <out_dir> <ref_violet.png> [sat_mult] [val_scale] [gold_sat] [gold_val]
 #
 # <src_dir> holds runeorb1..12.png + runeorbspawn1..12.png (Downloads).
 # Overwrites <out_dir> in place with the shifted frames, same names.
-# sat_floor (default 0.7): lowest allowed sat multiplier toward the ref's.
-# val_scale (default 1.0): darkens the purple band (the realm is DIM).
+# sat_mult: absolute sat multiplier for the crystal band (omit = measured
+#           ratio toward the ref, floored at 0.7). val_scale darkens it.
+# gold_sat/gold_val (default 1.0/1.0): mute the gold bands — 0.55/0.72 is
+#           the BRONZE Advika picked from the 2026-07-13 variant sheets,
+#           paired with crystal 0.50/0.62 ("deep dusk").
 
 const PURPLE_LO := 0.60   # violet through magenta — the crystal + its smoke
 const PURPLE_HI := 0.97
+const GOLD_LO := 0.02     # the band/trail warm range (red trail specks excluded)
+const GOLD_HI := 0.22
 
 
 func _init() -> void:
@@ -41,11 +46,13 @@ func _init() -> void:
 	var delta := wrapf(target.x - orb.x, -0.5, 0.5)
 	# Ease the saturation toward the realm's muted read; sat_floor bounds how
 	# far — the orb is a hazard, it must not dissolve into the moss entirely.
-	var sat_floor := float(args[3]) if args.size() > 3 else 0.7
+	var sat_scale := float(args[3]) if args.size() > 3 \
+			else clampf(target.y / maxf(orb.y, 0.01), 0.7, 1.0)
 	var val_scale := float(args[4]) if args.size() > 4 else 1.0
-	var sat_scale := clampf(target.y / maxf(orb.y, 0.01), sat_floor, 1.0)
-	print("[orbtint] orb_hue=%.3f (%.0f deg)  target=%.3f (%.0f deg)  delta=%.0f deg  sat=%.2f  val=%.2f" %
-			[orb.x, orb.x * 360.0, target.x, target.x * 360.0, delta * 360.0, sat_scale, val_scale])
+	var gold_sat := float(args[5]) if args.size() > 5 else 1.0
+	var gold_val := float(args[6]) if args.size() > 6 else 1.0
+	print("[orbtint] orb_hue=%.0fdeg -> %.0fdeg  crystal sat=%.2f val=%.2f  gold sat=%.2f val=%.2f" %
+			[orb.x * 360.0, target.x * 360.0, sat_scale, val_scale, gold_sat, gold_val])
 
 	DirAccess.make_dir_recursive_absolute(args[1])
 	var n := 0
@@ -59,6 +66,8 @@ func _init() -> void:
 				return
 			img.convert(Image.FORMAT_RGBA8)
 			_shift_band(img, PURPLE_LO, PURPLE_HI, delta, sat_scale, val_scale)
+			if gold_sat != 1.0 or gold_val != 1.0:
+				_shift_band(img, GOLD_LO, GOLD_HI, 0.0, gold_sat, gold_val)
 			img.save_png(args[1] + "/" + name)
 			n += 1
 	print("[orbtint] %d frames -> %s  DONE" % [n, args[1]])
