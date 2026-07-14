@@ -1,5 +1,25 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-07-12_
+_Last updated: 2026-07-14_
+
+## Realm 3 — fungal cavern shell, rebuilt to Advika's reference images
+`scenes/realms/Realm3FungalTest.tscn` (+`scripts/Realm3FungalTest.gd`) — an
+enclosed walkable cavern built to the THREE reference images Advika made
+from the fungal pack itself (`assets/_reference/realm3_target_*_2026-07-14.png`).
+The pack keeps its OWN colors (hard rule — no purple grade). Construction
+grammar, per the refs: dark navy fill bodies rimmed with the pack's pebble
+frames/strips; dense frond fringe on every surface (up from floors and
+platform tops, hanging beneath ceilings and floating platforms); grouped
+prop assemblies (pots + boulders + gold spore stalks, white glow-mushrooms
+on the platform stack, blue flat-cap family on a stone shelf); luminous
+mist backdrop with pale spire/mushroom-ghost silhouettes on two hand-driven
+parallax bands; darkest fore silhouettes cut by the frame bottom; corner
+vignette. Three zones: A cavern mouth (ref 3, high pebbled roof +
+stalactites) → B pot-strewn floor under a hanging rimmed chunk (ref 1) →
+C overgrown platform stack under a fully fringed lower ceiling (ref 2).
+Platform ladder is jump-feasible (≤115px steps); pebbled end walls seal
+both ends. ≤12 PointLight2Ds (amber stalks warm, white glowers cool).
+Harness: R3_SHOT / R3_SHOT_X. R restarts, ESC → Hub. NOT yet wired to
+Door 3 (still stub); environment only — no enemies, no puzzle.
 
 ## Realm 2 — R2-M1 quake + liftoff SHIPPED (test scene)
 `scenes/realms/Realm2LiftTest.tscn` (+`scripts/Realm2LiftTest.gd`,
@@ -59,7 +79,8 @@ Door 2 (middle) → Realm 2 liftoff setpiece (`Realm2LiftTest.tscn`): no
 timer on the arrival — the player stays above the canopy until they leave
 via ESC (auto-return removed 2026-07-08, it felt like being kicked out).
 Respawn lands under Door2 via `Transition.last_door_id`.
-Door 3: stub.
+Door 3: stub — `Realm3FungalTest.tscn` exists (see Realm 3 above) but is
+not wired to the door yet.
 
 ## Hub — door-selection scene
 Reframed to a full-bleed painterly composition (target ref:

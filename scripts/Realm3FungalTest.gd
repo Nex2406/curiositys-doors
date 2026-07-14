@@ -1,16 +1,20 @@
 extends Node2D
-## REALM 3 — FUNGAL ENVIRONMENT SHELL (Advika's spec, 2026-07-14).
-## Environment ONLY: no enemies, no puzzle logic, no dialogue. A composed
-## test area Curiosity can walk through — spawn ledge, jump-feasible
-## platforms, a rock column, a hollow ring she passes through.
-## Built from the Fungal pack (assets/realms/realm3_fungal/, sliced by
-## tools/prep_fungal_pack.py — sheets downscaled to <=2048 for web).
-## Layers back to front: near-black blue-purple gradient backdrop ->
-## HillsFungal mounds on two parallax bands -> terrain sprites with
-## bitmap-traced CollisionPolygon2Ds -> stalagmite/mushroom/frond dressing
-## (glow mushrooms carry soft teal PointLight2Ds, <=12 total) -> Curiosity.
-## CanvasModulate pulls it all toward the deep blue-purple palette; her
-## lantern stays the one warm thing.
+## REALM 3 — FUNGAL ENVIRONMENT SHELL, rebuilt to Advika's reference images
+## (assets/_reference/realm3_target_*_2026-07-14.png — made from THIS pack).
+## The refs' construction grammar, followed exactly:
+##   - terrain = near-black navy FILL BODIES rimmed with the pack's pebble
+##     frames/strips (fungalground), never bare rock sprites
+##   - every surface wears a dense frond FRINGE (blue coral tufts) — growing
+##     up from floors/platform tops, hanging down from ceilings/undersides
+##   - props live in grouped, grounded assemblies: pots + boulders + gold
+##     spore stalks + curled sprouts (ref 1), white glow-mushrooms on the
+##     platform stack (ref 2), big flat-caps on a stone shelf (ref 3)
+##   - background = LUMINOUS MIST with pale spire/mushroom silhouettes
+##     dissolving into it; foreground = darkest silhouettes; corner vignette
+## THE PACK KEEPS ITS OWN COLORS (Advika, hard rule). No purple grade.
+## Environment ONLY: no enemies, no puzzle. Zones, left to right:
+##   A cavern mouth (ref 3) -> B pot-strewn floor + hanging chunk (ref 1)
+##   -> C overgrown platform stack under a fringed ceiling (ref 2).
 ## Controls: Curiosity's own. R restarts. ESC returns to the Hub.
 ## R3_SHOT env: screenshot at 1s + quit. R3_SHOT_X: park the hero first.
 
@@ -19,17 +23,26 @@ const LIVES_HUD := preload("res://scenes/UI/LivesHUD.tscn")
 const HUB_SCENE := "res://scenes/Hub.tscn"
 const STARTING_LIVES: int = 3
 
-const FLOOR_Y := 420.0          # the base ground line
+const FLOOR_Y := 420.0
 const SPAWN := Vector2(-40.0, FLOOR_Y - 140.0)
-# THE PACK KEEPS ITS OWN COLORS (Advika, hard correction: "not everything
-# has to be purple — use the reference images"). The realm is a LUMINOUS
-# MIST: pale blue-grey fog fills the middle distance, far shapes dissolve
-# into it (atmospheric perspective), near terrain reads dark against it.
-const MIST := Color(0.47, 0.53, 0.62)     # the fog's own pale blue-grey
-const GLOW_WARM := Color(1.0, 0.85, 0.62) # the mushrooms' amber (per the refs)
+const WORLD_L := -1050.0
+const WORLD_R := 4250.0
+
+# sampled off the reference images — the pack's own hues
+const FILL_DARK := Color(0.05, 0.07, 0.10)        # terrain body near-black navy
+const MIST := Color(0.60, 0.67, 0.77)             # the luminous fog band
+const MIST_SIL := Color(0.66, 0.72, 0.81)         # far silhouettes sunk in mist
+const GLOW_WARM := Color(1.0, 0.85, 0.62)         # amber caps / gold stalks
+const GLOW_COOL := Color(0.85, 0.92, 1.0)         # white glower mushrooms
+const FRINGE_LIT := Color(0.96, 0.98, 1.05)       # midground fringe, catching mist
+const FRINGE_NEAR := Color(0.62, 0.66, 0.78)      # foreground fringe, darker
+const FRINGE_HANG := Color(0.55, 0.60, 0.72)      # ceiling fringe, dimmer still
 const MAX_GLOW_LIGHTS := 12
-const MOSS_FOG := "res://assets/realms/realm2_moss/fog.png"   # neutral soft fog blob
+const MOSS_FOG := "res://assets/realms/realm2_moss/fog.png"
 const MOSS_SPORE := "res://assets/realms/realm2_moss/spore.png"
+
+# frond cluster slices used for fringe rows (clusters only — singles read thin)
+const FRINGE_TEX: Array[int] = [2, 3, 4, 10, 11, 16, 3, 10, 11]
 
 var _curi: CharacterBody2D
 var _cam: Camera2D
@@ -40,41 +53,164 @@ var _leaving := false
 var _glow_lights := 0
 var _hills_far: Node2D
 var _hills_mid: Node2D
+var _rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
-	RenderingServer.set_default_clear_color(Color(0.30, 0.35, 0.44))
+	RenderingServer.set_default_clear_color(Color(0.16, 0.19, 0.25))
+	_rng.seed = 20260714
 	_build_backdrop()
-	_build_hills()
+	_build_background()
 	_build_terrain()
+	_build_platforms()
+	_build_ceiling()
 	_build_dressing()
+	_build_foreground()
 	_build_atmosphere()
 	_build_player()
 	_build_camera()
 	_build_ui()
-	# NO purple grade — the pack's own blue-grey carries the realm; only a
-	# whisper of cool dim so the lantern still owns the warmth
+	# no grade — the pack's own blue-grey carries the realm (hard rule)
 	var grade := CanvasModulate.new()
-	grade.color = Color(0.93, 0.95, 1.0)
+	grade.color = Color(0.96, 0.97, 1.0)
 	add_child(grade)
 	if OS.get_environment("R3_SHOT") != "":
 		_self_screenshot(OS.get_environment("R3_SHOT"))
 
 
-# ---------- layers ----------
+# ---------- shared little builders ----------
+
+func _sprite(tex_name: String, pos: Vector2, sc: float, z: int,
+		tint := Color.WHITE, fh := false, fv := false) -> Sprite2D:
+	var s := Sprite2D.new()
+	s.texture = load(BASE + tex_name)
+	s.scale = Vector2(sc, sc)
+	s.position = pos
+	s.z_index = z
+	s.modulate = tint
+	s.flip_h = fh
+	s.flip_v = fv
+	add_child(s)
+	return s
+
+
+## bottom-anchored prop: base sits ON base_y (sunk a touch so nothing floats)
+func _prop(tex_name: String, x: float, base_y: float, sc: float, z: int,
+		tint := Color.WHITE, fh := false) -> Sprite2D:
+	var tex: Texture2D = load(BASE + tex_name)
+	var h := tex.get_height() * sc
+	return _sprite(tex_name, Vector2(x, base_y - h * 0.5 + h * 0.04 + 5.0),
+			sc, z, tint, fh)
+
+
+func _fill_rect(x0: float, x1: float, y0: float, y1: float, z: int,
+		col := FILL_DARK) -> void:
+	var p := Polygon2D.new()
+	p.polygon = PackedVector2Array([Vector2(x0, y0), Vector2(x1, y0),
+			Vector2(x1, y1), Vector2(x0, y1)])
+	p.color = col
+	p.z_index = z
+	add_child(p)
+
+
+func _collider_rect(x0: float, x1: float, y0: float, y1: float) -> void:
+	var body := StaticBody2D.new()
+	var cs := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(x1 - x0, y1 - y0)
+	cs.shape = rect
+	cs.position = Vector2((x0 + x1) * 0.5, (y0 + y1) * 0.5)
+	body.add_child(cs)
+	add_child(body)
+
+
+## pebble strip riding an edge line (the refs' platform/ground rims)
+func _pebble_row(x0: float, x1: float, y: float, sc: float, z: int,
+		tint := Color.WHITE) -> void:
+	var names := ["fungalground22.png", "fungalground26.png"]
+	var x := x0
+	var i := 0
+	while true:
+		var tex: Texture2D = load(BASE + names[i % 2])
+		var w := tex.get_width() * sc
+		if x + w > x1 + w * 0.12:
+			break   # whole tile must fit — no strays past the span
+		_sprite(names[i % 2], Vector2(x + w * 0.5, y), sc, z, tint,
+				_rng.randf() < 0.5)
+		x += w * 0.88
+		i += 1
+
+
+## vertical pebble strip (the refs' wall/side rims), tiled downward
+func _pebble_col(x: float, y0: float, y1: float, sc: float, z: int,
+		tint := Color.WHITE) -> void:
+	var names := ["fungalground20.png", "fungalground21.png"]
+	var y := y0
+	var i := 0
+	while true:
+		var tex: Texture2D = load(BASE + names[i % 2])
+		var h := tex.get_height() * sc
+		if y + h > y1 + h * 0.12:
+			break
+		_sprite(names[i % 2], Vector2(x, y + h * 0.5), sc, z, tint,
+				_rng.randf() < 0.5)
+		y += h * 0.88
+		i += 1
+
+
+## the signature move: a dense frond fringe along an edge.
+## hang=false grows UP from base_y; hang=true drips DOWN from base_y.
+func _fringe(x0: float, x1: float, base_y: float, hang: bool, sc_min: float,
+		sc_max: float, z: int, tint: Color, step_mul := 0.55) -> void:
+	var x := x0
+	while x < x1:
+		var idx: int = FRINGE_TEX[_rng.randi() % FRINGE_TEX.size()]
+		var tex: Texture2D = load(BASE + "fungalfrond%d.png" % idx)
+		var sc := _rng.randf_range(sc_min, sc_max)
+		var h := tex.get_height() * sc
+		var sink := h * 0.14 + 6.0
+		var y := base_y + (h * 0.5 - sink) * (1.0 if hang else -1.0)
+		_sprite("fungalfrond%d.png" % idx, Vector2(x, y), sc, z, tint,
+				_rng.randf() < 0.5, hang)
+		x += tex.get_width() * sc * step_mul
+	# a few curled sprouts poking out of the row
+	var cx := x0 + _rng.randf_range(60.0, 220.0)
+	while cx < x1 - 60.0:
+		var ci := 17 + _rng.randi() % 5
+		var ctex: Texture2D = load(BASE + "fungalfrond%d.png" % ci)
+		var csc := _rng.randf_range(0.16, 0.24)
+		var ch := ctex.get_height() * csc
+		_sprite("fungalfrond%d.png" % ci,
+				Vector2(cx, base_y + (ch * 0.5 - 8.0) * (1.0 if hang else -1.0)),
+				csc, z, tint, _rng.randf() < 0.5, hang)
+		cx += _rng.randf_range(380.0, 720.0)
+
+
+func _glow_light(host: Node2D, col: Color, energy: float, tsc: float) -> void:
+	if _glow_lights >= MAX_GLOW_LIGHTS:
+		return
+	_glow_lights += 1
+	var l := PointLight2D.new()
+	l.texture = _soft_glow_texture()
+	l.color = col
+	l.energy = energy
+	l.texture_scale = tsc
+	host.add_child(l)
+
+
+# ---------- backdrop / background ----------
 
 func _build_backdrop() -> void:
-	# screen-anchored vertical gradient — THE MIST: dark cavern dimness above,
-	# a luminous pale blue-grey band through the middle distance (the refs'
-	# glow), settling into floor shadow below
+	# screen-anchored vertical gradient: cavern dark above, luminous mist
+	# band through the middle, floor shadow below (the refs' light)
 	var cl := CanvasLayer.new()
 	cl.layer = -10
 	add_child(cl)
 	var grad := Gradient.new()
 	grad.colors = PackedColorArray([
-		Color(0.16, 0.19, 0.26), Color(0.40, 0.46, 0.56), Color(0.47, 0.53, 0.62),
-		Color(0.26, 0.30, 0.38)])
-	grad.offsets = PackedFloat32Array([0.0, 0.42, 0.66, 1.0])
+		Color(0.13, 0.16, 0.22), Color(0.40, 0.47, 0.57), MIST,
+		Color(0.33, 0.38, 0.47), Color(0.17, 0.20, 0.27)])
+	grad.offsets = PackedFloat32Array([0.0, 0.40, 0.58, 0.80, 1.0])
 	var gt := GradientTexture2D.new()
 	gt.gradient = grad
 	gt.fill_from = Vector2(0, 0)
@@ -86,209 +222,277 @@ func _build_backdrop() -> void:
 	cl.add_child(tr)
 
 
-func _build_hills() -> void:
-	# HillsFungal mounds as midground silhouettes on two hand-driven parallax
-	# bands (far crawls, mid drifts — Realm2Background's approach)
+func _build_background() -> void:
+	# two hand-driven parallax bands (Realm 2's manners).
+	# FAR: pale spires + glowing mushroom ghosts DISSOLVED into the mist.
+	# MID: deeper silhouettes — fringed mounds, spires, a pot ghost.
 	_hills_far = Node2D.new()
 	_hills_far.z_index = -8
 	add_child(_hills_far)
 	_hills_mid = Node2D.new()
 	_hills_mid.z_index = -6
 	add_child(_hills_mid)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 20260714
-	# ATMOSPHERIC PERSPECTIVE (the refs' whole trick): the FAR band dissolves
-	# INTO the mist — pale, low-contrast, barely there; the MID band is a
-	# deeper blue-grey silhouette. Both keep the pack's own hue.
-	var hx := -900.0
-	while hx < 3600.0:
-		var h := Sprite2D.new()
-		h.texture = load(BASE + "fungalhill%d.png" % (1 + rng.randi() % 5))
-		var hs := rng.randf_range(0.55, 0.85)
-		h.scale = Vector2(hs, hs)
-		h.flip_h = rng.randf() < 0.5
-		h.position = Vector2(hx, FLOOR_Y - 20.0 - h.texture.get_height() * hs * 0.28)
-		h.modulate = Color(0.62, 0.68, 0.78, 0.55)   # far: sunk into the mist
-		_hills_far.add_child(h)
-		hx += rng.randf_range(520.0, 780.0)
-	hx = -700.0
-	while hx < 3600.0:
-		var h := Sprite2D.new()
-		h.texture = load(BASE + "fungalhill%d.png" % (1 + rng.randi() % 5))
-		var hs := rng.randf_range(0.7, 1.0)
-		h.scale = Vector2(hs, hs)
-		h.flip_h = rng.randf() < 0.5
-		h.position = Vector2(hx, FLOOR_Y + 10.0 - h.texture.get_height() * hs * 0.22)
-		h.modulate = Color(0.38, 0.43, 0.53, 0.85)   # mid: deeper silhouette
-		_hills_mid.add_child(h)
-		hx += rng.randf_range(640.0, 920.0)
+	# soft luminous cores hung in the mist (the refs' bright pockets)
+	for core in [[500.0, -20.0, 15.0], [2000.0, -60.0, 12.0], [3300.0, -30.0, 14.0]]:
+		var g := Sprite2D.new()
+		g.texture = _soft_glow_texture()
+		g.position = Vector2(core[0], core[1])
+		g.scale = Vector2(core[2], core[2] * 0.72)
+		g.modulate = Color(0.78, 0.85, 0.95, 0.38)
+		_hills_far.add_child(g)
+	# far spires (ref 3): stalagmiteb, barely darker than the fog
+	for sp in [[-700.0, 1, 0.55], [-330.0, 3, 0.72], [180.0, 2, 0.5],
+			[820.0, 4, 0.62], [1450.0, 5, 0.5], [2050.0, 1, 0.66],
+			[2650.0, 3, 0.55], [3250.0, 2, 0.68], [3850.0, 4, 0.55]]:
+		var tex: Texture2D = load(BASE + "stalagmiteb%d.png" % sp[1])
+		var sc: float = sp[2]
+		var s := Sprite2D.new()
+		s.texture = tex
+		s.scale = Vector2(sc, sc)
+		s.flip_h = _rng.randf() < 0.5
+		s.position = Vector2(sp[0], FLOOR_Y + 40.0 - tex.get_height() * sc * 0.5)
+		s.modulate = Color(MIST_SIL.r, MIST_SIL.g, MIST_SIL.b, 0.55)
+		_hills_far.add_child(s)
+	# far mushroom ghosts w/ soft glow (ref 2's background glimmers)
+	for mg in [[-80.0, 17, 0.5], [1150.0, 23, 0.42], [2380.0, 24, 0.55],
+			[3600.0, 17, 0.45]]:
+		var tex: Texture2D = load(BASE + "mushroomglow%d.png" % mg[1])
+		var sc: float = mg[2]
+		var g := Sprite2D.new()
+		g.texture = _soft_glow_texture()
+		g.position = Vector2(mg[0], FLOOR_Y - 90.0 - tex.get_height() * sc * 0.5)
+		g.scale = Vector2(2.4, 2.4)
+		g.modulate = Color(0.85, 0.90, 1.0, 0.30)
+		_hills_far.add_child(g)
+		var s := Sprite2D.new()
+		s.texture = tex
+		s.scale = Vector2(sc, sc)
+		s.position = Vector2(mg[0], FLOOR_Y + 8.0 - tex.get_height() * sc * 0.5)
+		s.modulate = Color(0.82, 0.87, 0.96, 0.5)
+		_hills_far.add_child(s)
+	# mid band: fringed mounds + deeper spires, the pack's hue dimmed blue
+	var mid_tint := Color(0.34, 0.40, 0.52, 0.9)
+	var mx := -850.0
+	while mx < WORLD_R:
+		var hi := 1 + _rng.randi() % 5
+		if hi == 2 or hi == 5:
+			hi = 3   # radial bursts read wrong as ground mounds
+		var tex: Texture2D = load(BASE + "fungalhill%d.png" % hi)
+		var sc := _rng.randf_range(0.55, 0.8)
+		var s := Sprite2D.new()
+		s.texture = tex
+		s.scale = Vector2(sc, sc)
+		s.flip_h = _rng.randf() < 0.5
+		s.position = Vector2(mx, FLOOR_Y + 26.0 - tex.get_height() * sc * 0.5)
+		s.modulate = mid_tint
+		_hills_mid.add_child(s)
+		mx += _rng.randf_range(560.0, 860.0)
+	for sp in [[350.0, 3, 0.5], [1750.0, 5, 0.45], [3050.0, 10, 0.4]]:
+		var tex: Texture2D = load(BASE + "stalagmite%d.png" % sp[1])
+		var sc: float = sp[2]
+		var s := Sprite2D.new()
+		s.texture = tex
+		s.scale = Vector2(sc, sc)
+		s.position = Vector2(sp[0], FLOOR_Y + 20.0 - tex.get_height() * sc * 0.5)
+		s.modulate = Color(0.40, 0.46, 0.57, 0.85)
+		_hills_mid.add_child(s)
 
 
-# One rock: sprite + StaticBody2D + CollisionPolygon2D traced from its own
-# alpha (coarse — epsilon keeps it 8-14ish points). mask: 0 = whole
-# silhouette, 1 = bottom arc only, 2 = top arc only (the hollow ring uses
-# arcs so Curiosity walks THROUGH its mouth, sides passing behind her).
-func _add_rock(pos: Vector2, tex_name: String, sc: float, mask_mode := 0,
-		z := 0) -> void:
-	var tex: Texture2D = load(BASE + tex_name)
-	var body := StaticBody2D.new()
-	body.position = pos
-	add_child(body)
-	var spr := Sprite2D.new()
-	spr.texture = tex
-	spr.scale = Vector2(sc, sc)
-	spr.z_index = z
-	# near terrain reads a step darker than the mist behind it (the refs'
-	# silhouette contrast) — the pack's hue, just dimmed
-	spr.modulate = Color(0.74, 0.76, 0.82)
-	body.add_child(spr)
-	var img := tex.get_image()
-	var w := img.get_width()
-	var h := img.get_height()
-	var bm := BitMap.new()
-	bm.create_from_image_alpha(img, 0.35)
-	if mask_mode == 1:
-		bm.set_bit_rect(Rect2i(0, 0, w, int(h * 0.62)), false)
-	elif mask_mode == 2:
-		bm.set_bit_rect(Rect2i(0, int(h * 0.38), w, h - int(h * 0.38)), false)
-	var polys := bm.opaque_to_polygons(Rect2i(0, 0, w, h), 26.0)
-	# keep the LARGEST polygon — coarse hull of the visible rock
-	var best: PackedVector2Array = PackedVector2Array()
-	var best_area := 0.0
-	for p in polys:
-		var area := 0.0
-		for i in p.size():
-			var q := p[(i + 1) % p.size()]
-			area += p[i].x * q.y - q.x * p[i].y
-		area = absf(area) * 0.5
-		if area > best_area:
-			best_area = area
-			best = p
-	if best.size() >= 3:
-		var scaled := PackedVector2Array()
-		for pt in best:
-			scaled.append((pt - Vector2(w, h) * 0.5) * sc)
-		var cp := CollisionPolygon2D.new()
-		cp.polygon = scaled
-		body.add_child(cp)
-
+# ---------- terrain: ground + ceiling + platforms ----------
 
 func _build_terrain() -> void:
-	# the base floor: an invisible strip under the whole walk, dressed with
-	# rock clusters so the line reads as cavern ground
-	var floor_body := StaticBody2D.new()
-	var fcol := CollisionShape2D.new()
-	var frect := RectangleShape2D.new()
-	frect.size = Vector2(4400.0, 80.0)
-	fcol.shape = frect
-	fcol.position = Vector2(1250.0, FLOOR_Y + 40.0)
-	floor_body.add_child(fcol)
-	add_child(floor_body)
-	# ground dressing: long rock strips shoulder to shoulder along the line
-	for g in [[-350.0, "fungalstone28.png", 0.72], [280.0, "fungalstone3.png", 0.7],
-			[900.0, "fungalstone10.png", 0.72], [1520.0, "fungalstone28.png", 0.72],
-			[2150.0, "fungalstone3.png", 0.7], [2780.0, "fungalstone10.png", 0.72],
-			[3320.0, "fungalstone28.png", 0.6]]:
-		var s := Sprite2D.new()
-		s.texture = load(BASE + (g[1] as String))
-		s.scale = Vector2(g[2], g[2])
-		s.position = Vector2(g[0], FLOOR_Y + 42.0)
-		s.z_index = 1
-		add_child(s)
+	# THE GROUND: one dark body under the whole walk (the refs' bottom mass).
+	# Art overshoots the camera clamps; colliders stop at the world edge.
+	_fill_rect(WORLD_L - 900.0, WORLD_R + 900.0, FLOOR_Y, FLOOR_Y + 900.0, 0)
+	_collider_rect(WORLD_L, WORLD_R, FLOOR_Y, FLOOR_Y + 120.0)
+	# CAVERN END WALLS (ref 2's left edge): dark column + vertical pebble rim.
+	# Walls run 900px past the world edge — the camera's widest framing at
+	# the clamps still lands inside solid dark, nothing leaks through.
+	_fill_rect(WORLD_L - 900.0, WORLD_L + 40.0, -1400.0, FLOOR_Y, 0)
+	_pebble_col(WORLD_L + 44.0, -270.0, FLOOR_Y - 30.0, 0.7, 1)
+	_collider_rect(WORLD_L - 60.0, WORLD_L + 40.0, FLOOR_Y - 900.0, FLOOR_Y)
+	_fill_rect(WORLD_R - 40.0, WORLD_R + 900.0, -1400.0, FLOOR_Y, 0)
+	_pebble_col(WORLD_R - 44.0, -150.0, FLOOR_Y - 30.0, 0.7, 1)
+	_collider_rect(WORLD_R - 40.0, WORLD_R + 60.0, FLOOR_Y - 900.0, FLOOR_Y)
+	# pebble rim segments along the floor line (refs pebble it in stretches)
+	_pebble_row(-950.0, 150.0, FLOOR_Y - 8.0, 0.62, 1)
+	_pebble_row(700.0, 1900.0, FLOOR_Y - 8.0, 0.66, 1)
+	_pebble_row(2450.0, 4150.0, FLOOR_Y - 8.0, 0.62, 1)
+	# the fringe rows: a paler row BEHIND the pebbles, a darker row IN FRONT
+	# (the refs' two-deep coral carpet)
+	_fringe(WORLD_L + 40.0, WORLD_R - 40.0, FLOOR_Y - 12.0, false, 0.20, 0.30, 2, FRINGE_LIT)
+	_fringe(WORLD_L + 10.0, WORLD_R - 10.0, FLOOR_Y + 14.0, false, 0.22, 0.32, 4, FRINGE_NEAR, 0.62)
 
-	# SPAWN LEDGE: the wide rock-rimmed platform frame, flat and safe
-	_add_rock(Vector2(0.0, FLOOR_Y - 160.0), "fungalground14.png", 0.8)
-	# THE CLIMB: three clusters at rising heights, jump-feasible gaps
-	# (apex ~138px, air reach ~300px at her -356/460 physics — R1's limits)
-	_add_rock(Vector2(640.0, FLOOR_Y - 120.0), "fungalstone19.png", 0.55)
-	_add_rock(Vector2(1040.0, FLOOR_Y - 210.0), "fungalstone18.png", 0.5)
-	_add_rock(Vector2(1440.0, FLOOR_Y - 130.0), "fungalstone20.png", 0.5)
-	# THE COLUMN: vertical rock tower — walk past it, or top it from the climb
-	_add_rock(Vector2(1900.0, FLOOR_Y - 290.0), "fungalstone17.png", 0.8)
-	# THE RING: hollow rock mouth, big enough to walk through — only its
-	# bottom arc is floor and its top arc is ceiling; the sides pass behind
-	_add_rock(Vector2(2500.0, FLOOR_Y - 240.0), "fungalground15.png", 2.2, 1)
-	_add_rock(Vector2(2500.0, FLOOR_Y - 240.0), "fungalground15.png", 2.2, 2)
 
+func _build_platforms() -> void:
+	# ZONE B (ref 1): a grounded pedestal + a floating block above-right
+	_frame_platform(Vector2(950.0, FLOOR_Y - 130.0), "wide", true)
+	_frame_platform(Vector2(1500.0, FLOOR_Y - 245.0), "block", false)
+	# ZONE C (ref 2): the overgrown stack — pedestal, float, high float
+	_frame_platform(Vector2(2950.0, FLOOR_Y - 120.0), "wide", true, true)
+	_frame_platform(Vector2(3350.0, FLOOR_Y - 235.0), "block", false)
+	_frame_platform(Vector2(3750.0, FLOOR_Y - 350.0), "block", false)
+
+
+## a ref-style platform: dark fill body + pebble frame + fringe.
+## top_y = the walkable surface height. grounded platforms merge into the
+## floor mass below; floating ones hang fringe from their underside.
+func _frame_platform(top: Vector2, kind: String, grounded: bool,
+		fh := false) -> void:
+	var tex_name := "fungalground14.png" if kind == "wide" else "fungalground15.png"
+	var tex: Texture2D = load(BASE + tex_name)
+	var sc := 0.5 if kind == "wide" else 0.85
+	var w := tex.get_width() * sc
+	var h := tex.get_height() * sc
+	var cy := top.y + h * 0.5
+	# fill body: inset behind the pebble rim; grounded bodies run to the floor
+	var bottom := FLOOR_Y + 60.0 if grounded else top.y + h - 10.0
+	_fill_rect(top.x - w * 0.5 + 10.0, top.x + w * 0.5 - 10.0,
+			top.y + 8.0, bottom, 0)
+	_sprite(tex_name, Vector2(top.x, cy), sc, 1, Color.WHITE, fh)
+	_collider_rect(top.x - w * 0.5 + 8.0, top.x + w * 0.5 - 8.0,
+			top.y + 4.0, bottom if grounded else top.y + h)
+	# the growth: fringe up top, fringe dripping below if it floats
+	_fringe(top.x - w * 0.5 + 24.0, top.x + w * 0.5 - 24.0, top.y + 4.0,
+			false, 0.16, 0.24, 2, FRINGE_LIT, 0.5)
+	if not grounded:
+		_fringe(top.x - w * 0.5 + 30.0, top.x + w * 0.5 - 30.0,
+				top.y + h - 8.0, true, 0.14, 0.20, 2, FRINGE_HANG, 0.5)
+
+
+func _build_ceiling() -> void:
+	# ZONE A (ref 3): high roof, pebbled edge, pale stalactites hanging off it
+	_fill_rect(WORLD_L - 900.0, 680.0, -1400.0, -280.0, 0)
+	_pebble_row(WORLD_L + 20.0, 660.0, -284.0, 0.6, 1)
+	for st in [[-820.0, 12, 0.75], [-560.0, 14, 0.9], [-240.0, 13, 0.7],
+			[60.0, 15, 0.85], [380.0, 12, 0.65], [620.0, 16, 0.8]]:
+		var tex: Texture2D = load(BASE + "stalagmite%d.png" % st[1])
+		var sc: float = st[2]
+		_sprite("stalagmite%d.png" % st[1],
+				Vector2(st[0], -272.0 + tex.get_height() * sc * 0.5),
+				sc, 1, Color(0.72, 0.77, 0.86), _rng.randf() < 0.5, true)
+	# ZONE B (ref 1): the hanging chunk — dark mass rimmed on every exposed
+	# edge (bottom row, side columns, corner knuckles), fringe + a curl
+	_fill_rect(680.0, 1560.0, -1400.0, -40.0, 0)
+	_pebble_row(700.0, 1540.0, -44.0, 0.62, 1)
+	_pebble_col(696.0, -270.0, -70.0, 0.62, 1)
+	_pebble_col(1544.0, -350.0, -70.0, 0.62, 1)
+	_sprite("fungalground9.png", Vector2(712.0, -56.0), 0.55, 1)
+	_sprite("fungalground1.png", Vector2(1532.0, -60.0), 0.6, 1, Color.WHITE, true)
+	_fringe(720.0, 1520.0, -30.0, true, 0.20, 0.30, 2, FRINGE_HANG)
+	_prop_hang("fungalfrond18.png", 1440.0, -34.0, 0.3, 2, FRINGE_HANG)
+	for st in [[840.0, 13, 0.8], [1300.0, 15, 0.75]]:
+		var tex: Texture2D = load(BASE + "stalagmite%d.png" % st[1])
+		var sc: float = st[2]
+		_sprite("stalagmite%d.png" % st[1],
+				Vector2(st[0], -40.0 + tex.get_height() * sc * 0.5),
+				sc, 1, Color(0.60, 0.65, 0.76), false, true)
+	# the span between chunk and zone C: bare high roof, edged + lightly hung
+	_fill_rect(1560.0, 2500.0, -1400.0, -360.0, 0)
+	_pebble_row(1580.0, 2480.0, -364.0, 0.6, 1)
+	_fringe(1600.0, 2460.0, -350.0, true, 0.18, 0.26, 2, FRINGE_HANG, 0.6)
+	# ZONE C (ref 2): lower roof shelf wearing a heavy hanging fringe
+	_fill_rect(2500.0, WORLD_R + 900.0, -1400.0, -160.0, 0)
+	_pebble_row(2520.0, 4180.0, -164.0, 0.62, 1)
+	_fringe(2540.0, 4160.0, -148.0, true, 0.24, 0.36, 2, FRINGE_HANG, 0.5)
+
+
+## top-anchored hanging prop (curls off the chunk's underside)
+func _prop_hang(tex_name: String, x: float, top_y: float, sc: float, z: int,
+		tint := Color.WHITE) -> void:
+	var tex: Texture2D = load(BASE + tex_name)
+	var h := tex.get_height() * sc
+	_sprite(tex_name, Vector2(x, top_y + h * 0.5 - 8.0), sc, z, tint,
+			_rng.randf() < 0.5, true)
+
+
+# ---------- dressing: the grouped assemblies ----------
 
 func _build_dressing() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 20260715
-	# stalagmites along the floor line, leaning clusters (never flip_v)
-	for p in [[-550.0, 3, 0.5], [420.0, 7, 0.42], [1230.0, 11, 0.55],
-			[1700.0, 5, 0.38], [2900.0, 9, 0.5], [3250.0, 2, 0.44]]:
-		var st := Sprite2D.new()
-		st.texture = load(BASE + "stalagmite%d.png" % p[1])
-		st.scale = Vector2(p[2], p[2])
-		st.flip_h = rng.randf() < 0.5
-		st.position = Vector2(p[0], FLOOR_Y + 6.0 - st.texture.get_height() * p[2] * 0.5)
-		st.z_index = 2
-		add_child(st)
-	# glow mushrooms near the platform edges — each carries one soft teal
-	# light (cheap ambience; hard cap below)
-	for m in [[-260.0, FLOOR_Y - 250.0, 3, 0.5], [220.0, FLOOR_Y - 250.0, 7, 0.42],
-			[560.0, FLOOR_Y - 195.0, 12, 0.45], [1120.0, FLOOR_Y - 300.0, 3, 0.4],
-			[1360.0, FLOOR_Y - 195.0, 18, 0.42], [1975.0, FLOOR_Y - 15.0, 7, 0.5],
-			[2500.0, FLOOR_Y - 30.0, 12, 0.5], [3050.0, FLOOR_Y - 20.0, 3, 0.48],
-			[790.0, FLOOR_Y - 15.0, 22, 0.45]]:
-		var mu := Sprite2D.new()
-		mu.texture = load(BASE + "mushroomglow%d.png" % m[2])
-		mu.scale = Vector2(m[3], m[3])
-		mu.position = Vector2(m[0], m[1] - mu.texture.get_height() * m[3] * 0.42)
-		mu.z_index = 3
-		add_child(mu)
-		if _glow_lights < MAX_GLOW_LIGHTS:
-			_glow_lights += 1
-			var l := PointLight2D.new()
-			l.texture = _soft_glow_texture()
-			l.color = GLOW_WARM   # the refs' amber caps, not teal
-			l.energy = 0.45
-			l.texture_scale = 1.3
-			mu.add_child(l)
-	# big blue caps + amber spore stalks, sparse
-	for c in [[-620.0, 1, 0.55], [1700.0, 4, 0.42], [2260.0, 8, 0.6], [3400.0, 4, 0.55]]:
-		var cap := Sprite2D.new()
-		cap.texture = load(BASE + "mushroomcap%d.png" % c[1])
-		cap.scale = Vector2(c[2], c[2])
-		cap.flip_h = rng.randf() < 0.5
-		cap.position = Vector2(c[0], FLOOR_Y + 4.0 - cap.texture.get_height() * c[2] * 0.5)
-		cap.z_index = 2
-		add_child(cap)
-	# fronds in the corners and against the platforms
-	for f in [[-700.0, 2, 0.5], [-120.0, 9, 0.45], [500.0, 15, 0.5], [960.0, 22, 0.45],
-			[1620.0, 5, 0.5], [2080.0, 12, 0.45], [2720.0, 27, 0.5], [3180.0, 18, 0.45]]:
-		var fr := Sprite2D.new()
-		fr.texture = load(BASE + "fungalfrond%d.png" % f[1])
-		fr.scale = Vector2(f[2], f[2])
-		fr.flip_h = rng.randf() < 0.5
-		fr.position = Vector2(f[0], FLOOR_Y + 8.0 - fr.texture.get_height() * f[2] * 0.5)
-		fr.z_index = 1
-		fr.modulate = Color(0.8, 0.78, 0.9)
-		add_child(fr)
+	# ZONE A — the mushroom shelf (ref 3 left): boulder mound carrying a
+	# family of big blue flat-caps, amber stalks leaning on its shoulder
+	_prop("fungalstone20.png", -620.0, FLOOR_Y + 10.0, 0.6, 3)
+	_prop("mushroomcap9.png", -700.0, FLOOR_Y - 130.0, 0.5, 4)
+	_prop("mushroomcap6.png", -540.0, FLOOR_Y - 138.0, 0.38, 4, Color.WHITE, true)
+	_prop("mushroomcap4.png", -620.0, FLOOR_Y - 60.0, 0.26, 5)
+	var amber_a := _prop("mushroomglow5.png", -430.0, FLOOR_Y + 6.0, 0.34, 3)
+	_glow_light(amber_a, GLOW_WARM, 0.3, 1.2)
+	_prop("mushroomglow7.png", -380.0, FLOOR_Y + 8.0, 0.26, 3, Color.WHITE, true)
+	# spawn-side boulder pair so the start reads placed, not empty
+	_prop("fungalstone22.png", -120.0, FLOOR_Y + 10.0, 0.55, 3)
+	_prop("fungalstone2.png", -20.0, FLOOR_Y + 12.0, 0.4, 3, Color.WHITE, true)
+
+	# ZONE B — ref 1's floor life. Assembly 1: pot cluster + boulder + curl
+	_prop("fungalstone18.png", 640.0, FLOOR_Y + 14.0, 0.5, 3)
+	_prop("fungalfrond29.png", 700.0, FLOOR_Y + 10.0, 0.28, 4)
+	_prop("fungalfrond27.png", 560.0, FLOOR_Y + 8.0, 0.22, 4, Color.WHITE, true)
+	var stalk_b1 := _prop("mushroomcap1.png", 760.0, FLOOR_Y + 6.0, 0.26, 3)
+	_glow_light(stalk_b1, GLOW_WARM, 0.28, 1.4)
+	# assembly 2: gold stalks + amber toadstools + pots against the pedestal
+	var stalk_b2 := _prop("mushroomcap5.png", 1190.0, FLOOR_Y + 6.0, 0.3, 4)
+	_glow_light(stalk_b2, GLOW_WARM, 0.3, 1.5)
+	_prop("mushroomglow1.png", 1260.0, FLOOR_Y + 8.0, 0.3, 3)
+	_prop("fungalfrond25.png", 1120.0, FLOOR_Y + 10.0, 0.2, 4)
+	# assembly 3: the mound + pot + tall curl (mid-walk breather)
+	_prop("fungalstone19.png", 1850.0, FLOOR_Y + 14.0, 0.55, 3)
+	_prop("fungalfrond30.png", 1960.0, FLOOR_Y + 10.0, 0.26, 4)
+	_prop("fungalfrond22.png", 1770.0, FLOOR_Y + 6.0, 0.24, 3)
+	var amber_b := _prop("mushroomglow4.png", 2060.0, FLOOR_Y + 8.0, 0.34, 3, Color.WHITE, true)
+	_glow_light(amber_b, GLOW_WARM, 0.3, 1.3)
+	# assembly 4: foreground stalagmites + boulders (ref 3's right edge)
+	_prop("stalagmite7.png", 2250.0, FLOOR_Y + 16.0, 0.5, 3, Color(0.55, 0.60, 0.72))
+	_prop("fungalstone1.png", 2360.0, FLOOR_Y + 12.0, 0.45, 4)
+	_prop("mushroomglow11.png", 2300.0, FLOOR_Y + 6.0, 0.28, 4)
+
+	# ZONE C — ref 2's white glowers, on the stack and at its feet
+	for wg in [[2950.0, FLOOR_Y - 120.0, 23, 0.32], [2870.0, FLOOR_Y - 120.0, 24, 0.24],
+			[3350.0, FLOOR_Y - 235.0, 17, 0.5], [3420.0, FLOOR_Y - 235.0, 24, 0.26],
+			[3750.0, FLOOR_Y - 350.0, 23, 0.3], [2680.0, FLOOR_Y + 8.0, 17, 0.55],
+			[3150.0, FLOOR_Y + 10.0, 24, 0.38]]:
+		var m := _prop("mushroomglow%d.png" % wg[2], wg[0], wg[1], wg[3], 3,
+				Color.WHITE, _rng.randf() < 0.5)
+		_glow_light(m, GLOW_COOL, 0.38, 1.1)
+	_prop("mushroomglow16.png", 3050.0, FLOOR_Y + 8.0, 0.3, 4)
+	_prop("mushroomglow19.png", 3550.0, FLOOR_Y + 10.0, 0.32, 4)
+	_prop("fungalfrond23.png", 4020.0, FLOOR_Y + 8.0, 0.3, 3)
+	_prop("fungalstone5.png", 3900.0, FLOOR_Y + 26.0, 0.45, 3, Color(0.78, 0.80, 0.88))
 
 
-# The living air (built the Realm 2 way): drifting fog banks between the
-# depth bands, and the refs' floating white motes everywhere.
+func _build_foreground() -> void:
+	# darkest silhouettes hugging the bottom frame (refs' near plane).
+	# Their bases sit BELOW the lowest view edge (~y 830) so they always
+	# read as growth cut by the frame, never as floating shapes.
+	for fs in [[-780.0, "fungalfrond10.png", 0.62], [200.0, "fungalfrond3.png", 0.55],
+			[1050.0, "stalagmite5.png", 0.7], [1620.0, "fungalfrond16.png", 0.6],
+			[2550.0, "fungalfrond4.png", 0.58], [3480.0, "fungalfrond10.png", 0.65],
+			[4130.0, "stalagmite3.png", 0.6]]:
+		var tex: Texture2D = load(BASE + (fs[1] as String))
+		var sc: float = fs[2]
+		_sprite(fs[1] as String,
+				Vector2(fs[0], 920.0 - tex.get_height() * sc * 0.5),
+				sc, 8, Color(0.16, 0.20, 0.28), _rng.randf() < 0.5)
+
+
+# ---------- atmosphere ----------
+
 var _fogs: Array[Sprite2D] = []
 func _build_atmosphere() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 20260716
-	for i in 5:
+	for i in 6:
 		var f := Sprite2D.new()
 		f.texture = load(MOSS_FOG)
-		f.position = Vector2(-800.0 + i * 1100.0, FLOOR_Y - rng.randf_range(60.0, 260.0))
-		f.scale = Vector2(rng.randf_range(2.8, 4.0), rng.randf_range(2.0, 2.8))
-		f.modulate = Color(0.72, 0.78, 0.88, rng.randf_range(0.22, 0.34))
-		f.z_index = -4 if i % 2 == 0 else 4   # banks behind AND in front of terrain
+		f.position = Vector2(-900.0 + i * 950.0, FLOOR_Y - _rng.randf_range(60.0, 280.0))
+		f.scale = Vector2(_rng.randf_range(2.8, 4.2), _rng.randf_range(2.0, 2.9))
+		f.modulate = Color(0.72, 0.79, 0.90, _rng.randf_range(0.20, 0.32))
+		f.z_index = -4 if i % 2 == 0 else 6
 		add_child(f)
 		_fogs.append(f)
 	var motes := CPUParticles2D.new()
 	motes.texture = load(MOSS_SPORE)
-	motes.amount = 26
+	motes.amount = 32
 	motes.lifetime = 14.0
 	motes.preprocess = 14.0
 	motes.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	motes.emission_rect_extents = Vector2(2200.0, 480.0)
+	motes.emission_rect_extents = Vector2(2700.0, 500.0)
 	motes.gravity = Vector2.ZERO
 	motes.initial_velocity_min = 6.0
 	motes.initial_velocity_max = 20.0
@@ -296,9 +500,30 @@ func _build_atmosphere() -> void:
 	motes.scale_amount_min = 0.5
 	motes.scale_amount_max = 1.1
 	motes.color = Color(0.95, 0.97, 1.0, 0.8)
-	motes.position = Vector2(1400.0, FLOOR_Y - 240.0)
-	motes.z_index = 5
+	motes.position = Vector2(1600.0, FLOOR_Y - 260.0)
+	motes.z_index = 6
 	add_child(motes)
+	# corner vignette (screen-anchored; the refs darken hard at the edges)
+	var cl := CanvasLayer.new()
+	cl.layer = 15
+	add_child(cl)
+	var grad := Gradient.new()
+	grad.colors = PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0),
+			Color(0.02, 0.04, 0.08, 0.42)])
+	grad.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+	var gt := GradientTexture2D.new()
+	gt.gradient = grad
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(0.5, 0.0)
+	gt.width = 512
+	gt.height = 512
+	var tr := TextureRect.new()
+	tr.texture = gt
+	tr.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cl.add_child(tr)
 
 
 var _glow_tex: GradientTexture2D = null
@@ -316,10 +541,14 @@ func _soft_glow_texture() -> GradientTexture2D:
 	return _glow_tex
 
 
+# ---------- player / camera / ui ----------
+
 func _build_player() -> void:
 	_curi = load("res://scenes/Curiosity.tscn").instantiate()
 	_curi.position = SPAWN
-	_curi.scale = Vector2(0.24, 0.24)   # the realm scale (Realm 2's convention)
+	_curi.scale = Vector2(0.24, 0.24)
+	# she walks IN FRONT of props + fringe (<=4), behind fore silhouettes (8)
+	_curi.z_index = 5
 	add_child(_curi)
 	_lives = LIVES_HUD.instantiate() as LivesHUD
 	_lives.eye_scale = 0.22
@@ -359,18 +588,14 @@ func _build_ui() -> void:
 var _t := 0.0
 func _process(delta: float) -> void:
 	_t += delta
-	# the fog banks breathe sideways, each at its own pace
 	for i in _fogs.size():
 		_fogs[i].position.x += sin(_t * 0.11 + i * 1.7) * 0.35
-	# hand-driven parallax: far crawls, mid drifts (Realm 2's manners)
 	if _cam != null:
 		_hills_far.position.x = _cam.global_position.x * 0.82
 		_hills_mid.position.x = _cam.global_position.x * 0.6
-		# camera: follow X always, ease; hold a gentle floor-line framing
-		var target := Vector2(clampf(_curi.global_position.x, -300.0, 3300.0),
+		var target := Vector2(clampf(_curi.global_position.x, -450.0, 3900.0),
 				clampf(_curi.global_position.y - 110.0, -400.0, FLOOR_Y - 190.0))
 		_cam.position = _cam.position.lerp(target, 1.0 - pow(0.001, delta))
-	# fell somewhere impossible (no pits in the shell, but belt + suspenders)
 	if not _dying and _curi.global_position.y > FLOOR_Y + 700.0:
 		_die()
 

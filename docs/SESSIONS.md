@@ -7,6 +7,39 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 
 ---
 
+## 2026-07-14 — Realm 3 rebuilt to Advika's reference images (the pack's grammar)
+
+**Shipped** (branch `feat/r3-fungal-shell`, closes #166)
+- Advika supplied THREE reference images made from the exact fungal pack
+  (saved: `assets/_reference/realm3_target_{wide,platforms,cavern}_2026-07-14.png`)
+  and the shell was rebuilt to their construction grammar: near-black navy
+  FILL BODIES rimmed with the pack's pebble frames/strips, dense frond
+  fringe on every surface (up from floors/platform tops, hanging from
+  ceilings/undersides), grouped prop assemblies (pots + boulders + gold
+  spore stalks / white glowers on the platform stack / flat-cap family on
+  a stone shelf), luminous-mist background with pale spire + mushroom-ghost
+  silhouettes, darkest fore silhouettes, corner vignette.
+- Three zones matching the three refs: A cavern mouth (ref 3) → B pot-strewn
+  floor under a hanging pebble-rimmed chunk (ref 1) → C overgrown platform
+  stack beneath a fully fringed ceiling (ref 2). Enclosed cavern: pebbled
+  end walls, jump-feasible platform ladder (≤115px steps).
+- Contact-sheet study of all 162 pack slices (9 families) — fungalground
+  turned out to be pebble FRAMES/strips, fungalfrond holds the pots; that
+  discovery drove the whole rebuild.
+
+**What didn't work / dead ends**
+- Pebble tilers that check only the tile CENTER against the span end throw
+  strays half a tile past edges (the floating strip right of the chunk);
+  whole-tile-must-fit is the rule now.
+- PowerShell `Get-Content`/`Set-Content` round-trip mojibake'd the script's
+  UTF-8 — repaired via cp1252 re-decode; use the Edit tool for source files.
+
+**Next 3 safe candidates**
+1. Realm 3 door wiring: Door 3 → Realm3FungalTest (Door 2's pattern).
+2. Void moth enemy (frames already in Downloads) — but R2-M3 Enemy base
+   first, per the milestone order.
+3. Realm 3 puzzle spec chat with Advika (docs/REALMS.md realm 3 section).
+
 ## 2026-07-12 (pt. 2) — The wizard's trial: he conjures, she hunts, the island stops
 
 **Shipped** (PR: `feat/r2-runeorb-hazard`, closes #155 — one long live
