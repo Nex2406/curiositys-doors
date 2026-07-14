@@ -29,8 +29,14 @@ const ATTACK_FPS := 12.0
 const DEATH_FPS := 5.0
 const STING_REACH := 130.0     # pre-scale contact reach during a dive (distance test —
                                # an Area2D missed at swoop speeds; Advika: no damage)
-const DECK_CLEAR_Y := 150.0    # it NEVER enters the island's body: when horizontally
-const DECK_HALF_X := 640.0     # over the deck it stays at least this far above it
+# The island as an OBSTACLE (Advika, round 2: it still passed through — the
+# old clamp teleported under-island moths up through the deck). A soft
+# repulsion field around the island's body: the moth steers AROUND it, over
+# or under, like a creature avoiding a thing — never snapped, never inside.
+const ISLAND_HALF := Vector2(660.0, 210.0)  # the moss body incl. fringe
+const AVOID_MARGIN := 150.0                 # repulsion starts this far out
+const AVOID_PUSH := 1500.0                  # steering force at deepest penetration
+const DIVE_DECK_CLEAR := 140.0              # dives level off this far above the moss top
 
 @export var burn_time := 5.0         # sustained light needed to unmake it
 @export var burn_leak := 0.5         # burn decays at this rate when unlit (forgiving, not a reset)
@@ -39,6 +45,13 @@ const DECK_HALF_X := 640.0     # over the deck it stays at least this far above 
 @export var roam_speed := 240.0      # cruising speed while it prowls the sky
 @export var roam_retarget_min := 1.6 # how often it picks a new patch of air
 @export var roam_retarget_max := 3.2
+@export var flutter := 40.0          # small erratic wing impulses on top of the wander
+@export var max_turn := 2.6          # rad/s — every course change is a CARVED ARC; a
+                                     # target behind it means a visible loop to come
+                                     # about (Advika: the lerp-turns read robotic)
+@export var wander_drift := 0.9      # rad/s of continuous heading wander — it never
+                                     # flies straight, even when it likes its patch
+@export var wingbeat_surge := 0.32   # speed pulses with the wingbeat (surge + coast)
 @export var dive_wait_min := 2.6     # beat between dives
 @export var dive_wait_max := 4.6
 @export var dive_damage := 10
@@ -60,8 +73,14 @@ var _tw: Tween
 var _enter_spawn := Vector2.ZERO # bezier start of the fly-in
 var _enter_arc := Vector2.ZERO   # bezier bow
 var _vel := Vector2.ZERO         # steering velocity — flight is CONTINUOUS, never parked
+var _heading := 0.0              # the flight IS this angle: it only ever turns, at a
+                                 # limited rate — position follows the heading, so
+                                 # every path is a curve (the organic read)
 var _roam_offset := Vector2.ZERO # current patch of air (anchor-relative)
 var _roam_timer := 0.0
+var _roam_pace := 1.0            # per-patch speed personality
+var _flutter_timer := 0.0        # next erratic wing impulse
+var _face_target := -1.0         # which way it's wheeling to face (-1 left, +1 right)
 var _dive_prev := Vector2.ZERO   # last dive sample, for exit-velocity blending
 
 
@@ -117,7 +136,7 @@ func _enter_step(t: float) -> void:
 	var b := ctrl.lerp(dest, t)
 	var prev := global_position
 	global_position = a.lerp(b, t)
-	_respect_the_deck()
+	_push_out_of_island(maxf(get_physics_process_delta_time(), 0.001))
 	# keep the look alive during the approach too
 	var dt := maxf(get_physics_process_delta_time(), 0.001)
 	_vel = (global_position - prev) / dt * 0.6
@@ -145,23 +164,42 @@ func _physics_process(delta: float) -> void:
 		State.STALK:
 			# CONTINUOUS flight (Advika: it felt stiff, parked): it prowls
 			# from air-patch to air-patch around the climbing island, steering
-			# smoothly — velocity eases toward each new heading, so turns are
-			# banks, not snaps. The wing-bob rides on the visual only.
+			# smoothly — and FLUTTERS: erratic little wing impulses between
+			# headings, because real moths never fly a clean line.
 			_roam_timer -= delta
 			if _roam_timer <= 0.0:
 				_pick_roam()
+			_flutter_timer -= delta
+			if _flutter_timer <= 0.0:
+				_flutter_timer = randf_range(0.15, 0.38)
+				_vel += Vector2.from_angle(randf() * TAU) * randf_range(0.5, 1.0) * flutter
 			if _anchor != null and is_instance_valid(_anchor):
+				# HEADING FLIGHT: it can only TURN, never re-aim — so the path
+				# toward each patch is a bank, an overshoot, a loop back. Two
+				# incommensurate sines drift the heading continuously (it
+				# wanders even mid-course), and speed surges with the wingbeat.
 				var to_patch: Vector2 = (_anchor.global_position + _roam_offset) - global_position
-				var desired := to_patch.normalized() * roam_speed
-				# arrive: ease off inside the patch so it swings around, not through
-				if to_patch.length() < 120.0:
-					desired *= to_patch.length() / 120.0
-				_vel = _vel.lerp(desired, 1.0 - pow(0.03, delta))
+				var bearing := to_patch.angle()
+				var diff := wrapf(bearing - _heading, -PI, PI)
+				var wander := sin(_ht * 1.7) * 0.9 + sin(_ht * 2.9 + 1.3) * 0.6
+				_heading += (clampf(diff * 2.6, -max_turn, max_turn) \
+						+ wander * wander_drift) * delta
+				var pulse := 1.0 + sin(_ht * TAU / 0.62) * wingbeat_surge
+				var arrive := clampf(to_patch.length() / 140.0, 0.35, 1.0)
+				var speed := roam_speed * _roam_pace * pulse * arrive
+				_vel = _vel.lerp(Vector2.from_angle(_heading) * speed, 1.0 - pow(0.001, delta))
+				_vel += _island_repulsion() * delta
+				_heading = _vel.angle()   # repulsion + flutter carve the heading too
 				global_position += _vel * delta
-				_respect_the_deck()
+				_push_out_of_island(delta)
 			_visual.position.y = sin(_ht * TAU / bob_period) * bob_amplitude
 			_dive_timer -= delta
-			if _dive_timer <= 0.0 and _target != null and is_instance_valid(_target):
+			# dives launch only from ABOVE the deck — a belly-roamer waits
+			# until its prowl brings it around (a dive from below would have
+			# to tunnel the island)
+			if _dive_timer <= 0.0 and _target != null and is_instance_valid(_target) \
+					and _anchor != null and is_instance_valid(_anchor) \
+					and global_position.y < _anchor.global_position.y - 120.0:
 				_begin_dive()
 		State.DIVE:
 			_check_sting()
@@ -171,37 +209,72 @@ func _physics_process(delta: float) -> void:
 	_tick_burn(delta)
 
 
-# The island is SOLID to it (Advika: they passed through the bloody
-# platform): horizontally over the deck, the moth holds clearance above the
-# moss. Applied after every movement step, whatever state moved it.
-func _respect_the_deck() -> void:
+# Repulsion field around the island's body: grows from zero at AVOID_MARGIN
+# out, to full push at the surface. The moth BANKS AROUND the island — over
+# or under, whichever side it approaches — steered, never snapped.
+func _island_repulsion() -> Vector2:
+	if _anchor == null or not is_instance_valid(_anchor):
+		return Vector2.ZERO
+	var d := global_position - (_anchor.global_position + Vector2(0, -40.0))
+	var span := ISLAND_HALF + Vector2(AVOID_MARGIN, AVOID_MARGIN)
+	var nx := absf(d.x) / span.x
+	var ny := absf(d.y) / span.y
+	var closeness := 1.0 - maxf(nx, ny)   # 0 at the margin edge, 1 at the core
+	if closeness <= 0.0:
+		return Vector2.ZERO
+	# push along the axis it's shallowest on — around the nearest face
+	var n := Vector2(d.x / span.x, d.y / span.y).normalized()
+	return n * AVOID_PUSH * closeness
+
+
+# Last-resort correction: if a step still landed INSIDE the body, slide it
+# out continuously (never a teleport — a firm shove toward the nearest face).
+func _push_out_of_island(delta: float) -> void:
 	if _anchor == null or not is_instance_valid(_anchor):
 		return
-	if absf(global_position.x - _anchor.global_position.x) < DECK_HALF_X:
-		var ceiling_y := _anchor.global_position.y - DECK_CLEAR_Y
-		if global_position.y > ceiling_y:
-			global_position.y = ceiling_y
-			_vel.y = minf(_vel.y, 0.0)
+	var c: Vector2 = _anchor.global_position + Vector2(0, -40.0)
+	var d := global_position - c
+	if absf(d.x) < ISLAND_HALF.x and absf(d.y) < ISLAND_HALF.y:
+		var n := Vector2(d.x / ISLAND_HALF.x, d.y / ISLAND_HALF.y)
+		if n == Vector2.ZERO:
+			n = Vector2(0, -1)
+		global_position += n.normalized() * 700.0 * delta
 
 
-# Flight is a body, not a sprite slide (Advika: it only faces one direction,
-# stiff): it faces the way it flies, banks into turns, and beats its wings
-# faster the harder it moves.
+# Flight is a body, not a sprite slide (Advika: it only faced one way, huh?):
+# it WHEELS to face its heading — the mirror is animated through the turn so
+# you see it come about, wings edge-on mid-wheel — banks into turns, and
+# beats its wings faster the harder it flies.
 func _apply_flight_look(delta: float) -> void:
 	if state in [State.BURNED]:
 		return
-	if absf(_vel.x) > 30.0:
-		_visual.flip_h = _vel.x < 0.0
+	if _vel.x < -40.0:
+		_face_target = -1.0
+	elif _vel.x > 40.0:
+		_face_target = 1.0
+	# animated turn: scale.x sweeps through 0 — a wheel-around, not a flip
+	_visual.scale.x = lerpf(_visual.scale.x, _face_target, 1.0 - pow(0.004, delta))
 	var bank := clampf(_vel.x * 0.00045, -0.22, 0.22)
 	_visual.rotation = lerpf(_visual.rotation, bank, 1.0 - pow(0.002, delta))
 	if _visual.animation == &"fly":
 		_visual.speed_scale = clampf(0.85 + _vel.length() / 420.0, 0.85, 1.6)
 
 
-# A fresh patch of air around the island — wide, varied, alive.
+# A fresh patch of air — wide, varied, alive. It ranges the WHOLE island:
+# mostly the sky above, sometimes swinging wide past a side, occasionally
+# dipping below the underbelly (the repulsion field walls off the body, so
+# crossing sides means flying AROUND — which is exactly the good look).
 func _pick_roam() -> void:
 	_roam_timer = randf_range(roam_retarget_min, roam_retarget_max)
-	_roam_offset = Vector2(randf_range(-450.0, 450.0), randf_range(-480.0, -180.0))
+	_roam_pace = randf_range(0.7, 1.3)
+	var roll := randf()
+	if roll < 0.62:      # the sky over the deck
+		_roam_offset = Vector2(randf_range(-450.0, 450.0), randf_range(-520.0, -200.0))
+	elif roll < 0.86:    # wide past a side
+		var side := 1.0 if randf() < 0.5 else -1.0
+		_roam_offset = Vector2(side * randf_range(720.0, 950.0), randf_range(-350.0, 150.0))
+	else:                # under the island's belly — ominous
+		_roam_offset = Vector2(randf_range(-400.0, 400.0), randf_range(300.0, 480.0))
 
 
 # --- the dive ---
@@ -249,7 +322,13 @@ func _dive_step(t: float, through: Vector2) -> void:
 	_vel = (pos - _dive_prev) / dt * 0.6   # damped: inherit the sweep, not the spike
 	_dive_prev = pos
 	global_position = pos
-	_respect_the_deck()
+	# a dive comes from above and levels off just over the moss — it strafes
+	# HER, it doesn't tunnel the deck
+	if _anchor != null and is_instance_valid(_anchor) \
+			and absf(global_position.x - _anchor.global_position.x) < ISLAND_HALF.x:
+		var floor_y: float = _anchor.global_position.y - 120.0 - DIVE_DECK_CLEAR
+		if global_position.y > floor_y:
+			global_position.y = floor_y
 
 
 func _check_sting() -> void:

@@ -1193,8 +1193,11 @@ func _spawn_moth() -> void:
 			else randf_range(-500.0, 500.0)
 	var spawn: Vector2 = _chunk.global_position \
 			+ (Vector2(sx, 950.0) if from_below else Vector2(sx, -1000.0))
-	# each moth claims its own hover post so the flock spreads, not stacks
-	var hover := Vector2(randf_range(-400.0, 400.0), randf_range(-420.0, -260.0))
+	# each moth claims its own first post so the flock spreads, not stacks;
+	# below-entries post on their OWN side so the approach never needs to
+	# cross the island's body
+	var hover := Vector2(signf(sx) * randf_range(260.0, 430.0), randf_range(-420.0, -260.0)) \
+			if from_below else Vector2(randf_range(-400.0, 400.0), randf_range(-420.0, -260.0))
 	moth.enter_from(spawn, _chunk, hover, _curi)
 	moth.died_to_light.connect(func() -> void:
 		print("[VoidMoth] unmade by the light")
