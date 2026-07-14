@@ -74,7 +74,7 @@ const STORM_SWAY_PERIOD := 2.7   # (calm was 3.4)
 # (hold L, ~5s on it). Moths keep coming until the wizard falls; a live
 # one leaves on his defeat, flying off upward.
 const VOID_MOTH := preload("res://scenes/VoidMoth.tscn")
-const MOTH_SCALE := 0.48         # bigger (Advika) — it should loom
+const MOTH_SCALE := 0.78         # BIG (Advika, three passes) — it fills the sky over her
 const MOTH_FROM_BELOW_P := 0.7   # rising from the void beneath is the thematic entrance
 const MOTH_STAGGER := 8.0        # gap between arrivals while building to the cap
 @export var moth_cap := 3              # 2-3 aloft at once (Advika) — they build up staggered
@@ -1186,9 +1186,13 @@ func _spawn_moth() -> void:
 	var moth: VoidMoth = VOID_MOTH.instantiate()
 	moth.scale = Vector2(MOTH_SCALE, MOTH_SCALE)
 	add_child(moth)
-	var sx := randf_range(-500.0, 500.0)
+	# from-below entries start OUTSIDE the island's span, so the rise passes
+	# its side and curves in — never through the deck's body
+	var from_below := randf() < MOTH_FROM_BELOW_P
+	var sx := (1.0 if randf() < 0.5 else -1.0) * randf_range(700.0, 950.0) if from_below \
+			else randf_range(-500.0, 500.0)
 	var spawn: Vector2 = _chunk.global_position \
-			+ (Vector2(sx, 950.0) if randf() < MOTH_FROM_BELOW_P else Vector2(sx, -1000.0))
+			+ (Vector2(sx, 950.0) if from_below else Vector2(sx, -1000.0))
 	# each moth claims its own hover post so the flock spreads, not stacks
 	var hover := Vector2(randf_range(-400.0, 400.0), randf_range(-420.0, -260.0))
 	moth.enter_from(spawn, _chunk, hover, _curi)

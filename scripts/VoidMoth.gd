@@ -12,8 +12,10 @@ class_name VoidMoth
 # purple flash, then the death motes fade to nothing.
 #
 # Lifecycle: enter_from() flies it in on a curved path (inactive until it
-# arrives) -> STALK (hover + bob near its anchor, riding the climb) ->
-# DIVE at her on a whim (contact damage) -> RECOVER -> STALK...
+# arrives) -> STALK: CONTINUOUS prowling flight, patch to patch of air
+# around the climbing island (steered velocity — banks, never parks) ->
+# DIVE: a bezier swoop with a windup breath, whipping THROUGH her, exit
+# velocity blending straight back into the roam -> STALK...
 # exit_flyaway() sends it off upward (the wizard fell; it loses interest).
 
 signal died_to_light()
@@ -25,23 +27,28 @@ const DEATH_FRAMES := 3
 const FLY_FPS := 12.0
 const ATTACK_FPS := 12.0
 const DEATH_FPS := 5.0
-const STING_RADIUS := 95.0     # pre-scale contact reach during a dive
+const STING_REACH := 130.0     # pre-scale contact reach during a dive (distance test —
+                               # an Area2D missed at swoop speeds; Advika: no damage)
+const DECK_CLEAR_Y := 150.0    # it NEVER enters the island's body: when horizontally
+const DECK_HALF_X := 640.0     # over the deck it stays at least this far above it
 
 @export var burn_time := 5.0         # sustained light needed to unmake it
 @export var burn_leak := 0.5         # burn decays at this rate when unlit (forgiving, not a reset)
-@export var bob_amplitude := 16.0
+@export var bob_amplitude := 14.0
 @export var bob_period := 2.1
+@export var roam_speed := 240.0      # cruising speed while it prowls the sky
+@export var roam_retarget_min := 1.6 # how often it picks a new patch of air
+@export var roam_retarget_max := 3.2
 @export var dive_wait_min := 2.6     # beat between dives
 @export var dive_wait_max := 4.6
 @export var dive_damage := 10
 @export var dive_knockback := Vector2(300.0, -140.0)
 @export var dive_overshoot := 150.0  # px past her position the swoop carries
 
-enum State { ENTER, STALK, DIVE, RECOVER, BURNED, EXIT }
+enum State { ENTER, STALK, DIVE, BURNED, EXIT }
 
 var state := State.ENTER
 var _visual: AnimatedSprite2D
-var _sting: Area2D
 var _anchor: Node2D = null       # what it rides (the island)
 var _anchor_offset := Vector2.ZERO
 var _target: Node2D = null       # who it stalks (Curiosity)
@@ -52,7 +59,10 @@ var _light_t := 0.0              # accumulated burn
 var _tw: Tween
 var _enter_spawn := Vector2.ZERO # bezier start of the fly-in
 var _enter_arc := Vector2.ZERO   # bezier bow
-var _recover_from := Vector2.ZERO
+var _vel := Vector2.ZERO         # steering velocity — flight is CONTINUOUS, never parked
+var _roam_offset := Vector2.ZERO # current patch of air (anchor-relative)
+var _roam_timer := 0.0
+var _dive_prev := Vector2.ZERO   # last dive sample, for exit-velocity blending
 
 
 func _ready() -> void:
@@ -71,17 +81,6 @@ func _ready() -> void:
 	add_child(_visual)
 	_visual.play(&"fly")
 	_visual.animation_finished.connect(_on_anim_finished)
-
-	# The sting: senses her body only while diving.
-	_sting = Area2D.new()
-	_sting.collision_layer = 0
-	_sting.collision_mask = 1
-	var cs := CollisionShape2D.new()
-	var circle := CircleShape2D.new()
-	circle.radius = STING_RADIUS
-	cs.shape = circle
-	_sting.add_child(cs)
-	add_child(_sting)
 
 
 # Fly in from `spawn_global` to a hover post (anchor + offset) on a gentle
@@ -103,6 +102,7 @@ func enter_from(spawn_global: Vector2, anchor: Node2D, anchor_offset: Vector2,
 	_tw.finished.connect(func() -> void:
 		if state == State.ENTER:
 			state = State.STALK
+			_pick_roam()
 			_arm_dive())
 
 
@@ -115,7 +115,12 @@ func _enter_step(t: float) -> void:
 	var ctrl: Vector2 = _enter_spawn.lerp(dest, 0.5) + _enter_arc
 	var a := _enter_spawn.lerp(ctrl, t)
 	var b := ctrl.lerp(dest, t)
+	var prev := global_position
 	global_position = a.lerp(b, t)
+	_respect_the_deck()
+	# keep the look alive during the approach too
+	var dt := maxf(get_physics_process_delta_time(), 0.001)
+	_vel = (global_position - prev) / dt * 0.6
 
 
 # The wizard fell — the moth loses interest and leaves, upward and gone.
@@ -138,11 +143,23 @@ func _physics_process(delta: float) -> void:
 	_ht += delta
 	match state:
 		State.STALK:
-			# ride the anchor with a living bob + sideways breath
+			# CONTINUOUS flight (Advika: it felt stiff, parked): it prowls
+			# from air-patch to air-patch around the climbing island, steering
+			# smoothly — velocity eases toward each new heading, so turns are
+			# banks, not snaps. The wing-bob rides on the visual only.
+			_roam_timer -= delta
+			if _roam_timer <= 0.0:
+				_pick_roam()
 			if _anchor != null and is_instance_valid(_anchor):
-				var bob := sin(_ht * TAU / bob_period) * bob_amplitude
-				var sway := sin(_ht * TAU / (bob_period * 2.3) + 0.9) * bob_amplitude * 0.7
-				global_position = _anchor.global_position + _anchor_offset + Vector2(sway, bob)
+				var to_patch: Vector2 = (_anchor.global_position + _roam_offset) - global_position
+				var desired := to_patch.normalized() * roam_speed
+				# arrive: ease off inside the patch so it swings around, not through
+				if to_patch.length() < 120.0:
+					desired *= to_patch.length() / 120.0
+				_vel = _vel.lerp(desired, 1.0 - pow(0.03, delta))
+				global_position += _vel * delta
+				_respect_the_deck()
+			_visual.position.y = sin(_ht * TAU / bob_period) * bob_amplitude
 			_dive_timer -= delta
 			if _dive_timer <= 0.0 and _target != null and is_instance_valid(_target):
 				_begin_dive()
@@ -150,7 +167,41 @@ func _physics_process(delta: float) -> void:
 			_check_sting()
 		_:
 			pass
+	_apply_flight_look(delta)
 	_tick_burn(delta)
+
+
+# The island is SOLID to it (Advika: they passed through the bloody
+# platform): horizontally over the deck, the moth holds clearance above the
+# moss. Applied after every movement step, whatever state moved it.
+func _respect_the_deck() -> void:
+	if _anchor == null or not is_instance_valid(_anchor):
+		return
+	if absf(global_position.x - _anchor.global_position.x) < DECK_HALF_X:
+		var ceiling_y := _anchor.global_position.y - DECK_CLEAR_Y
+		if global_position.y > ceiling_y:
+			global_position.y = ceiling_y
+			_vel.y = minf(_vel.y, 0.0)
+
+
+# Flight is a body, not a sprite slide (Advika: it only faces one direction,
+# stiff): it faces the way it flies, banks into turns, and beats its wings
+# faster the harder it moves.
+func _apply_flight_look(delta: float) -> void:
+	if state in [State.BURNED]:
+		return
+	if absf(_vel.x) > 30.0:
+		_visual.flip_h = _vel.x < 0.0
+	var bank := clampf(_vel.x * 0.00045, -0.22, 0.22)
+	_visual.rotation = lerpf(_visual.rotation, bank, 1.0 - pow(0.002, delta))
+	if _visual.animation == &"fly":
+		_visual.speed_scale = clampf(0.85 + _vel.length() / 420.0, 0.85, 1.6)
+
+
+# A fresh patch of air around the island — wide, varied, alive.
+func _pick_roam() -> void:
+	_roam_timer = randf_range(roam_retarget_min, roam_retarget_max)
+	_roam_offset = Vector2(randf_range(-450.0, 450.0), randf_range(-480.0, -180.0))
 
 
 # --- the dive ---
@@ -163,47 +214,55 @@ func _begin_dive() -> void:
 	state = State.DIVE
 	_dive_hit = false
 	_visual.play(&"attack")
-	# swoop THROUGH her: aim at her current spot plus an overshoot along the
-	# approach line — a strafe, not a landing
+	# A SWOOP, not a straight stab: a bezier that first lifts against the
+	# approach (the windup breath), then whips down THROUGH her and past.
+	# The exit velocity is measured off the curve, so the pull-out blends
+	# straight back into the roam — no snap anywhere.
 	var her: Vector2 = _target.global_position
 	var dir := (her - global_position).normalized()
 	var through := her + dir * dive_overshoot
+	_enter_spawn = global_position
+	_enter_arc = -dir * 140.0 + Vector2(0, -110.0)  # reuse the bezier fields: windup bow
+	_dive_prev = global_position
 	if _tw != null:
 		_tw.kill()
 	_tw = create_tween()
-	_tw.tween_property(self, "global_position", through, 0.62)\
-			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_tw.tween_method(_dive_step.bind(through), 0.0, 1.0, 0.85)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_tw.finished.connect(func() -> void:
 		if state != State.DIVE:
 			return
-		state = State.RECOVER
-		_visual.play(&"fly")
-		_recover_from = global_position
-		var back := create_tween()
-		back.tween_method(_recover_step, 0.0, 1.0, 0.9).set_trans(Tween.TRANS_SINE)
-		back.finished.connect(func() -> void:
-			if state == State.RECOVER:
-				state = State.STALK
-				_arm_dive()))
+		state = State.STALK
+		# carry the swoop's exit speed into the roam — the pull-out IS flight
+		_pick_roam()
+		_arm_dive())
 
 
-# One step of the swoop-recovery — home is sampled live (the island climbs).
-func _recover_step(t: float) -> void:
-	if _anchor == null or not is_instance_valid(_anchor):
-		return
-	global_position = _recover_from.lerp(_anchor.global_position + _anchor_offset, t)
+# One step of the dive bezier; tracks its own derivative so the roam can
+# inherit the exit velocity.
+func _dive_step(t: float, through: Vector2) -> void:
+	var ctrl := _enter_spawn + _enter_arc
+	var a := _enter_spawn.lerp(ctrl, t)
+	var b := ctrl.lerp(through, t)
+	var pos := a.lerp(b, t)
+	var dt := maxf(get_physics_process_delta_time(), 0.001)
+	_vel = (pos - _dive_prev) / dt * 0.6   # damped: inherit the sweep, not the spike
+	_dive_prev = pos
+	global_position = pos
+	_respect_the_deck()
 
 
 func _check_sting() -> void:
-	if _dive_hit:
+	if _dive_hit or _target == null or not is_instance_valid(_target):
 		return
-	for body in _sting.get_overlapping_bodies():
-		if body.is_in_group("player") and body.has_method("take_damage"):
-			_dive_hit = true
-			var kb := Vector2(signf(body.global_position.x - global_position.x)
-					* absf(dive_knockback.x), dive_knockback.y)
-			body.take_damage(dive_damage, kb)
-			break
+	# plain reach test — physics areas missed at swoop speeds
+	var reach := STING_REACH * absf(global_scale.x)
+	if global_position.distance_to(_target.global_position) <= reach \
+			and _target.has_method("take_damage"):
+		_dive_hit = true
+		var kb := Vector2(signf(_target.global_position.x - global_position.x)
+				* absf(dive_knockback.x), dive_knockback.y)
+		_target.take_damage(dive_damage, kb)
 
 
 # --- the burn (the only death) ---
@@ -245,3 +304,8 @@ func _burn_out() -> void:
 func _on_anim_finished() -> void:
 	if state == State.BURNED and _visual.animation == &"death":
 		queue_free()
+		return
+	# the attack clip is shorter than the swoop — flow back to wings mid-
+	# flight instead of freezing on the last frame (that read as the "chop")
+	if _visual.animation == &"attack" and state != State.BURNED:
+		_visual.play(&"fly")
