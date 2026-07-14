@@ -68,6 +68,21 @@ const WIZ_ESCAPE_GRACE := 0.6
 const STORM_SWAY_AMP := 40.0     # island sway once he's aboard (calm was 22)
 const STORM_SWAY_PERIOD := 2.7   # (calm was 3.4)
 
+# THE VOID MOTH (Advika, 2026-07-14): an independent creature — NOT the
+# wizard's — that arrives on its own partway through the trial, stalking
+# the climb and dive-bombing. It dies ONLY to sustained lantern-light
+# (hold L, ~5s on it). Moths keep coming until the wizard falls; a live
+# one leaves on his defeat, flying off upward.
+const VOID_MOTH := preload("res://scenes/VoidMoth.tscn")
+const MOTH_SCALE := 0.48         # bigger (Advika) — it should loom
+const MOTH_FROM_BELOW_P := 0.7   # rising from the void beneath is the thematic entrance
+const MOTH_STAGGER := 8.0        # gap between arrivals while building to the cap
+@export var moth_cap := 3              # 2-3 aloft at once (Advika) — they build up staggered
+@export var moth_first_delay := 10.0   # TEST VALUE — flip back to 90.0 (Advika: remind her)
+@export var moth_respawn_pressure := true
+@export var moth_respawn_delay := 25.0
+@export var moth_regrace := 10.0       # fall after the phase began -> next moth this soon
+
 enum Phase { INTRO, BUILD, RIDE, DONE }
 
 var phase := Phase.INTRO
@@ -87,6 +102,9 @@ var _hedge_dissolve: ShaderMaterial
 var _wake := 0.0  # 0 = embedded/dormant island, 1 = fully awake (glow breathes)
 var _wizard: Wizard = null
 var _airborne_t := 0.0  # seconds the island has been RISING (wizard spawn clock)
+var _moth_timer := -1.0        # counts down to the next arrival while > 0
+var _moth_phase_begun := false # first moth has arrived at least once
+var _soak := false             # R2_TRIAL_LOG: deaths don't spend lifelines
 
 
 func _ready() -> void:
@@ -983,7 +1001,7 @@ func _build_ui() -> void:
 	vr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cl.add_child(vr)
 	_lbl = Label.new()
-	_lbl.text = "R2-M1 LIFT TEST — walk right →   (R restart · ESC hub)"
+	_lbl.text = "R2-M1 LIFT TEST — walk right →   (J strike · hold L: the light · R restart · ESC hub)"
 	_lbl.position = Vector2(16, 12)
 	_lbl.add_theme_color_override("font_color", Color(0.78, 0.73, 0.92, 0.6))
 	cl.add_child(_lbl)
@@ -1025,13 +1043,29 @@ func _self_screenshot(path: String) -> void:
 	# (casts must keep coming as orbs vacate; regression guard for the
 	# "wizard stops conjuring" wedge) and quit.
 	if OS.get_environment("R2_TRIAL_LOG") != "":
+		# soak armor: the parked hero would otherwise be chain-shoved off and
+		# burn all three lifelines standing still — a player moves, this rig
+		# doesn't. Deaths still happen (respawn/clear logic runs); they just
+		# never spend lifelines, so the soak survives its own realism.
+		_soak = true
 		var casts: Array[int] = [0]
 		_wizard.cast_committed.connect(func(_p: Vector2) -> void: casts[0] += 1)
 		for i in range(15):
 			await get_tree().create_timer(3.0).timeout
-			print("TRIALLOG t=%d casts=%d hazards=%d island_y=%.0f" %
+			var moths := get_tree().get_nodes_in_group("moths")
+			var moth_s := "none"
+			if moths.size() > 0:
+				var states: Array[String] = []
+				for m in moths:
+					states.append(VoidMoth.State.keys()[m.state])
+				moth_s = ",".join(states)
+			print("TRIALLOG t=%d casts=%d hazards=%d moths=%d(%s) island_y=%.0f" %
 					[(i + 1) * 3, casts[0], get_tree().get_nodes_in_group("hazards").size(),
-					_chunk.global_position.y])
+					moths.size(), moth_s, _chunk.global_position.y])
+			# R2_MOTH_BURN: headless stand-in for holding L — force-burn one
+			# live moth partway through the soak to prove death + respawn timer
+			if OS.get_environment("R2_MOTH_BURN") != "" and i == 6 and moths.size() > 0:
+				moths[0]._light_t = moths[0].burn_time + 1.0  # past threshold: unlit decay runs first
 		get_tree().quit()
 		return
 	# fall mode needs the ride guard (1s) + death beat (0.45s) to play out first
@@ -1051,7 +1085,7 @@ func _die() -> void:
 	_dying = true
 	if _curi.has_method("hurt"):
 		_curi.hurt()
-	var remaining: int = _lives.lose_eye()
+	var remaining: int = 99 if _soak else _lives.lose_eye()
 	await get_tree().create_timer(0.45).timeout
 	if remaining <= 0:
 		get_tree().reload_current_scene()
@@ -1067,6 +1101,18 @@ func _die() -> void:
 	# the respawn reads as a blink: Curiosity's own invulnerability flicker
 	if _curi.has_method("grant_invuln"):
 		_curi.grant_invuln(1.6)
+	# a fall clears the deck: live orbs vanish, any moth withdraws, and the
+	# wizard resets his cast pacing. The escalation does NOT restart from
+	# zero — once the moth phase has begun, the next one is only a short
+	# grace away (Advika's spec).
+	for orb in get_tree().get_nodes_in_group("hazards"):
+		orb.queue_free()
+	for m in get_tree().get_nodes_in_group("moths"):
+		m.queue_free()
+	if _wizard != null and is_instance_valid(_wizard):
+		_wizard.reset_pacing()
+	if _moth_phase_begun:
+		_moth_timer = moth_regrace
 	_dying = false
 
 
@@ -1106,19 +1152,54 @@ func _spawn_wizard(instant := false) -> void:
 	_wizard.cast_committed.connect(func(pos: Vector2) -> void:
 		OrbSpawner.conjure_orb(_chunk, _chunk.to_local(pos), self, ORB_SCALE,
 				_wizard.facing_dir()))  # the orb rolls the way it was cast
-	# THE BOSS GATE: his fall is what finally stops the climb.
+	# THE BOSS GATE: his fall is what finally stops the climb — and releases
+	# the moth pressure: a live moth loses interest and flies off upward.
 	_wizard.died.connect(func() -> void:
-		_chunk.stop_levitation())
+		_chunk.stop_levitation()
+		_moth_timer = -1.0
+		# the flock loses interest — every live moth leaves, upward and gone
+		for m in get_tree().get_nodes_in_group("moths"):
+			if m is VoidMoth:
+				m.exit_flyaway())
 	if instant:
 		_wizard.appear_instant()
 		_wizard.start_trial()
+		_moth_timer = moth_first_delay
 	else:
 		_wizard.materialize()
-		# One breath after the flicker settles, the trial begins.
+		# One breath after the flicker settles, the trial begins — and the
+		# void's own clock starts with it.
 		_wizard.materialized.connect(func() -> void:
 			get_tree().create_timer(1.0).timeout.connect(func() -> void:
 				if _wizard != null and is_instance_valid(_wizard):
-					_wizard.start_trial()))
+					_wizard.start_trial()
+					_moth_timer = moth_first_delay))
+
+
+# A moth arrives BY FLYING IN: spawned off-screen — from the void beneath
+# the island (70%, the thematic entrance) or swooping from above — then a
+# curved 1.2s approach to a hover post near the deck. Harmless until it
+# lands; then the stalk begins. Arrivals stagger until the cap is aloft;
+# every light-kill re-arms the pressure timer.
+func _spawn_moth() -> void:
+	_moth_phase_begun = true
+	var moth: VoidMoth = VOID_MOTH.instantiate()
+	moth.scale = Vector2(MOTH_SCALE, MOTH_SCALE)
+	add_child(moth)
+	var sx := randf_range(-500.0, 500.0)
+	var spawn: Vector2 = _chunk.global_position \
+			+ (Vector2(sx, 950.0) if randf() < MOTH_FROM_BELOW_P else Vector2(sx, -1000.0))
+	# each moth claims its own hover post so the flock spreads, not stacks
+	var hover := Vector2(randf_range(-400.0, 400.0), randf_range(-420.0, -260.0))
+	moth.enter_from(spawn, _chunk, hover, _curi)
+	moth.died_to_light.connect(func() -> void:
+		print("[VoidMoth] unmade by the light")
+		if moth_respawn_pressure and _wizard != null and is_instance_valid(_wizard) \
+				and not _wizard._dead:
+			_moth_timer = moth_respawn_delay)
+	# more to come until the cap flies
+	_moth_timer = MOTH_STAGGER if get_tree().get_nodes_in_group("moths").size() < moth_cap else -1.0
+	print("[VoidMoth] inbound (%s)" % ("from below" if spawn.y > _chunk.global_position.y else "from above"))
 
 
 func _return_to_hub() -> void:
@@ -1140,6 +1221,7 @@ func _set_phase(p: Phase) -> void:
 			_trauma = 1.0
 		Phase.DONE:
 			_lbl.text = "the wizard falls — the storm relents   (R restart · ESC hub)"
+			print("trial complete")
 
 
 func _physics_process(delta: float) -> void:
@@ -1165,6 +1247,14 @@ func _physics_process(delta: float) -> void:
 				_airborne_t += delta
 				if _airborne_t >= WIZARD_APPEAR_DELAY:
 					_spawn_wizard()
+			# the void moths keep their own clock — they are no one's conjuration.
+			# They build up staggered until the cap flies together.
+			if _moth_timer > 0.0 \
+					and get_tree().get_nodes_in_group("moths").size() < moth_cap \
+					and _wizard != null and is_instance_valid(_wizard) and not _wizard._dead:
+				_moth_timer -= delta
+				if _moth_timer <= 0.0:
+					_spawn_moth()
 			# the trial's difficulty dials ride on every live orb — and so does
 			# the KILL PLANE: a fallen orb must die once it's clearly gone, or
 			# it lands on the old intro ground far below and squats in the
