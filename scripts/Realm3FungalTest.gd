@@ -38,6 +38,8 @@ const FRINGE_LIT := Color(0.96, 0.98, 1.05)       # midground fringe, catching m
 const FRINGE_NEAR := Color(0.62, 0.66, 0.78)      # foreground fringe, darker
 const FRINGE_HANG := Color(0.55, 0.60, 0.72)      # ceiling fringe, dimmer still
 const MAX_GLOW_LIGHTS := 12
+const AMBIENT := Color(0.78, 0.82, 0.94)          # hazy blue-grey world dim
+const FOG_TINT := Color(0.78, 0.84, 0.95)         # drifting haze layers
 const MOSS_FOG := "res://assets/realms/realm2_moss/fog.png"
 const MOSS_SPORE := "res://assets/realms/realm2_moss/spore.png"
 
@@ -65,14 +67,18 @@ func _ready() -> void:
 	_build_platforms()
 	_build_ceiling()
 	_build_dressing()
+	_build_density()
 	_build_foreground()
 	_build_atmosphere()
+	_build_fog_layers()
 	_build_player()
 	_build_camera()
 	_build_ui()
-	# no grade — the pack's own blue-grey carries the realm (hard rule)
+	# hazy blue-grey ambient — a soft cool dim over the world (the backdrop
+	# CanvasLayer is unaffected, so the mist keeps glowing behind everything
+	# and the lantern's ADDED light stays the one warm thing)
 	var grade := CanvasModulate.new()
-	grade.color = Color(0.96, 0.97, 1.0)
+	grade.color = AMBIENT
 	add_child(grade)
 	if OS.get_environment("R3_SHOT") != "":
 		_self_screenshot(OS.get_environment("R3_SHOT"))
@@ -168,7 +174,7 @@ func _fringe(x0: float, x1: float, base_y: float, hang: bool, sc_min: float,
 		var tex: Texture2D = load(BASE + "fungalfrond%d.png" % idx)
 		var sc := _rng.randf_range(sc_min, sc_max)
 		var h := tex.get_height() * sc
-		var sink := h * 0.14 + 6.0
+		var sink := h * 0.14 + 6.0 + _rng.randf_range(0.0, 7.0)   # y jitter
 		var y := base_y + (h * 0.5 - sink) * (1.0 if hang else -1.0)
 		_sprite("fungalfrond%d.png" % idx, Vector2(x, y), sc, z, tint,
 				_rng.randf() < 0.5, hang)
@@ -187,15 +193,37 @@ func _fringe(x0: float, x1: float, base_y: float, hang: bool, sc_min: float,
 
 
 func _glow_light(host: Node2D, col: Color, energy: float, tsc: float) -> void:
+	# fake bloom first (web renderer has no 2D glow): an ADDITIVE soft radial
+	# behind the cap, 2.5x its width — this is what makes glowers read as
+	# light sources instead of flat sprites. Every glower gets one.
+	if host is Sprite2D:
+		_bloom(host as Sprite2D, col, 0.22)
 	if _glow_lights >= MAX_GLOW_LIGHTS:
 		return
 	_glow_lights += 1
+	# softened: bigger pool, lower energy — light pools, not spotlights
 	var l := PointLight2D.new()
 	l.texture = _soft_glow_texture()
 	l.color = col
-	l.energy = energy
-	l.texture_scale = tsc
+	l.energy = energy * 0.7
+	l.texture_scale = tsc * 1.8
 	host.add_child(l)
+
+
+func _bloom(host: Sprite2D, tint: Color, alpha: float) -> void:
+	var g := Sprite2D.new()
+	g.texture = _soft_glow_texture()
+	g.show_behind_parent = true
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	g.material = mat
+	g.modulate = Color(tint.r, tint.g, tint.b, alpha)
+	# child inherits the host's scale — normalize so the halo lands at
+	# ~2.5x the cap width regardless of the mushroom's own scale
+	var target_px := host.texture.get_width() * 2.5
+	g.scale = Vector2.ONE * (target_px / 256.0)
+	g.position = Vector2(0.0, -host.texture.get_height() * 0.22)   # on the cap
+	host.add_child(g)
 
 
 # ---------- backdrop / background ----------
@@ -270,8 +298,10 @@ func _build_background() -> void:
 		s.position = Vector2(mg[0], FLOOR_Y + 8.0 - tex.get_height() * sc * 0.5)
 		s.modulate = Color(0.82, 0.87, 0.96, 0.5)
 		_hills_far.add_child(s)
-	# mid band: fringed mounds + deeper spires, the pack's hue dimmed blue
-	var mid_tint := Color(0.34, 0.40, 0.52, 0.9)
+	# mid band: fringed mounds + deeper spires — atmospheric perspective:
+	# lerped toward the fog so they sit BEHIND the gameplay layer, hazier,
+	# never darker than it
+	var mid_tint := Color(0.48, 0.54, 0.66, 0.88)
 	var mx := -850.0
 	while mx < WORLD_R:
 		var hi := 1 + _rng.randi() % 5
@@ -294,7 +324,7 @@ func _build_background() -> void:
 		s.texture = tex
 		s.scale = Vector2(sc, sc)
 		s.position = Vector2(sp[0], FLOOR_Y + 20.0 - tex.get_height() * sc * 0.5)
-		s.modulate = Color(0.40, 0.46, 0.57, 0.85)
+		s.modulate = Color(0.52, 0.58, 0.70, 0.82)
 		_hills_mid.add_child(s)
 
 
@@ -391,6 +421,10 @@ func _build_ceiling() -> void:
 	_fill_rect(1560.0, 2500.0, -1400.0, -360.0, 0)
 	_pebble_row(1580.0, 2480.0, -364.0, 0.6, 1)
 	_fringe(1600.0, 2460.0, -350.0, true, 0.18, 0.26, 2, FRINGE_HANG, 0.6)
+	# the step down to zone C's shelf: rim the exposed vertical + knuckle
+	# the corner so no raw fill edge shows
+	_pebble_col(2504.0, -352.0, -180.0, 0.62, 1)
+	_sprite("fungalground16.png", Vector2(2512.0, -172.0), 0.6, 1)
 	# ZONE C (ref 2): lower roof shelf wearing a heavy hanging fringe
 	_fill_rect(2500.0, WORLD_R + 900.0, -1400.0, -160.0, 0)
 	_pebble_row(2520.0, 4180.0, -164.0, 0.62, 1)
@@ -458,6 +492,71 @@ func _build_dressing() -> void:
 	_prop("fungalstone5.png", 3900.0, FLOOR_Y + 26.0, 0.45, 3, Color(0.78, 0.80, 0.88))
 
 
+## the density pass: growth CLUSTERS, not scatter. Clumps of 3-6 glowers at
+## platform edges and rock bases (small overlapping big), cup fungi tucked
+## into floor corners, lone ferns breaking the long fringe runs. z varies —
+## some behind the pebble rims (1), most amongst/in front of the fringe.
+func _build_density() -> void:
+	for cl in [
+			[-640.0, FLOOR_Y + 14.0, 2],      # under the flat-cap shelf
+			[-150.0, FLOOR_Y + 12.0, 2],      # spawn boulders
+			[615.0, FLOOR_Y + 12.0, 0],       # pot assembly's shoulder
+			[935.0, FLOOR_Y - 124.0, 2],      # P1 pedestal top, left edge
+			[1165.0, FLOOR_Y - 124.0, 1],     # P1 top, right edge
+			[1495.0, FLOOR_Y - 239.0, 2],     # P2 float top
+			[1890.0, FLOOR_Y + 12.0, 0],      # the mound's feet
+			[2290.0, FLOOR_Y + 14.0, 2],      # fore stalagmite base
+			[2940.0, FLOOR_Y - 114.0, 1],     # zone C pedestal top
+			[2740.0, FLOOR_Y + 12.0, 1],      # stack feet
+			[3340.0, FLOOR_Y - 229.0, 1],     # P4 top
+			[3590.0, FLOOR_Y + 12.0, 2],      # zone C floor run
+			[3960.0, FLOOR_Y + 14.0, 2]]:     # right wall base
+		_shroom_cluster(cl[0] as float, cl[1] as float, int(cl[2]))
+	# cup fungi in the floor corners
+	for cup in [[-1000.0, 0.16], [-590.0, 0.14], [745.0, 0.13], [1170.0, 0.15],
+			[2955.0, 0.14], [3370.0, 0.13], [4180.0, 0.16]]:
+		_prop("fungalfrond%d.png" % (24 + _rng.randi() % 5), cup[0] as float,
+				FLOOR_Y + 16.0, cup[1] as float,
+				1 if _rng.randf() < 0.5 else 4, Color.WHITE, _rng.randf() < 0.5)
+	# lone ferns breaking the fringe line
+	for fern in [[-870.0, 0.26], [180.0, 0.22], [470.0, 0.24], [1040.0, 0.22],
+			[1680.0, 0.26], [2120.0, 0.22], [2620.0, 0.24], [3080.0, 0.22],
+			[3480.0, 0.26], [4080.0, 0.24]]:
+		var fi: int = [1, 5, 6, 7, 8, 9, 12, 13, 14, 15][_rng.randi() % 10]
+		_prop("fungalfrond%d.png" % fi, fern[0] as float, FLOOR_Y + 10.0,
+				fern[1] as float, 3 if _rng.randf() < 0.5 else 4, FRINGE_NEAR,
+				_rng.randf() < 0.5)
+
+
+## one clump. style: 0 = amber-led, 1 = white-glower-led, 2 = thin mixed
+func _shroom_cluster(cx: float, base_y: float, style: int) -> void:
+	var tall_amber := [1, 4, 5, 6, 10, 12]
+	var small := [16, 18, 19, 20, 21, 22, 25]
+	var white_caps := [17, 23, 24]
+	var n := 3 + _rng.randi() % 4
+	for i in n:
+		var idx: int
+		var sc: float
+		if i == 0 and style == 0:
+			idx = tall_amber[_rng.randi() % tall_amber.size()]
+			sc = _rng.randf_range(0.24, 0.32)
+		elif i == 0 and style == 1:
+			idx = white_caps[_rng.randi() % white_caps.size()]
+			sc = _rng.randf_range(0.30, 0.42)
+		else:
+			idx = small[_rng.randi() % small.size()]
+			sc = _rng.randf_range(0.15, 0.24)
+		var z := 1 if _rng.randf() < 0.3 else (3 if _rng.randf() < 0.65 else 4)
+		var m := _prop("mushroomglow%d.png" % idx,
+				cx + _rng.randf_range(-75.0, 75.0),
+				base_y + _rng.randf_range(0.0, 8.0), sc, z, Color.WHITE,
+				_rng.randf() < 0.5)
+		if i == 0 and style != 2:
+			_glow_light(m, GLOW_WARM if style == 0 else GLOW_COOL, 0.25, 1.2)
+		elif _rng.randf() < 0.4:
+			_bloom(m, GLOW_WARM if style == 0 else GLOW_COOL, 0.15)
+
+
 func _build_foreground() -> void:
 	# darkest silhouettes hugging the bottom frame (refs' near plane).
 	# Their bases sit BELOW the lowest view edge (~y 830) so they always
@@ -474,6 +573,28 @@ func _build_foreground() -> void:
 
 
 # ---------- atmosphere ----------
+
+## three wide haze bands at different depths, drifting slowly and wrapping.
+## Each layer = evenly spaced soft radial sprites; the layer node slides and
+## wraps within one spacing, so coverage never gaps. [node, speed_px_s, spacing]
+var _fog_bands: Array = []
+func _build_fog_layers() -> void:
+	for cfg in [[-7, 0.11, 1.4, 5.0], [-3, 0.09, 1.0, 7.5], [7, 0.06, 1.7, 4.0]]:
+		var band := Node2D.new()
+		band.z_index = int(cfg[0])
+		add_child(band)
+		var spacing := 900.0 * (cfg[2] as float)
+		var x := WORLD_L - 1400.0
+		while x < WORLD_R + 1400.0:
+			var f := Sprite2D.new()
+			f.texture = _soft_glow_texture()
+			f.position = Vector2(x, FLOOR_Y - _rng.randf_range(120.0, 320.0))
+			f.scale = Vector2(7.0, 2.6) * (cfg[2] as float)
+			f.modulate = Color(FOG_TINT.r, FOG_TINT.g, FOG_TINT.b, cfg[1] as float)
+			band.add_child(f)
+			x += spacing
+		_fog_bands.append([band, cfg[3] as float, spacing])
+
 
 var _fogs: Array[Sprite2D] = []
 func _build_atmosphere() -> void:
@@ -509,7 +630,7 @@ func _build_atmosphere() -> void:
 	add_child(cl)
 	var grad := Gradient.new()
 	grad.colors = PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0),
-			Color(0.02, 0.04, 0.08, 0.42)])
+			Color(0.07, 0.05, 0.14, 0.28)])   # soft blue-purple edge fade
 	grad.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
 	var gt := GradientTexture2D.new()
 	gt.gradient = grad
@@ -590,6 +711,12 @@ func _process(delta: float) -> void:
 	_t += delta
 	for i in _fogs.size():
 		_fogs[i].position.x += sin(_t * 0.11 + i * 1.7) * 0.35
+	# the haze bands drift and wrap within one sprite spacing — endless
+	for i in _fog_bands.size():
+		var band: Node2D = _fog_bands[i][0]
+		var speed: float = _fog_bands[i][1]
+		var spacing: float = _fog_bands[i][2]
+		band.position.x = fmod(_t * speed, spacing)
 	if _cam != null:
 		_hills_far.position.x = _cam.global_position.x * 0.82
 		_hills_mid.position.x = _cam.global_position.x * 0.6
