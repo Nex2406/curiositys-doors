@@ -21,9 +21,15 @@ const STARTING_LIVES: int = 3
 
 const FLOOR_Y := 420.0          # the base ground line
 const SPAWN := Vector2(-40.0, FLOOR_Y - 140.0)
-const AMBIENT := Color(0.62, 0.58, 0.82)  # the grade: deep blue-purple
-const GLOW_TEAL := Color(0.45, 0.95, 0.85)
+# THE PACK KEEPS ITS OWN COLORS (Advika, hard correction: "not everything
+# has to be purple — use the reference images"). The realm is a LUMINOUS
+# MIST: pale blue-grey fog fills the middle distance, far shapes dissolve
+# into it (atmospheric perspective), near terrain reads dark against it.
+const MIST := Color(0.47, 0.53, 0.62)     # the fog's own pale blue-grey
+const GLOW_WARM := Color(1.0, 0.85, 0.62) # the mushrooms' amber (per the refs)
 const MAX_GLOW_LIGHTS := 12
+const MOSS_FOG := "res://assets/realms/realm2_moss/fog.png"   # neutral soft fog blob
+const MOSS_SPORE := "res://assets/realms/realm2_moss/spore.png"
 
 var _curi: CharacterBody2D
 var _cam: Camera2D
@@ -37,16 +43,19 @@ var _hills_mid: Node2D
 
 
 func _ready() -> void:
-	RenderingServer.set_default_clear_color(Color(0.015, 0.012, 0.04))
+	RenderingServer.set_default_clear_color(Color(0.30, 0.35, 0.44))
 	_build_backdrop()
 	_build_hills()
 	_build_terrain()
 	_build_dressing()
+	_build_atmosphere()
 	_build_player()
 	_build_camera()
 	_build_ui()
+	# NO purple grade — the pack's own blue-grey carries the realm; only a
+	# whisper of cool dim so the lantern still owns the warmth
 	var grade := CanvasModulate.new()
-	grade.color = AMBIENT
+	grade.color = Color(0.93, 0.95, 1.0)
 	add_child(grade)
 	if OS.get_environment("R3_SHOT") != "":
 		_self_screenshot(OS.get_environment("R3_SHOT"))
@@ -55,15 +64,17 @@ func _ready() -> void:
 # ---------- layers ----------
 
 func _build_backdrop() -> void:
-	# screen-anchored vertical gradient: near-black up top, a breath of deep
-	# blue-purple low — the cavern's own darkness (Hub Sky manners)
+	# screen-anchored vertical gradient — THE MIST: dark cavern dimness above,
+	# a luminous pale blue-grey band through the middle distance (the refs'
+	# glow), settling into floor shadow below
 	var cl := CanvasLayer.new()
 	cl.layer = -10
 	add_child(cl)
 	var grad := Gradient.new()
 	grad.colors = PackedColorArray([
-		Color(0.012, 0.010, 0.035), Color(0.055, 0.05, 0.115), Color(0.09, 0.085, 0.16)])
-	grad.offsets = PackedFloat32Array([0.0, 0.62, 1.0])
+		Color(0.16, 0.19, 0.26), Color(0.40, 0.46, 0.56), Color(0.47, 0.53, 0.62),
+		Color(0.26, 0.30, 0.38)])
+	grad.offsets = PackedFloat32Array([0.0, 0.42, 0.66, 1.0])
 	var gt := GradientTexture2D.new()
 	gt.gradient = grad
 	gt.fill_from = Vector2(0, 0)
@@ -86,6 +97,9 @@ func _build_hills() -> void:
 	add_child(_hills_mid)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20260714
+	# ATMOSPHERIC PERSPECTIVE (the refs' whole trick): the FAR band dissolves
+	# INTO the mist — pale, low-contrast, barely there; the MID band is a
+	# deeper blue-grey silhouette. Both keep the pack's own hue.
 	var hx := -900.0
 	while hx < 3600.0:
 		var h := Sprite2D.new()
@@ -94,7 +108,7 @@ func _build_hills() -> void:
 		h.scale = Vector2(hs, hs)
 		h.flip_h = rng.randf() < 0.5
 		h.position = Vector2(hx, FLOOR_Y - 20.0 - h.texture.get_height() * hs * 0.28)
-		h.modulate = Color(0.20, 0.19, 0.30)   # far: darkest silhouette
+		h.modulate = Color(0.62, 0.68, 0.78, 0.55)   # far: sunk into the mist
 		_hills_far.add_child(h)
 		hx += rng.randf_range(520.0, 780.0)
 	hx = -700.0
@@ -105,7 +119,7 @@ func _build_hills() -> void:
 		h.scale = Vector2(hs, hs)
 		h.flip_h = rng.randf() < 0.5
 		h.position = Vector2(hx, FLOOR_Y + 10.0 - h.texture.get_height() * hs * 0.22)
-		h.modulate = Color(0.33, 0.31, 0.46)   # mid: a shade lighter
+		h.modulate = Color(0.38, 0.43, 0.53, 0.85)   # mid: deeper silhouette
 		_hills_mid.add_child(h)
 		hx += rng.randf_range(640.0, 920.0)
 
@@ -124,6 +138,9 @@ func _add_rock(pos: Vector2, tex_name: String, sc: float, mask_mode := 0,
 	spr.texture = tex
 	spr.scale = Vector2(sc, sc)
 	spr.z_index = z
+	# near terrain reads a step darker than the mist behind it (the refs'
+	# silhouette contrast) — the pack's hue, just dimmed
+	spr.modulate = Color(0.74, 0.76, 0.82)
 	body.add_child(spr)
 	var img := tex.get_image()
 	var w := img.get_width()
@@ -224,8 +241,8 @@ func _build_dressing() -> void:
 			_glow_lights += 1
 			var l := PointLight2D.new()
 			l.texture = _soft_glow_texture()
-			l.color = GLOW_TEAL
-			l.energy = 0.4
+			l.color = GLOW_WARM   # the refs' amber caps, not teal
+			l.energy = 0.45
 			l.texture_scale = 1.3
 			mu.add_child(l)
 	# big blue caps + amber spore stalks, sparse
@@ -248,6 +265,40 @@ func _build_dressing() -> void:
 		fr.z_index = 1
 		fr.modulate = Color(0.8, 0.78, 0.9)
 		add_child(fr)
+
+
+# The living air (built the Realm 2 way): drifting fog banks between the
+# depth bands, and the refs' floating white motes everywhere.
+var _fogs: Array[Sprite2D] = []
+func _build_atmosphere() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260716
+	for i in 5:
+		var f := Sprite2D.new()
+		f.texture = load(MOSS_FOG)
+		f.position = Vector2(-800.0 + i * 1100.0, FLOOR_Y - rng.randf_range(60.0, 260.0))
+		f.scale = Vector2(rng.randf_range(2.8, 4.0), rng.randf_range(2.0, 2.8))
+		f.modulate = Color(0.72, 0.78, 0.88, rng.randf_range(0.22, 0.34))
+		f.z_index = -4 if i % 2 == 0 else 4   # banks behind AND in front of terrain
+		add_child(f)
+		_fogs.append(f)
+	var motes := CPUParticles2D.new()
+	motes.texture = load(MOSS_SPORE)
+	motes.amount = 26
+	motes.lifetime = 14.0
+	motes.preprocess = 14.0
+	motes.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	motes.emission_rect_extents = Vector2(2200.0, 480.0)
+	motes.gravity = Vector2.ZERO
+	motes.initial_velocity_min = 6.0
+	motes.initial_velocity_max = 20.0
+	motes.spread = 180.0
+	motes.scale_amount_min = 0.5
+	motes.scale_amount_max = 1.1
+	motes.color = Color(0.95, 0.97, 1.0, 0.8)
+	motes.position = Vector2(1400.0, FLOOR_Y - 240.0)
+	motes.z_index = 5
+	add_child(motes)
 
 
 var _glow_tex: GradientTexture2D = null
@@ -305,7 +356,12 @@ func _build_ui() -> void:
 
 # ---------- running ----------
 
+var _t := 0.0
 func _process(delta: float) -> void:
+	_t += delta
+	# the fog banks breathe sideways, each at its own pace
+	for i in _fogs.size():
+		_fogs[i].position.x += sin(_t * 0.11 + i * 1.7) * 0.35
 	# hand-driven parallax: far crawls, mid drifts (Realm 2's manners)
 	if _cam != null:
 		_hills_far.position.x = _cam.global_position.x * 0.82
