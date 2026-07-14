@@ -105,6 +105,8 @@ var _airborne_t := 0.0  # seconds the island has been RISING (wizard spawn clock
 var _moth_timer := -1.0        # counts down to the next arrival while > 0
 var _moth_phase_begun := false # first moth has arrived at least once
 var _soak := false             # R2_TRIAL_LOG: deaths don't spend lifelines
+var _hp_fill: ColorRect       # the ember health strip under the lifeline eyes
+var _hp_track: ColorRect
 
 
 func _ready() -> void:
@@ -974,6 +976,12 @@ func _build_player() -> void:
 	_lives.reset(STARTING_LIVES)
 	if _curi.has_signal("died") and not _curi.died.is_connected(_die):
 		_curi.died.connect(_die)
+	if _curi.has_signal("health_changed"):
+		_curi.health_changed.connect(func(h: int, m: int) -> void:
+			if _hp_track == null:
+				return
+			_hp_track.visible = h < m
+			_hp_fill.size.x = 240.0 * clampf(float(h) / float(m), 0.0, 1.0))
 
 
 func _build_camera() -> void:
@@ -1005,6 +1013,22 @@ func _build_ui() -> void:
 	_lbl.position = Vector2(16, 12)
 	_lbl.add_theme_color_override("font_color", Color(0.78, 0.73, 0.92, 0.6))
 	cl.add_child(_lbl)
+
+	# Her health, as a slim ember strip under the lifeline eyes — the same
+	# warm fill the enemy bars use, and the same manners: invisible at full
+	# health (near-zero UI), it appears the moment something hurts her
+	# (Advika: dives/chip damage were unreadable with only the eyes showing).
+	_hp_track = ColorRect.new()
+	_hp_track.position = Vector2(42, 112)
+	_hp_track.size = Vector2(240, 6)
+	_hp_track.color = Color(0.10, 0.03, 0.05, 0.9)
+	_hp_track.visible = false
+	cl.add_child(_hp_track)
+	_hp_fill = ColorRect.new()
+	_hp_fill.position = Vector2.ZERO
+	_hp_fill.size = Vector2(240, 6)
+	_hp_fill.color = Color(0.95, 0.36, 0.26)
+	_hp_track.add_child(_hp_fill)
 
 
 func _self_screenshot(path: String) -> void:
@@ -1167,13 +1191,19 @@ func _spawn_wizard(instant := false) -> void:
 		_moth_timer = moth_first_delay
 	else:
 		_wizard.materialize()
-		# One breath after the flicker settles, the trial begins — and the
-		# void's own clock starts with it.
+		# The flicker settles — then THE CARD IS DRAWN: the tarot card pauses
+		# the world and names the trial; only its dismissal starts it (the
+		# instructions gate, Advika). The void's clock starts with the trial.
 		_wizard.materialized.connect(func() -> void:
-			get_tree().create_timer(1.0).timeout.connect(func() -> void:
-				if _wizard != null and is_instance_valid(_wizard):
-					_wizard.start_trial()
-					_moth_timer = moth_first_delay))
+			get_tree().create_timer(0.8).timeout.connect(func() -> void:
+				if _wizard == null or not is_instance_valid(_wizard):
+					return
+				var card := TarotCard.new()
+				add_child(card)
+				card.closed.connect(func() -> void:
+					if _wizard != null and is_instance_valid(_wizard):
+						_wizard.start_trial()
+						_moth_timer = moth_first_delay)))
 
 
 # A moth arrives BY FLYING IN: spawned off-screen — from the void beneath
