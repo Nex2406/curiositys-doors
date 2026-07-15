@@ -19,6 +19,7 @@ extends Node2D
 ##   -> C overgrown platform stack under a fringed ceiling (ref 2).
 ## Controls: Curiosity's own. R restarts. ESC returns to the Hub.
 ## R3_SHOT env: screenshot at 1s + quit. R3_SHOT_X: park the hero first.
+## R3_SHOT_CAMY: freeze the camera at a fixed Y (inspect the jump/roof view).
 
 const BASE := "res://assets/realms/realm3_fungal/"
 const LIVES_HUD := preload("res://scenes/UI/LivesHUD.tscn")
@@ -70,6 +71,7 @@ var _cam: Camera2D
 var _lives: LivesHUD
 var _exit_door: Area2D
 var _at_exit := false
+var _freeze_cam := false
 var _lbl: Label
 var _dying := false
 var _leaving := false
@@ -753,18 +755,20 @@ func _build_ceiling() -> void:
 	# ONE continuous roof: a single fill + a single hanging hill band the
 	# whole way — no chunks, no steps, no gaps. Stalactites and half-sunk
 	# boulders vary the silhouette; the LINE never moves.
-	# ABOVE the dressed edge the rock fades SMOOTHLY into near-black: a
-	# vertex-color gradient polygon, so a high jump reads as looking up
-	# into thick dark stone — no bands, no seams, no shapes (Advika
-	# 2026-07-15: the jump view must be clean)
+	# ABOVE the dressed edge the rock is DARK stone the whole way — a jump
+	# must read as looking up into black rock. The gradient stays dark end
+	# to end: SOIL at the fringe line fading to near-black above. (Advika
+	# 2026-07-15: the old bottom stop was FILL_DARK — the bright terrain
+	# teal — and it glowed as a rectangular band right above the fringe.)
+	var roof_deep := Color(0.016, 0.03, 0.027)   # near-black cave rock
 	var grad_p := Polygon2D.new()
 	grad_p.polygon = PackedVector2Array([
-			Vector2(WORLD_L - 900.0, -800.0), Vector2(WORLD_R + 900.0, -800.0),
+			Vector2(WORLD_L - 900.0, -820.0), Vector2(WORLD_R + 900.0, -820.0),
 			Vector2(WORLD_R + 900.0, ROOF_Y), Vector2(WORLD_L - 900.0, ROOF_Y)])
-	grad_p.vertex_colors = PackedColorArray([SOIL, SOIL, FILL_DARK, FILL_DARK])
+	grad_p.vertex_colors = PackedColorArray([roof_deep, roof_deep, SOIL, SOIL])
 	grad_p.z_index = 0
 	add_child(grad_p)
-	_fill_rect(WORLD_L - 900.0, WORLD_R + 900.0, -1400.0, -800.0, 0, SOIL)
+	_fill_rect(WORLD_L - 900.0, WORLD_R + 900.0, -1400.0, -820.0, 0, roof_deep)
 	_roof_band(WORLD_L - 250.0, WORLD_R + 250.0, ROOF_Y)
 	# stalactites on an even rhythm end to end (the old hand list bunched
 	# left and starved the right half — uniform means uniform)
@@ -1227,9 +1231,10 @@ func _process(delta: float) -> void:
 	if _cam != null:
 		_hills_far.position.x = _cam.global_position.x * 0.82
 		_hills_mid.position.x = _cam.global_position.x * 0.6
-		var target := Vector2(clampf(_curi.global_position.x, WORLD_L + 600.0, WORLD_R - 350.0),
-				clampf(_curi.global_position.y - 110.0, -180.0, FLOOR_Y - 190.0))
-		_cam.position = _cam.position.lerp(target, 1.0 - pow(0.001, delta))
+		if not _freeze_cam:
+			var target := Vector2(clampf(_curi.global_position.x, WORLD_L + 600.0, WORLD_R - 350.0),
+					clampf(_curi.global_position.y - 110.0, -180.0, FLOOR_Y - 190.0))
+			_cam.position = _cam.position.lerp(target, 1.0 - pow(0.001, delta))
 	if not _dying and _curi.global_position.y > FLOOR_Y + 700.0:
 		_die()
 
@@ -1272,6 +1277,11 @@ func _self_screenshot(path: String) -> void:
 		_curi.position = Vector2(float(OS.get_environment("R3_SHOT_X")), FLOOR_Y - 160.0)
 		_curi.velocity = Vector2.ZERO
 		_cam.position = Vector2(_curi.position.x, FLOOR_Y - 190.0)
+	# R3_SHOT_CAMY: freeze the camera at a fixed height to inspect the jump
+	# view (the roof) — _process won't lerp it back to the hero
+	if OS.get_environment("R3_SHOT_CAMY") != "":
+		_cam.position.y = float(OS.get_environment("R3_SHOT_CAMY"))
+		_freeze_cam = true
 	await get_tree().create_timer(1.0).timeout
 	print("SHOT curi=", _curi.global_position)
 	get_viewport().get_texture().get_image().save_png(path)
