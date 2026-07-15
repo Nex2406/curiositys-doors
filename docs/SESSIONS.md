@@ -7,6 +7,83 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 
 ---
 
+## 2026-07-15 — Realm 3 becomes a place: the long fungal forest, iterated live
+
+**Shipped** (branch `feat/r3-fungal-shell` → main, closes #166 — one long
+live session, ~10 feedback rounds with Advika driving)
+- The level grew from a 5k test strip to a ~27k px five-minute walk
+  (world -1050..26000). Everything is rhythm-generated from a seeded rng —
+  ground, roof, background, dressing, platform arcs — so "make it longer"
+  is now a constants change.
+- Platform language settled after several rejections: mushrooms ONLY.
+  Half-buried giant dome caps as low steps, full stemmed mushrooms higher,
+  lone hop domes between arcs, one-way cap colliders. Rocks demoted to
+  clean decor (no growth on stone, never walkable).
+- Floor became a true meadow (`_floor_mat`): one gradient field, per-clump
+  depth/tint/height, two overlapped height waves — she wades IN it, and no
+  strip or band survives anywhere (three separate "strip" complaints died
+  here: pebble rims, seam belt, flat walk-mat layers).
+- Background: composed mid-band vignettes (cap families, spire groves,
+  glow gardens) with LOUD hued giant caps + glow auras; far band got a
+  giant-cap skyline. Overcrowded on request, then eased ~25% + camera
+  zoomed out to 1.0.
+- Palette-hued glows (amber/cyan/moss — purple stays Curiosity's),
+  fireflies removed, LivesHUD eyes tinted realm-teal via `eye_tint`.
+- Jump-view bugs fixed twice: roof now fades into near-black via a
+  vertex-color gradient polygon, no bands/boulder-lumps above the fringe.
+- Exit arch door at the far end (`[Y] Return` → Hub) using Realm 1's exact
+  recipe; Hub Door 3 already targeted realm_3 — the three-door loop is
+  closed for the first time.
+- Gates green locally: `--headless --import` exit 0, Web export exit 0.
+
+**Didn't work / lessons**
+- Fringe rows at constant scale/tint ALWAYS read as strips at this zoom —
+  any repeated element needs scale + height + VALUE jitter, or a gradient.
+- Boulder-mound platforms with growth on the crown = "moss on rocks", dead
+  on arrival. Advika's law: decor and walkable are different vocabularies.
+- Value-step between stacked flat layers reads as a painted line even when
+  heights vary — the fix is per-sprite continuous depth, not more layers.
+
+**Next 3 safe candidates**
+1. Play the deployed Pages build in a browser end-to-end (perf check — this
+   scene draws far more sprites than anything else; watch web FPS).
+2. R3 puzzle + enemies per `docs/REALMS.md` (environment shell is done).
+3. Realm-local exit lore line for R3's arch door (`exit_lore_line` is
+   already plumbed, just needs Advika's words).
+
+## 2026-07-14 — Realm 3 rebuilt to Advika's reference images (the pack's grammar)
+
+**Shipped** (branch `feat/r3-fungal-shell`, closes #166)
+- Advika supplied THREE reference images made from the exact fungal pack
+  (saved: `assets/_reference/realm3_target_{wide,platforms,cavern}_2026-07-14.png`)
+  and the shell was rebuilt to their construction grammar: near-black navy
+  FILL BODIES rimmed with the pack's pebble frames/strips, dense frond
+  fringe on every surface (up from floors/platform tops, hanging from
+  ceilings/undersides), grouped prop assemblies (pots + boulders + gold
+  spore stalks / white glowers on the platform stack / flat-cap family on
+  a stone shelf), luminous-mist background with pale spire + mushroom-ghost
+  silhouettes, darkest fore silhouettes, corner vignette.
+- Three zones matching the three refs: A cavern mouth (ref 3) → B pot-strewn
+  floor under a hanging pebble-rimmed chunk (ref 1) → C overgrown platform
+  stack beneath a fully fringed ceiling (ref 2). Enclosed cavern: pebbled
+  end walls, jump-feasible platform ladder (≤115px steps).
+- Contact-sheet study of all 162 pack slices (9 families) — fungalground
+  turned out to be pebble FRAMES/strips, fungalfrond holds the pots; that
+  discovery drove the whole rebuild.
+
+**What didn't work / dead ends**
+- Pebble tilers that check only the tile CENTER against the span end throw
+  strays half a tile past edges (the floating strip right of the chunk);
+  whole-tile-must-fit is the rule now.
+- PowerShell `Get-Content`/`Set-Content` round-trip mojibake'd the script's
+  UTF-8 — repaired via cp1252 re-decode; use the Edit tool for source files.
+
+**Next 3 safe candidates**
+1. Realm 3 door wiring: Door 3 → Realm3FungalTest (Door 2's pattern).
+2. Void moth enemy (frames already in Downloads) — but R2-M3 Enemy base
+   first, per the milestone order.
+3. Realm 3 puzzle spec chat with Advika (docs/REALMS.md realm 3 section).
+
 ## 2026-07-12 (pt. 2) — The wizard's trial: he conjures, she hunts, the island stops
 
 **Shipped** (PR: `feat/r2-runeorb-hazard`, closes #155 — one long live
