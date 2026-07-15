@@ -1,25 +1,40 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-07-14_
+_Last updated: 2026-07-15_
 
-## Realm 3 — fungal cavern shell, rebuilt to Advika's reference images
-`scenes/realms/Realm3FungalTest.tscn` (+`scripts/Realm3FungalTest.gd`) — an
-enclosed walkable cavern built to the THREE reference images Advika made
-from the fungal pack itself (`assets/_reference/realm3_target_*_2026-07-14.png`).
-The pack keeps its OWN colors (hard rule — no purple grade). Construction
-grammar, per the refs: dark navy fill bodies rimmed with the pack's pebble
-frames/strips; dense frond fringe on every surface (up from floors and
-platform tops, hanging beneath ceilings and floating platforms); grouped
-prop assemblies (pots + boulders + gold spore stalks, white glow-mushrooms
-on the platform stack, blue flat-cap family on a stone shelf); luminous
-mist backdrop with pale spire/mushroom-ghost silhouettes on two hand-driven
-parallax bands; darkest fore silhouettes cut by the frame bottom; corner
-vignette. Three zones: A cavern mouth (ref 3, high pebbled roof +
-stalactites) → B pot-strewn floor under a hanging rimmed chunk (ref 1) →
-C overgrown platform stack under a fully fringed lower ceiling (ref 2).
-Platform ladder is jump-feasible (≤115px steps); pebbled end walls seal
-both ends. ≤12 PointLight2Ds (amber stalks warm, white glowers cool).
-Harness: R3_SHOT / R3_SHOT_X. R restarts, ESC → Hub. NOT yet wired to
-Door 3 (still stub); environment only — no enemies, no puzzle.
+## Realm 3 — the fungal forest, iterated live with Advika (2026-07-15)
+`scenes/realms/Realm3FungalTest.tscn` (+`scripts/Realm3FungalTest.gd`) — a
+LONG walkable cavern (world -1050..26000, ~27k px, 5-min-walk scale), fully
+generated in code with a fixed rng seed. Iterated live with Advika through
+~10 rounds; the grammar that survived:
+- **Meadow floor** (`_floor_mat`): ONE gradient field — every clump picks
+  its own depth (tint slides lit→dark, z follows, height rides two
+  overlapped sine waves + jitter). Continuous (she is never in the air,
+  she wades IN the growth) but no strip/band anywhere. The old seam-belt
+  tuft row and flat walk-mat layers are DEAD — they read as moss strips.
+- **Platforms are mushrooms ONLY** (`_shroom_platform`): giant caps with
+  one-way colliders on the dome. Low steps = half-buried domes (bury 210);
+  higher steps = full mushrooms with stems (bury 40). Climb arcs
+  (low→mid→high, ≤130px steps) at hand zones B/C/D + `ARC_XS`; lone hop
+  domes every ~800px between them. Rocks are DECOR only (`_boulder_decor`,
+  no growth on stone, nothing walkable — Advika's law).
+- **Background: composed vignettes, overcrowded then eased** — mid band
+  builds rotating set-pieces (cap family / spire grove / cap + thin stalks
+  / glow garden) each with one hue glint; backdrop giant behind every 3rd;
+  tall thin caps (1/2/5/7/8) thread the gaps; far band has spires, ghost
+  mushrooms w/ alternating glints AND a giant cap skyline. Giant caps wear
+  LOUD hues (`CAP_HUES` teal/moss/blue) + glow auras (`_cap_aura`).
+- **Glow hues** inside the palette: amber gold, pale cyan, moss green
+  (GLOW_WARM/COOL/MOSS); purple stays Curiosity's. Fireflies removed
+  (Advika); spores + glowers carry the air. MAX_GLOW_LIGHTS 24, rest bloom.
+- **Roof**: ONE line (ROOF_Y -380) with hanging band; above it a
+  vertex-color gradient fades into near-black — jumping never reveals
+  bands/lumps (two bugs fixed there). Camera: zoom 1.0, Y clamped -180.
+- **Exit door** at x 25580: Realm 1's exact arch+glow+Door.gd recipe,
+  `[Y] Return` → Hub. Hub Door 3 targets realm_3 — **the loop is closed**.
+- **Eyes HUD tinted realm-teal** via `eye_tint` (violet art, green-fed
+  multiply — no art change, other scenes keep purple).
+Harness: R3_SHOT / R3_SHOT_X. R restarts, ESC → Hub. Environment only —
+no enemies, no puzzle yet.
 
 ## Realm 2 — R2-M1 quake + liftoff SHIPPED (test scene)
 `scenes/realms/Realm2LiftTest.tscn` (+`scripts/Realm2LiftTest.gd`,
@@ -79,8 +94,8 @@ Door 2 (middle) → Realm 2 liftoff setpiece (`Realm2LiftTest.tscn`): no
 timer on the arrival — the player stays above the canopy until they leave
 via ESC (auto-return removed 2026-07-08, it felt like being kicked out).
 Respawn lands under Door2 via `Transition.last_door_id`.
-Door 3: stub — `Realm3FungalTest.tscn` exists (see Realm 3 above) but is
-not wired to the door yet.
+Door 3 → Realm 3 fungal forest (`Realm3FungalTest.tscn`), and its arch
+door at the far end returns to the Hub. All three doors live.
 
 ## Hub — door-selection scene
 Reframed to a full-bleed painterly composition (target ref:
