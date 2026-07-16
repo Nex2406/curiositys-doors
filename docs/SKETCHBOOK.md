@@ -11,7 +11,10 @@ Rules:
 
 ## 2026-07-15
 
-- **Realm 3 setpiece — "The Bloom" (down, then up).** Advika wants R3 to have
+- ✅ **Realm 3 setpiece — "The Bloom" (down, then up).** → *promoted to
+  [`docs/realms/realm3.md`](realms/realm3.md) 2026-07-16 — open questions
+  answered (ritual wake · accident · wave+bursts+pursuer · bounce first),
+  canon-grounded against the novel.* Advika wants R3 to have
   a signature *moment* like R2's sky-fight, not a theme-first design. Landed
   on a mix of two pitches (A = the bloom/eruption, B = the descent) folded
   into one three-act arc. This is the working concept — not yet a locked
