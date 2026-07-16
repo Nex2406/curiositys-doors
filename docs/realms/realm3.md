@@ -1,110 +1,121 @@
-# Realm 3 — The Bloom (fungal forest)
+# Realm 3 — The Bloom (the fungal forest / the Hollow's grave)
 
-> Promoted from `docs/SKETCHBOOK.md` (2026-07-15) + design decisions with
-> Advika (2026-07-16) + canon threads mined from *Written by Silence*
-> (the book is the source — see `docs/VOICE.md`). Environment shell is
-> LIVE on main (`Realm3FungalTest.tscn`): teal mood + ref pebble-rim
-> grammar, set-pieces kept rare. This doc is the realm's *content* spec.
+> Promoted from `docs/SKETCHBOOK.md` (2026-07-15); decisions locked with
+> Advika 2026-07-16 (two rounds). Canon: *Written by Silence* — this is
+> the FINAL realm of v1 and it is explicitly set in the book's aftermath.
+> Environment shell is LIVE on main (`Realm3FungalTest.tscn`).
 
-## The arc in one breath
+## What this realm is (the reveal)
 
-Descend into dread → wake the heart by accident → ride the bloom out.
-Rhymes with Realm 2 but flipped: R2 rises into a fight; R3 sinks into a
-memory. Two play-feels inside one door.
+**The fungal forest grew over the ruins of the Binding Hollow** — Grief's
+collapsed library, the archive of every ended life. Mycelium feeds on
+dead matter; this forest feeds on the book's dead. The "travelers" the
+forest consumed are names from Grief's ledger, half-grown-over. And at
+the bottom, still breathing, is the **Heart of the Hollow** — the
+archive's surviving core, swollen with everything Grief made it hold
+("I can't hold much more of you, Grief"). It was never malicious. It
+was never witnessed. It sleeps because no one ever came down to
+remember it.
+
+Waking it is the finale of v1.
 
 ## Decisions (locked 2026-07-16, Advika)
 
-- **Act 2 is a ritual wake, not a boss.** No health bar. Approach, touch,
-  witness. Keeps R3 distinct from R2's wizard fight.
-- **Curiosity wakes her by accident.** They can't help but look/touch —
-  curiosity IS the trigger. No villain anywhere in this realm.
-- **Act 3 pressure = all three:** the rising light wave below (the bloom
-  itself as kill-plane), mushrooms detonating around them on timers, AND
-  a pursuer.
-- **Build order: bounce prototype first** (isolated rig, RuneOrbTest
-  style) — riskiest feel in the concept; if bouncing isn't fun, Act 3
-  changes shape.
-
-## Canon grounding (from the book — these are quotes/laws, not inventions)
-
-- **The floor gives way.** Grief, in the Chapel: "Come. It's time you saw
-  what you started" — and the floor drops Curiosity into the Hollow.
-  Act 1 opens with the same grammar: a low hum through the ground, then
-  the split. Slow, deliberate. Never a jump-scare.
-- **The Mother = remembering that learned how to stand.** The book's
-  recurring engine: Joy is "the accumulation of Grief's mistakes"; the
-  Girl exists because "he remembered too deeply, and the remembering
-  learned how to stand." The Mother is the forest's accumulated memory
-  of everything it ever consumed — vast, dormant, unwitnessed. Not a
-  god. Not a monster. An archive that grew a heartbeat.
-- **The wake is recognition, not conquest.** The Tower card under
-  Curiosity's touch: "lit up like it had been waiting for them — not to
-  be claimed, but to be REMEMBERED." The Mother wakes the same way.
-- **The Bloom = the archive releasing.** The Hollow's law: "You don't
-  take from the Hollow. You become part of it." Waking the Mother
-  releases everything the forest kept — an eruption of remembered light,
-  racing upward. Beautiful violent release; the realm's theme word.
-- **The pursuer is a Remembered One.** A consumed traveler's memory,
-  given shape by the waking (Girl-logic). It doesn't hate Curiosity —
-  it wants them to STAY. Everything in this universe that loves you
-  tries to keep you. Grabbing, reaching, mournful. Never armed.
-- **Cloak-eyes react to the vast** (book: they go still when something
-  immense watches; they vanish in the void). LivesHUD eyes: still in
-  the Heart chamber, one closed beat at the wake.
-- **Amber = buried joy.** Joy's threads sleep "curled tight and hidden"
-  inside people. Travelers flicker amber under the lantern (GLOW_WARM).
+- **The sleeper = the Binding Hollow's heart** (was "the Mother" in the
+  sketch — name retired).
+- **The game's villain = Consciousness.** Revealed here, not fought.
+  The ladder: R1 golems (set guardians) → R2 wizard (the storm's
+  author, an AGENT) → R3 the author of the authors shows its hand.
+- **Act 2 is a ritual wake, not a boss.** Approach, touch, witness.
+- **Curiosity wakes it by accident** — curiosity IS the trigger.
+- **Act 3 pressure = all three:** rising bloom-light below, bursting
+  mushrooms around, a pursuer behind — PLUS the correction above (see
+  finale).
+- **Ending = defiant tease.** No confrontation scene. One lore line,
+  Advika-written ("What happens if we refuse?" energy — her call).
+- **Build order: bounce prototype first** (isolated rig; riskiest feel).
 
 ## The three acts
 
 ### Act 1 — THE DESCENT
-Quiet fungal forest (the shipped shell) → the floor gives way →
-Curiosity sinks INTO the mycelium. Tighter, darker, stranger downward;
-the lantern is the only warmth. In the spore-glow: the travelers the
-forest consumed — overgrown silhouettes, half-swallowed. They flicker
-amber as the lantern passes, then dim. One of them hums.
-Play-feel: careful, lantern-lit, dread that accumulates.
+Quiet fungal forest (the shipped shell) → a hum through the ground →
+the floor gives way (canon echo: the Chapel scene — "It's time you saw
+what you started"). Curiosity sinks into the mycelium. Downward the
+forest admits what it is: **buried shelves fused into the walls,
+book-spines swallowed by fungus, ledger-names** — and the travelers,
+overgrown silhouettes that flicker amber under the lantern (Joy's
+buried threads). One of them hums Grief's first lullaby.
+Play-feel: careful, lantern-lit, accumulating dread.
 
 ### Act 2 — THE HEART
-The bottom. The Mother: a vast dormant mass fused into the cavern
-(layered illustration, wake staged in light/modulate, no frame anim).
-Heartbeat audio + a half-remembered hummed lullaby. Curiosity's
-approach/charged animations (imported, unwired — this is their moment)
-carry the touch. She lights up like she had been waiting to be
-remembered. The HUD eyes close for one beat.
+The bottom: the Heart of the Hollow — a vast breathing archive-mass,
+pulsing like the crystal chamber did. The HUD cloak-eyes go STILL
+(canon: they fix when something immense watches). Curiosity's
+approach/charged animations carry the touch. The Heart lights up
+"like it had been waiting — not to be claimed, but to be REMEMBERED."
+The eyes close for one beat. Heartbeat audio + the hummed lullaby.
 
-### Act 3 — THE BLOOM
-The forest detonates into light. Flee upward: bounce-launch off
-mushrooms that burst and grow underfoot, racing the rising wave of
-remembered light. Mushrooms detonate around them; the Remembered One
-climbs after them, reaching. Caught = kept (absorbed, respawn beat).
-Play-feel: fast, reactive, momentum. The realm exhales them out the
-exit door as the light settles back down into the dark.
+### Act 3 — THE BLOOM (the finale of v1)
+Every life the Hollow kept erupts UPWARD as light — the Tower made
+real ("the top broken open, stone spilling upward instead of down";
+Curiosity has carried that card since before the game began).
+Flee up on burst-and-grow mushroom bounces. Three pressures:
+- **Below:** the rising amber bloom — beautiful, wants to keep you
+- **Around:** mushrooms detonating on timers
+- **Behind:** the Remembered One — a consumed traveler's memory given
+  shape by the waking; it reaches, never strikes; caught = kept
+Then the sky tears: **Consciousness notices.** Cold white light falls
+in straight lines (book-accurate), unmaking the bloom as it descends —
+the correction. The climb becomes a race BETWEEN two vast forces, one
+warm and rising, one cold and falling, with one small lantern in
+between. Curiosity escapes as the two lights collide behind them.
+
+**Ending beat:** quiet exit, the forest dims, one lore line (Advika
+writes it), cut. The villain is revealed by a SKY, not a cutscene.
+v1 closes on defiance; later realms inherit the war.
 
 ## Asset needs (who makes what)
 
 **Advika:**
-- Traveler / Remembered One silhouettes (ONE design serves both — 2-4
-  still poses for Act 1 flickers; the pursuer variant animates in-code)
-- The Mother: big layered illustration (body mass + eye/glow layers,
-  2-3 wake stages)
-- Audio: descent ambient (drips, deep hum), Mother heartbeat + hummed
-  lullaby (Advika could record the hum herself), the wake sound, the
-  eruption roar, escalating escape music (trailer material)
+- Traveler / Remembered One silhouettes (one design serves both)
+- The Heart of the Hollow: big layered illustration (archive-mass +
+  eye/glow layers, 2-3 wake stages)
+- Audio: descent ambient, heartbeat + hummed lullaby (Advika records
+  the hum), the wake sound, the eruption roar, escape music, and the
+  correction's sound (cold, clean, wrong — against the warm roar)
+- Optional: buried shelf/spine silhouettes for the descent walls (can
+  be code-built dark shapes if not)
 
 **In-code (no new art):**
-- Floor collapse, descent shaft (fungal pack + deepening grade)
-- Bounce mushrooms (existing caps + squash/stretch/grow tweens + spore
-  particles), the light wave (shader + particles + existing glow hues),
-  wake staging, eye-HUD beats
+- Floor collapse, descent shaft, ledger-name dressing (silhouette work)
+- Bounce mushrooms (existing caps + tweens + particles)
+- The bloom wave (shader + particles + existing glow hues)
+- The correction (white line-rain shader + time-stutter effect)
+- Wake staging, eye-HUD beats (still / close)
+
+## Canon anchors (for future sessions — quotes are from the book)
+
+- The floor gives way beneath Curiosity: Chapel scene, Grief.
+- "You don't take from the Hollow. You become part of it."
+- The Hollow: "I can't hold much more of you, Grief." / it "has a habit
+  of filling empty rooms."
+- Wake-by-touch: the Tower card "lit up like it had been waiting for
+  them, not to be claimed, but to be remembered."
+- Remembering that accumulates "learns how to stand" (Joy, the Girl).
+- The Tower: "its top broken open, stone spilling upward instead of
+  down"; "it doesn't just collapse. It rearranges… it invites things in."
+- The correction: "White flame fell in straight lines. Where it struck,
+  time stuttered." / "Return, or be unmade."
+- Curiosity's answer — the whole game's thesis: "What happens if we
+  refuse?"
+- Epilogue: a child before a ruined cathedral, ash, open doors — the
+  cathedral ruin is a candidate look for R3's entrance/door dressing.
 
 ## Parked / later
 
-- The jade key contradiction: in the book the key "isn't for opening
-  anything" — but the game plan says jade key unlocks Door 2. Possible
-  reconciliation: the key doesn't unlock; the door WAKES when
-  remembered, like everything else. Decide with Advika before Door 2's
-  key beat ships.
-- Does the Mother almost-speak Curiosity's other name (the one Silence
-  knows)? Endgame material — R3 could tease it at most. Advika's call.
-- Any spoken/written lines: Advika writes them (no-added-text law;
-  Claude may draft in voice for approval only).
+- Jade key contradiction (book: the key "isn't for opening anything") —
+  possible reconciliation: doors WAKE when remembered, they don't
+  unlock. Decide before Door 2's key beat ships.
+- Does the Heart almost-speak Curiosity's other name (Silence knows it)?
+  Endgame material; R3 teases at most. Advika's call.
+- All spoken/written lines: Advika writes them (no-added-text law).
