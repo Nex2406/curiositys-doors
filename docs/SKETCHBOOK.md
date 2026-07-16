@@ -9,6 +9,17 @@ Rules:
 
 ---
 
+## 2026-07-16
+
+- **The Underhollow (Advika, mid-session): "topsy turvy — falls in the
+  ground, floating, has to fight."** The Bloom's descent doesn't land:
+  inside the Hollow's ruins gravity stops working (canon — the shelves
+  "rose and fell with no gravity to guide them"). Locked same day:
+  low-grav drift + authored gravity-flip beats; Remembered Ones as
+  grabbing enemies (the Hollow keeps what enters). Promoted straight
+  into [`docs/realms/realm3.md`](realms/realm3.md) as Act 1.5. Pulls M2
+  combat wiring up the priority list.
+
 ## 2026-07-15
 
 - ✅ **Realm 3 setpiece — "The Bloom" (down, then up).** → *promoted to

@@ -33,9 +33,18 @@ Waking it is the finale of v1.
   finale).
 - **Ending = defiant tease.** No confrontation scene. One lore line,
   Advika-written ("What happens if we refuse?" energy — her call).
-- **Build order: bounce prototype first** (isolated rig; riskiest feel).
+- **Build order: bounce prototype first** (isolated rig; riskiest feel),
+  then the float/flip movement rig (Underhollow), then combat wiring.
+- **The Underhollow (Act 1.5)** — the fall becomes a floating,
+  topsy-turvy traversal-and-combat passage through the ruined archive
+  (Advika, 2026-07-16). Low-grav drift + authored gravity-flip beats;
+  Remembered Ones as grabbing keepers.
+- **Concept frame approved direction:**
+  `assets/_reference/bloom_finale_mock_2026-07-16.png` (built from real
+  pack + hero art via `tools/BloomMock.tscn`; re-render with
+  BLOOM_SHOT=<path>).
 
-## The three acts
+## The four acts
 
 ### Act 1 — THE DESCENT
 Quiet fungal forest (the shipped shell) → a hum through the ground →
@@ -46,6 +55,27 @@ book-spines swallowed by fungus, ledger-names** — and the travelers,
 overgrown silhouettes that flicker amber under the lantern (Joy's
 buried threads). One of them hums Grief's first lullaby.
 Play-feel: careful, lantern-lit, accumulating dread.
+
+### Act 1.5 — THE UNDERHOLLOW (added 2026-07-16, Advika: "topsy turvy —
+falls in the ground, floating, has to fight")
+The fall doesn't land. CANON: the Hollow's shelves "rose and fell with
+no gravity to guide them, yet they never seemed to let go completely."
+Inside the ruined archive, down stops meaning anything:
+- **Movement = low-gravity drift** (floaty jumps, long hangs, strong
+  air control — underwater-dreamlike), platforms are shelf-islands
+  slowly rising/falling.
+- **Gravity-FLIP set-piece beats** on top: moments where the world
+  turns over — walk the underside of a shelf, fall UP through a stack.
+  Flips are authored moments, not a constant mechanic.
+- **Combat: the Remembered Ones** — hooded echoes of consumed travelers
+  drifting out of the dark. They GRAB, they hold, they pull toward the
+  walls (the Hollow keeps what enters) — Curiosity fights free with the
+  existing slash/dash kit. Melancholic, never monstrous: they don't
+  hate; they miss.
+Play-feel: weightless, wrong, beautiful; the game's combat finally
+lands inside the finale realm.
+**Prerequisite: M2 combat wiring** (attack/hurt/dash into the state
+machine) — now REQUIRED by R3, which pulls it up the priority list.
 
 ### Act 2 — THE HEART
 The bottom: the Heart of the Hollow — a vast breathing archive-mass,
