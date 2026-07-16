@@ -90,6 +90,7 @@ func _ready() -> void:
 	_build_terrain()
 	_build_platforms()
 	_build_ceiling()
+	_build_setpieces()
 	_build_dressing()
 	_build_density()
 	_build_foreground()
@@ -157,38 +158,38 @@ func _collider_rect(x0: float, x1: float, y0: float, y1: float,
 	add_child(body)
 
 
-## pebble strip riding an edge line (the refs' platform/ground rims)
+## pebble strip riding an edge line (the refs' platform/ground rims).
+## The span is split into n tiles at ONE uniform scale near the target —
+## whole-tiles-only leaves the end naked; a shrunken last tile overshoots.
+## (Both row textures are 590px wide; both col textures 588px tall.)
 func _pebble_row(x0: float, x1: float, y: float, sc: float, z: int,
 		tint := Color.WHITE) -> void:
 	var names := ["fungalground22.png", "fungalground26.png"]
+	var span := x1 - x0
+	var tw := 590.0
+	var n := maxi(1, roundi(span / (tw * sc * 0.88)))
+	var s := span / (tw * (0.88 * float(n - 1) + 1.0))
 	var x := x0
-	var i := 0
-	while true:
-		var tex: Texture2D = load(BASE + names[i % 2])
-		var w := tex.get_width() * sc
-		if x + w > x1 + w * 0.12:
-			break   # whole tile must fit — no strays past the span
-		_sprite(names[i % 2], Vector2(x + w * 0.5, y), sc, z, tint,
+	for i in n:
+		_sprite(names[i % 2], Vector2(x + tw * s * 0.5, y), s, z, tint,
 				_rng.randf() < 0.5)
-		x += w * 0.88
-		i += 1
+		x += tw * s * 0.88
 
 
-## vertical pebble strip (the refs' wall/side rims), tiled downward
+## vertical pebble strip (the refs' wall/side rims), tiled downward —
+## same uniform-fit tiling so the rim always reaches the corner exactly
 func _pebble_col(x: float, y0: float, y1: float, sc: float, z: int,
 		tint := Color.WHITE) -> void:
 	var names := ["fungalground20.png", "fungalground21.png"]
+	var span := y1 - y0
+	var th := 588.0
+	var n := maxi(1, roundi(span / (th * sc * 0.88)))
+	var s := span / (th * (0.88 * float(n - 1) + 1.0))
 	var y := y0
-	var i := 0
-	while true:
-		var tex: Texture2D = load(BASE + names[i % 2])
-		var h := tex.get_height() * sc
-		if y + h > y1 + h * 0.12:
-			break
-		_sprite(names[i % 2], Vector2(x, y + h * 0.5), sc, z, tint,
+	for i in n:
+		_sprite(names[i % 2], Vector2(x, y + th * s * 0.5), s, z, tint,
 				_rng.randf() < 0.5)
-		y += h * 0.88
-		i += 1
+		y += th * s * 0.88
 
 
 ## the signature move: a dense frond fringe along an edge.
@@ -801,6 +802,82 @@ func _prop_hang(tex_name: String, x: float, top_y: float, sc: float, z: int,
 	var h := tex.get_height() * sc
 	_sprite(tex_name, Vector2(x, top_y + h * 0.5 - 8.0), sc, z, tint,
 			_rng.randf() < 0.5, true)
+
+
+# ---------- ref set-pieces: pebble-rimmed masses (the refs' terrain idiom) ----------
+# The target refs build their terrain from near-black bodies FRAMED in the
+# pack's pebble strips: chunks hanging off the roof trailing a frond tassel,
+# floating slabs she can stand on, low pedestals rooted in the meadow.
+# Teal mood stays — these only add the refs' construction, not their light.
+
+# the masses' interior — a step darker than SOIL, the refs' hole-black
+const MASS_FILL := Color(0.018, 0.034, 0.030)
+
+## a hanging ceiling island (ref 1 top-left): black body dropping below the
+## roof line, pebble-rimmed on its sides + underside, a blue frond tassel
+## bursting from the bottom. Overhead decor — no collider.
+func _hang_chunk(cx: float, half_w: float, drop: float) -> void:
+	# drop must clear the roof's hanging curtain (~250px deep) or the whole
+	# chunk drowns in the growth — the body has to hang in OPEN air
+	var bot := ROOF_Y + drop
+	# fill tucks just behind the curtain heads — extending it above the
+	# roofline paints a flat rectangle over the roof gradient
+	_fill_rect(cx - half_w, cx + half_w, ROOF_Y - 40.0, bot, 0, MASS_FILL)
+	_pebble_col(cx - half_w, ROOF_Y + 20.0, bot - 6.0, 0.5, 2)
+	_pebble_col(cx + half_w, ROOF_Y + 20.0, bot - 6.0, 0.5, 2)
+	# underside drips BEHIND the bottom rim: pebbles are the chunk's lip
+	_fringe(cx - half_w + 30.0, cx + half_w - 30.0, bot - 4.0, true,
+			0.20, 0.30, 1, FRINGE_NEAR)
+	_pebble_row(cx - half_w + 20.0, cx + half_w - 20.0, bot - 10.0, 0.5, 2)
+	_sprite("fungalground1.png", Vector2(cx - half_w, bot - 18.0), 0.55, 2,
+			Color.WHITE, false)
+	_sprite("fungalground8.png", Vector2(cx + half_w, bot - 18.0), 0.55, 2,
+			Color.WHITE, true)
+	# ONE lit tassel burst in front of everything (ref 1's signature)
+	var ttex: Texture2D = load(BASE + "fungalfrond2.png")
+	var tsc := 0.46
+	_sprite("fungalfrond2.png",
+			Vector2(cx + _rng.randf_range(-half_w * 0.3, half_w * 0.3),
+			bot + ttex.get_height() * tsc * 0.5 - 26.0), tsc, 3,
+			FRINGE_LIT, _rng.randf() < 0.5, true)
+
+
+## a floating pebble-rimmed slab (the refs' mid-air platforms): black fill
+## framed on all four edges, meadow fringe rising BEHIND the top rim,
+## drips behind the bottom rim. Walkable — one-way collider across the top.
+func _rim_platform(cx: float, half_w: float, top_y: float) -> void:
+	var thick := 96.0
+	_fill_rect(cx - half_w, cx + half_w, top_y, top_y + thick, 0, MASS_FILL)
+	# growth first (z1, behind the rims) — the pebbles are the slab's lip
+	_fringe(cx - half_w + 16.0, cx + half_w - 16.0, top_y + 2.0, false,
+			0.16, 0.24, 1, FRINGE_LIT.lerp(FRINGE_NEAR, 0.35))
+	_fringe(cx - half_w + 40.0, cx + half_w - 40.0, top_y + thick - 2.0, true,
+			0.13, 0.18, 1, FRINGE_NEAR, 0.8)
+	_pebble_row(cx - half_w + 14.0, cx + half_w - 14.0, top_y + 8.0, 0.5, 2)
+	_pebble_row(cx - half_w + 14.0, cx + half_w - 14.0, top_y + thick - 8.0,
+			0.5, 2)
+	# end caps: three overlapping clusters per end seal the side edge —
+	# two corners alone leave a naked band of fill between them
+	for ex in [cx - half_w, cx + half_w]:
+		for ey in [top_y + 12.0, top_y + thick * 0.5, top_y + thick - 12.0]:
+			_sprite("fungalground%d.png" % ([1, 8, 13, 16, 31][_rng.randi() % 5]),
+					Vector2(ex, ey), 0.5, 2, Color.WHITE, ex > cx)
+	_collider_rect(cx - half_w + 16.0, cx + half_w - 16.0, top_y,
+			top_y + 24.0, true)
+
+
+## first showcase pass — zones B..D only (Advika judges, then we extend
+## the grammar down the long walk). Slabs live in the CLEAR AIR band
+## (>=250px over the floor — lower drowns in the meadow) and continue the
+## existing mushroom climbs, the refs' high-path idiom: B's P2 cap
+## (1500, -245) -> two slabs bridge to C's first dome (2950, -120); C's
+## stack top (3750, -350) steps off onto a slab before the drop.
+func _build_setpieces() -> void:
+	_hang_chunk(820.0, 260.0, 460.0)              # over the B pot floor (ref 1)
+	_rim_platform(1900.0, 230.0, FLOOR_Y - 310.0) # off P2's cap...
+	_rim_platform(2600.0, 230.0, FLOOR_Y - 340.0) # ...to C's first dome
+	_rim_platform(4250.0, 230.0, FLOOR_Y - 330.0) # step off the C stack top
+	_hang_chunk(5500.0, 220.0, 420.0)             # over the D grove
 
 
 # ---------- dressing: the grouped assemblies ----------

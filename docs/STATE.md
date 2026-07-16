@@ -33,6 +33,14 @@ generated in code with a fixed rng seed. Iterated live with Advika through
   `[Y] Return` → Hub. Hub Door 3 targets realm_3 — **the loop is closed**.
 - **Eyes HUD tinted realm-teal** via `eye_tint` (violet art, green-fed
   multiply — no art change, other scenes keep purple).
+- **Ref set-pieces, kept RARE (Advika 2026-07-16: variety, not wallpaper)** —
+  the target refs' pebble-rimmed-mass grammar inside the teal mood:
+  `_hang_chunk` (black roof islands, rimmed sides/belly, lit frond tassel;
+  x 820 + 5500), `_rim_platform` (floating framed slabs, walkable one-way;
+  a two-slab bridge links B's mushroom to C's dome, one more steps off the
+  C stack top). Masses must hang in OPEN AIR: the roof curtain eats ~250px,
+  the meadow ~250px — anything inside drowns. `_pebble_row/_pebble_col`
+  now tile a span at one uniform fitted scale (no naked ends, no strays).
 Harness: R3_SHOT / R3_SHOT_X. R restarts, ESC → Hub. Environment only —
 no enemies, no puzzle yet.
 
