@@ -57,6 +57,17 @@ const DIVE_DECK_CLEAR := 140.0              # dives level off this far above the
 @export var dive_damage := 10
 @export var dive_knockback := Vector2(300.0, -140.0)
 @export var dive_overshoot := 150.0  # px past her position the swoop carries
+# Round 3 (Advika: "more movey and dynamic") — the missing thing wasn't the
+# curves, it was CONTRAST and REACTION: one cruise energy forever reads flat
+# no matter how carved the path is. So the flight now has gears — darts,
+# stalls — and a temperament: the light frightens it.
+@export var dart_speed_mult := 2.3   # a sudden lunge — top gear
+@export var dart_time := 0.32
+@export var impulse_wait_min := 1.3  # beat between darts/stalls
+@export var impulse_wait_max := 3.0
+@export var stall_time := 0.34       # the hover-hesitation before it whips away
+@export var panic_speed_mult := 1.35 # lit by the lantern: it flees the glow
+@export var panic_turn_boost := 1.8  # and wheels harder while it panics
 
 enum State { ENTER, STALK, DIVE, BURNED, EXIT }
 
@@ -81,7 +92,15 @@ var _roam_timer := 0.0
 var _roam_pace := 1.0            # per-patch speed personality
 var _flutter_timer := 0.0        # next erratic wing impulse
 var _face_target := -1.0         # which way it's wheeling to face (-1 left, +1 right)
+var _face := -1.0                # smoothed facing (scale.x also carries stretch now)
 var _dive_prev := Vector2.ZERO   # last dive sample, for exit-velocity blending
+var _impulse_timer := 1.5        # next dart-or-stall
+var _dart_t := 0.0               # time left in the current dart
+var _stall_t := 0.0              # time left in the current stall
+var _lit := false                # the lantern's kill-light is on it this frame
+var _stretch := 0.0              # velocity squash/stretch on the sprite
+var _flare := 0.0                # dive-telegraph glow (mixed into the burn tint)
+var _ghost_timer := 0.0          # afterimage shedding cadence
 
 
 func _ready() -> void:
@@ -173,6 +192,21 @@ func _physics_process(delta: float) -> void:
 			if _flutter_timer <= 0.0:
 				_flutter_timer = randf_range(0.15, 0.38)
 				_vel += Vector2.from_angle(randf() * TAU) * randf_range(0.5, 1.0) * flutter
+			# gears: every few beats it either DARTS (a lunge on a new bearing)
+			# or STALLS (hangs fluttering — then the next dart whips it away).
+			# A lit moth never stalls: fear picks the fast gear every time.
+			_impulse_timer -= delta
+			if _impulse_timer <= 0.0:
+				_impulse_timer = randf_range(impulse_wait_min, impulse_wait_max) \
+						* (0.55 if _lit else 1.0)
+				if _lit or randf() < 0.65:
+					_start_dart()
+				else:
+					_stall_t = stall_time * randf_range(0.8, 1.3)
+			_dart_t = maxf(0.0, _dart_t - delta)
+			_stall_t = maxf(0.0, _stall_t - delta)
+			if _lit and _roam_timer > 1.0:
+				_roam_timer = 1.0   # panicking: it won't sit in this patch of air
 			if _anchor != null and is_instance_valid(_anchor):
 				# HEADING FLIGHT: it can only TURN, never re-aim — so the path
 				# toward each patch is a bank, an overshoot, a loop back. Two
@@ -182,11 +216,19 @@ func _physics_process(delta: float) -> void:
 				var bearing := to_patch.angle()
 				var diff := wrapf(bearing - _heading, -PI, PI)
 				var wander := sin(_ht * 1.7) * 0.9 + sin(_ht * 2.9 + 1.3) * 0.6
-				_heading += (clampf(diff * 2.6, -max_turn, max_turn) \
-						+ wander * wander_drift) * delta
+				var turn_cap := max_turn * (panic_turn_boost if _lit else 1.0)
+				var drift := wander_drift * (1.6 if _lit else 1.0)
+				_heading += (clampf(diff * 2.6, -turn_cap, turn_cap) \
+						+ wander * drift) * delta
 				var pulse := 1.0 + sin(_ht * TAU / 0.62) * wingbeat_surge
 				var arrive := clampf(to_patch.length() / 140.0, 0.35, 1.0)
 				var speed := roam_speed * _roam_pace * pulse * arrive
+				if _lit:
+					speed *= panic_speed_mult
+				if _dart_t > 0.0:
+					speed *= dart_speed_mult
+				elif _stall_t > 0.0:
+					speed *= 0.12   # wings blurring, body hanging — the hesitation
 				_vel = _vel.lerp(Vector2.from_angle(_heading) * speed, 1.0 - pow(0.001, delta))
 				_vel += _island_repulsion() * delta
 				_heading = _vel.angle()   # repulsion + flutter carve the heading too
@@ -197,7 +239,9 @@ func _physics_process(delta: float) -> void:
 			# dives launch only from ABOVE the deck — a belly-roamer waits
 			# until its prowl brings it around (a dive from below would have
 			# to tunnel the island)
-			if _dive_timer <= 0.0 and _target != null and is_instance_valid(_target) \
+			# a lit moth never dives — fear owns it until it shakes the light
+			if _dive_timer <= 0.0 and not _lit \
+					and _target != null and is_instance_valid(_target) \
 					and _anchor != null and is_instance_valid(_anchor) \
 					and global_position.y < _anchor.global_position.y - 120.0:
 				_begin_dive()
@@ -207,6 +251,46 @@ func _physics_process(delta: float) -> void:
 			pass
 	_apply_flight_look(delta)
 	_tick_burn(delta)
+	# void afterimages whenever it's truly moving fast — dive whips and darts
+	if state != State.BURNED and _vel.length() > roam_speed * 1.5:
+		_shed_ghost(delta)
+
+
+# A lunge: the heading JUMPS (the one place a snap is right — moths dart),
+# then the speed burst carries it. A frightened dart aims away from the glow.
+func _start_dart() -> void:
+	_dart_t = dart_time * randf_range(0.85, 1.25)
+	_stall_t = 0.0
+	var jink := randf_range(0.5, 1.1) * (1.0 if randf() < 0.5 else -1.0)
+	if _lit and _target != null and is_instance_valid(_target) \
+			and _target.has_method("light_state"):
+		var away: float = (global_position - _target.light_state()[0]).angle()
+		_heading = away + jink * 0.45
+	else:
+		_heading += jink
+
+
+# Ghost sprites shed along a fast path — they hold the pose (bank, facing,
+# stretch) and dissolve violet. Parented to the scene so they hang in the
+# air the moth just left.
+func _shed_ghost(delta: float) -> void:
+	_ghost_timer -= delta
+	if _ghost_timer > 0.0:
+		return
+	_ghost_timer = 0.05
+	var tex := _visual.sprite_frames.get_frame_texture(_visual.animation, _visual.frame)
+	if tex == null or get_parent() == null:
+		return
+	var g := Sprite2D.new()
+	g.texture = tex
+	g.modulate = Color(0.62, 0.4, 0.95, 0.38)
+	g.z_index = z_index
+	get_parent().add_child(g)
+	g.global_transform = _visual.global_transform
+	g.offset = _visual.offset
+	var tw := g.create_tween()
+	tw.tween_property(g, "modulate:a", 0.0, 0.28)
+	tw.finished.connect(g.queue_free)
 
 
 # Repulsion field around the island's body: grows from zero at AVOID_MARGIN
@@ -252,12 +336,20 @@ func _apply_flight_look(delta: float) -> void:
 		_face_target = -1.0
 	elif _vel.x > 40.0:
 		_face_target = 1.0
-	# animated turn: scale.x sweeps through 0 — a wheel-around, not a flip
-	_visual.scale.x = lerpf(_visual.scale.x, _face_target, 1.0 - pow(0.004, delta))
+	# animated turn: the facing sweeps through 0 — a wheel-around, not a flip;
+	# stretch rides on top: the body lengthens along a burst and thins, and
+	# settles plump again when it slows
+	_face = lerpf(_face, _face_target, 1.0 - pow(0.004, delta))
+	var goal := clampf((_vel.length() - roam_speed) / (roam_speed * 2.2), 0.0, 0.34)
+	_stretch = lerpf(_stretch, goal, 1.0 - pow(0.01, delta))
+	_visual.scale = Vector2(_face * (1.0 + _stretch), 1.0 - _stretch * 0.55)
 	var bank := clampf(_vel.x * 0.00045, -0.22, 0.22)
 	_visual.rotation = lerpf(_visual.rotation, bank, 1.0 - pow(0.002, delta))
 	if _visual.animation == &"fly":
-		_visual.speed_scale = clampf(0.85 + _vel.length() / 420.0, 0.85, 1.6)
+		if _stall_t > 0.0:
+			_visual.speed_scale = 1.9   # a stall hangs the body, not the wings
+		else:
+			_visual.speed_scale = clampf(0.85 + _vel.length() / 420.0, 0.85, 1.6)
 
 
 # A fresh patch of air — wide, varied, alive. It ranges the WHOLE island:
@@ -287,18 +379,37 @@ func _begin_dive() -> void:
 	state = State.DIVE
 	_dive_hit = false
 	_visual.play(&"attack")
-	# A SWOOP, not a straight stab: a bezier that first lifts against the
-	# approach (the windup breath), then whips down THROUGH her and past.
-	# The exit velocity is measured off the curve, so the pull-out blends
-	# straight back into the roam — no snap anywhere.
+	# The dive now BREATHES first: a 0.22s cocked hang — it checks its
+	# flight, trembles, the eye flares — THEN the whip. Readable is scarier
+	# than sudden, and the hang makes the whip look twice as fast.
+	if _tw != null:
+		_tw.kill()
+	_vel *= 0.35
+	_tw = create_tween()
+	_tw.tween_method(func(k: float) -> void: _flare = k, 0.0, 1.0, 0.22)
+	_tw.finished.connect(_launch_dive_whip)
+
+
+# The whip itself: a SWOOP, not a straight stab — a bezier that first lifts
+# against the approach (the windup bow), then whips down THROUGH her and
+# past. Aim is taken NOW, post-telegraph, so the hang is her dodge window.
+# The exit velocity is measured off the curve, so the pull-out blends
+# straight back into the roam — no snap anywhere.
+func _launch_dive_whip() -> void:
+	_flare = 0.0
+	if state != State.DIVE:
+		return
+	if _target == null or not is_instance_valid(_target):
+		state = State.STALK
+		_pick_roam()
+		_arm_dive()
+		return
 	var her: Vector2 = _target.global_position
 	var dir := (her - global_position).normalized()
 	var through := her + dir * dive_overshoot
 	_enter_spawn = global_position
 	_enter_arc = -dir * 140.0 + Vector2(0, -110.0)  # reuse the bezier fields: windup bow
 	_dive_prev = global_position
-	if _tw != null:
-		_tw.kill()
 	_tw = create_tween()
 	_tw.tween_method(_dive_step.bind(through), 0.0, 1.0, 0.85)\
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -349,18 +460,22 @@ func _check_sting() -> void:
 func _tick_burn(delta: float) -> void:
 	if state in [State.ENTER, State.BURNED, State.EXIT]:
 		return
-	var lit := false
+	_lit = false
 	if _target != null and is_instance_valid(_target) and _target.has_method("light_state"):
 		var ls: Array = _target.light_state()
-		lit = global_position.distance_to(ls[0]) <= float(ls[1])
-	if lit:
+		_lit = global_position.distance_to(ls[0]) <= float(ls[1])
+	if _lit:
 		_light_t += delta
 	else:
 		_light_t = maxf(0.0, _light_t - delta * burn_leak)
-	# the burn shows: it whitens and trembles as the light unmakes it
+	# the burn shows: it whitens and trembles as the light unmakes it. The
+	# dive telegraph's flare shares this write (one owner for tint + shake,
+	# or the two effects stomp each other frame by frame).
 	var k := clampf(_light_t / burn_time, 0.0, 1.0)
-	_visual.modulate = Color(1.0 + k * 1.2, 1.0 + k * 0.9, 1.0 + k * 1.4)
-	_visual.offset = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * (k * 5.0)
+	_visual.modulate = Color(1.0 + k * 1.2 + _flare * 0.45,
+			1.0 + k * 0.9 + _flare * 0.15, 1.0 + k * 1.4 + _flare * 0.8)
+	_visual.offset = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) \
+			* (k * 5.0 + _flare * 3.0)
 	if _light_t >= burn_time:
 		_burn_out()
 
