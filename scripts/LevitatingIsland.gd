@@ -93,6 +93,7 @@ func start_levitation() -> void:
 		return
 	state = State.SHAKING
 	_t = 0.0
+	Haptics.buzz(int(shake_duration * 1000.0), 0.5)  # rumble under the whole shake
 	levitation_started.emit()
 
 
@@ -128,6 +129,7 @@ func _physics_process(delta: float) -> void:
 			if _t >= shake_duration:
 				position = _base
 				_debris.emitting = true  # the seam gives way
+				Haptics.buzz(280, 1.0)   # the tear itself hits hardest
 				state = State.RISING
 				_t = 0.0
 		State.RISING:

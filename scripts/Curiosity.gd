@@ -405,6 +405,7 @@ func take_damage(amount: int, knockback: Vector2 = Vector2.ZERO) -> void:
 	health = max(0, health - amount)
 	health_changed.emit(health, max_health)
 	_invuln_timer = invuln_time
+	Haptics.buzz(120, 0.9)
 	hurt(knockback)
 	if health <= 0:
 		died.emit()

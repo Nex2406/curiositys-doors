@@ -25,6 +25,7 @@ SaveManager="*res://scripts/SaveManager.gd"
 Dialogue="*res://scripts/Dialogue.gd"
 AudioManager="*res://scripts/AudioManager.gd"
 Transition="*res://scripts/SceneTransition.gd"
+Haptics="*res://scripts/Haptics.gd"
 
 [configuration]
 
