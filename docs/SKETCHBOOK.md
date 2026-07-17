@@ -9,6 +9,58 @@ Rules:
 
 ---
 
+## 2026-07-16
+
+- **The Underhollow (Advika, mid-session): "topsy turvy — falls in the
+  ground, floating, has to fight."** The Bloom's descent doesn't land:
+  inside the Hollow's ruins gravity stops working (canon — the shelves
+  "rose and fell with no gravity to guide them"). Locked same day:
+  low-grav drift + authored gravity-flip beats; Remembered Ones as
+  grabbing enemies (the Hollow keeps what enters). Promoted straight
+  into [`docs/realms/realm3.md`](realms/realm3.md) as Act 1.5. Pulls M2
+  combat wiring up the priority list.
+
+## 2026-07-15
+
+- ✅ **Realm 3 setpiece — "The Bloom" (down, then up).** → *promoted to
+  [`docs/realms/realm3.md`](realms/realm3.md) 2026-07-16 — open questions
+  answered (ritual wake · accident · wave+bursts+pursuer · bounce first),
+  canon-grounded against the novel.* Advika wants R3 to have
+  a signature *moment* like R2's sky-fight, not a theme-first design. Landed
+  on a mix of two pitches (A = the bloom/eruption, B = the descent) folded
+  into one three-act arc. This is the working concept — not yet a locked
+  realm spec.
+  - **Act 1 — THE DESCENT.** Start in the quiet fungal forest we already
+    built (calm, glow hues, lantern). The floor gives way; Curiosity sinks
+    *into* the mycelium. Darker, tighter, stranger the deeper you go — the
+    lantern is the only warm light. In the spore-glow, flickers of the
+    travelers the forest already consumed (this finally cashes in the
+    "others came before" / Forgotten-Names thread parked since R1's jade
+    question). Play-feel: careful, lantern-lit, dread-building traversal.
+  - **Act 2 — THE HEART.** At the bottom, the core of the forest: a vast
+    dormant entity ("the Mother"). Curiosity wakes it / it wakes. This is
+    the trigger + the realm's boss/climax beat. Not necessarily malicious —
+    melancholic, huge, waking.
+  - **Act 3 — THE BLOOM.** Waking it detonates the forest into light —
+    everything erupts UPWARD at once. Now you flee up: bounce-launch off
+    giant mushrooms that burst and grow under your feet, racing a wave of
+    exploding bioluminescence to the surface. The cathartic spectacle
+    finale. Play-feel: fast, reactive, momentum bounce-flight.
+  - **Why it works:** rhymes with R2 but flips it — R2 = rise → fight →
+    arrive; R3 = descend into dread → wake the heart → ride the bloom out.
+    Two distinct play-feels inside ONE door satisfies the variety rule
+    without a second realm. Reuses everything we just built (mushroom
+    platforms become kinetic/bouncy; the three glow hues become the
+    eruption's light; the lantern becomes the descent's lifeline).
+  - **Open questions (next session):** Is Act 2 a real health-bar boss or a
+    ritual/wake interaction? Does the bloom-escape have a pursuer, or is the
+    rising light itself the hazard (a rising kill-plane, like R2's orb kill
+    plane but made of light)? What does the Mother *want* — and does
+    Curiosity wake it on purpose or by accident? Theme will fall out of
+    these; leaning toward "what's buried / letting go / beautiful violent
+    release." Build order TBD — descent (traversal + lantern) is the
+    foundation brick; the bloom (kinetic mushrooms) is the showpiece.
+
 ## 2026-07-08
 
 - **The ascent is boss-gated (Advika):** the island keeps rising until
