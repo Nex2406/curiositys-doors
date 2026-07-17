@@ -121,6 +121,9 @@ func _ready() -> void:
 	_build_player()
 	_build_camera()
 	_build_ui()
+	# placeholder drone until Advika's real realm-2 tracks land (Jul–Aug);
+	# the swap is this one line
+	AudioManager.play_placeholder("realm2")
 	if OS.get_environment("R2_SHOT") != "":
 		_self_screenshot(OS.get_environment("R2_SHOT"))
 
