@@ -78,7 +78,7 @@ func _build_sky() -> void:
 	cl.add_child(_sky_rect)
 
 
-func _add_band(pb: ParallaxBackground, tex: String, motion: float, y_motion: float) -> void:
+func _add_band(pb: ParallaxBackground, tex: String, motion: float, y_motion: float) -> ParallaxLayer:
 	var layer := ParallaxLayer.new()
 	layer.motion_scale = Vector2(motion, y_motion)
 	pb.add_child(layer)
@@ -87,6 +87,7 @@ func _add_band(pb: ParallaxBackground, tex: String, motion: float, y_motion: flo
 	s.centered = false
 	s.position = Vector2(-960, 0)  # layer space: origin = screen top-left
 	layer.add_child(s)
+	return layer
 
 
 func _build_parallax() -> void:
@@ -131,9 +132,90 @@ func _build_parallax() -> void:
 
 	# y motions tuned for the ascent: near canopy falls away fast, far spires
 	# sink slowly — high altitude reads as open sky + moon + stars
-	_add_band(pb, "band_far.png", 0.12, 0.25)
-	_add_band(pb, "band_mid.png", 0.3, 0.55)
+	var far := _add_band(pb, "band_far.png", 0.12, 0.25)
+	_flora_band(far, true)
+	var mid := _add_band(pb, "band_mid.png", 0.3, 0.55)
+	_flora_band(mid, false)
 	_add_band(pb, "band_ground.png", 0.75, 0.9)
+
+
+# Advika 2026-07-17: "can we make the bg denser" → round 2 "MAXIMISE THE
+# BACKGROUND DONT BE SHY". Two silhouette forests grown into the painted
+# bands' own layers (they parallax and sink identically during the ascent):
+# a dense one in the mid band, a fainter, smaller one in the far band.
+# Every trunk wears a TUFT CROWN over its sliced top — the naked cut end
+# read as an unfinished tree (Advika caught one floating mid-sky). Rooted
+# into the bands' shrub masses; dressing law: nothing floats, no naked ends.
+func _flora_band(layer: ParallaxLayer, far: bool) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260718 if far else 20260717
+	var trunks: Array[Texture2D] = []
+	for n in ["vine_trunk_0", "vine_trunk_1", "vine_trunk_2", "vine_trunk_3"]:
+		trunks.append(load(BASE + n + ".png"))
+	var tufts: Array[Texture2D] = []
+	for n in ["tuft_0", "tuft_1", "tuft_2"]:
+		tufts.append(load(BASE + n + ".png"))
+	var x := -1250.0
+	var x_max := 2200.0 if far else 2700.0
+	while x < x_max:
+		var b := rng.randf_range(0.14, 0.30) * (0.55 if far else 1.0)
+		if rng.randf() < 0.72:
+			_flora_tree(layer, rng, trunks, tufts, x, b, far)
+		if rng.randf() < 0.9:
+			_flora_mound(layer, rng, tufts, x + rng.randf_range(-90.0, 90.0), b, far)
+		# round 3 (Advika: "add more density") — a second, farther mound row
+		# fills the last violet slivers between the trees
+		if rng.randf() < 0.6:
+			_flora_mound(layer, rng, tufts, x + rng.randf_range(-60.0, 60.0),
+					b * 0.7, far)
+		x += rng.randf_range(70.0, 150.0) if not far else rng.randf_range(120.0, 220.0)
+
+
+# A finished tree: trunk column + overlapping tuft crown hiding the slice.
+func _flora_tree(layer: ParallaxLayer, rng: RandomNumberGenerator,
+		trunks: Array[Texture2D], tufts: Array[Texture2D],
+		x: float, b: float, far: bool) -> void:
+	var t: Texture2D = trunks[rng.randi() % trunks.size()]
+	var sc := rng.randf_range(0.5, 0.95) * (0.55 if far else 1.0)
+	var trunk := Sprite2D.new()
+	trunk.texture = t
+	trunk.centered = false
+	trunk.flip_h = rng.randf() < 0.5
+	trunk.scale = Vector2(sc, sc)
+	var base_y := rng.randf_range(660.0, 750.0) + (40.0 if far else 0.0)
+	var top_y := base_y - t.get_height() * sc
+	trunk.position = Vector2(x, top_y)
+	trunk.modulate = Color(b, b * 0.92, b * 1.35)
+	layer.add_child(trunk)
+	# the crown: 2 tufts straddling the trunk axis, swallowing the cut end
+	var axis_x := x + t.get_width() * sc * 0.5
+	for i in 2:
+		var ct: Texture2D = tufts[rng.randi() % tufts.size()]
+		var cs := sc * rng.randf_range(0.85, 1.25)
+		var crown := Sprite2D.new()
+		crown.texture = ct
+		crown.flip_h = rng.randf() < 0.5
+		crown.scale = Vector2(cs, cs)
+		crown.position = Vector2(axis_x + (i * 2 - 1) * rng.randf_range(0.0, 60.0) * sc,
+				top_y + rng.randf_range(-10.0, 25.0))
+		crown.modulate = trunk.modulate
+		layer.add_child(crown)
+
+
+# A moss mound swelling out of the band's shrub line.
+func _flora_mound(layer: ParallaxLayer, rng: RandomNumberGenerator,
+		tufts: Array[Texture2D], x: float, b: float, far: bool) -> void:
+	var t: Texture2D = tufts[rng.randi() % tufts.size()]
+	var sc := rng.randf_range(0.5, 1.0) * (0.55 if far else 1.0)
+	var s := Sprite2D.new()
+	s.texture = t
+	s.centered = false
+	s.flip_h = rng.randf() < 0.5
+	s.scale = Vector2(sc, sc)
+	s.position = Vector2(x,
+			rng.randf_range(700.0, 780.0) + (40.0 if far else 0.0) - t.get_height() * sc)
+	s.modulate = Color(b * 1.3, b * 1.2, b * 1.65)
+	layer.add_child(s)
 
 
 func _sway_material(amp: float, speed: float, phase: float) -> ShaderMaterial:
@@ -301,7 +383,7 @@ func _build_foreground() -> void:
 				rng.randf_range(6.0, 10.0), rng.randf_range(0.5, 0.75),
 				rng.randf_range(0.0, TAU), rng.randf_range(-6.0, 6.0),
 				rng.randf_range(1.5, 2.8))
-		mx += rng.randf_range(520.0, 950.0)
+		mx += rng.randf_range(250.0, 430.0)  # tightened twice (Advika: denser bg)
 
 	# canopy moss clumps — the ground's own tufts hanging among the leaf
 	# strands, so ceiling and floor share one vocabulary (they ride MidVines:
@@ -317,7 +399,7 @@ func _build_foreground() -> void:
 		var cb := rng.randf_range(0.36, 0.52)
 		ct.modulate = Color(cb, cb * 0.95, cb * 1.2)
 		mv.add_child(ct)
-		tx += rng.randf_range(280.0, 520.0)
+		tx += rng.randf_range(130.0, 250.0)  # tightened twice (Advika: denser bg)
 
 	var fg := Node2D.new()
 	fg.name = "Foreground"
