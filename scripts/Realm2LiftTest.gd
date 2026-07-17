@@ -101,6 +101,9 @@ func _ready() -> void:
 	_build_player()
 	_build_camera()
 	_build_ui()
+	# "Moonlight (Full Loop)" — the game's first real track (Advika's pack,
+	# 2026-07-17). Loop flag lives in the .ogg's import settings.
+	AudioManager.play_ambient(preload("res://assets/audio/realm2_moonlight.ogg"), "realm2")
 	if OS.get_environment("R2_SHOT") != "":
 		_self_screenshot(OS.get_environment("R2_SHOT"))
 

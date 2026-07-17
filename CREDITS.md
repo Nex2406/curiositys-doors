@@ -38,8 +38,12 @@ work is not reviewed).
   licensed audio committed
 
 ## Audio
-- Currently placeholder (synthesized in code). Real ambient tracks / SFX will
-  be listed here with source + license as they land.
+| Track | Source | License | Used in |
+|---|---|---|---|
+| "Moonlight (Full Loop)" (`assets/audio/realm2_moonlight.ogg`) | **AlkaKrab** — *Free 12 Fairytale Magical Fantasy Tracks* | Royalty-free, commercial use allowed, credit appreciated (License Info.pdf in pack; contact alkakrab04@gmail.com) | Realm 2 ambient |
+
+- All other ambience is still the placeholder drone synthesized in code
+  (`AudioManager`); tracks/SFX get a row here as they land.
 
 ---
 
