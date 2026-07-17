@@ -27,6 +27,13 @@ const DEATH_FRAMES := 3
 const FLY_FPS := 12.0
 const ATTACK_FPS := 12.0
 const DEATH_FPS := 5.0
+# Advika's turn sheet (2026-07-17): the moth TUCKS into a wing-shroud (the
+# eye vanishes) and bursts back out into a streaking glide. The facing swap
+# happens at the fold frame — fully wrapped, no visible asymmetry — so the
+# old scale.x wheel-sweep is gone. The same clip plays on darts: every
+# lunge is a tuck-and-burst. (Frame count scanned, not fixed: sheet is 11
+# frames until voidturn10 lands, 12 after.)
+const TURN_FOLD_FRAME := 5
 const STING_REACH := 130.0     # pre-scale contact reach during a dive (distance test —
                                # an Area2D missed at swoop speeds; Advika: no damage)
 # The island as an OBSTACLE (Advika, round 2: it still passed through — the
@@ -68,6 +75,7 @@ const DIVE_DECK_CLEAR := 140.0              # dives level off this far above the
 @export var stall_time := 0.34       # the hover-hesitation before it whips away
 @export var panic_speed_mult := 1.35 # lit by the lantern: it flees the glow
 @export var panic_turn_boost := 1.8  # and wheels harder while it panics
+@export var turn_fps := 14.0         # turn-sheet speed (24 read as a blur — Advika)
 
 enum State { ENTER, STALK, DIVE, BURNED, EXIT }
 
@@ -92,7 +100,7 @@ var _roam_timer := 0.0
 var _roam_pace := 1.0            # per-patch speed personality
 var _flutter_timer := 0.0        # next erratic wing impulse
 var _face_target := -1.0         # which way it's wheeling to face (-1 left, +1 right)
-var _face := -1.0                # smoothed facing (scale.x also carries stretch now)
+var _facing := -1.0              # displayed facing; swaps inside the turn's fold
 var _dive_prev := Vector2.ZERO   # last dive sample, for exit-velocity blending
 var _impulse_timer := 1.5        # next dart-or-stall
 var _dart_t := 0.0               # time left in the current dart
@@ -115,6 +123,13 @@ func _ready() -> void:
 		frames.set_animation_loop(spec[0], spec[3])
 		for i in range(1, spec[1] + 1):
 			frames.add_frame(spec[0], load("%s%s_%02d.png" % [FRAME_DIR, spec[0], i]))
+	frames.add_animation(&"turn")
+	frames.set_animation_speed(&"turn", turn_fps)
+	frames.set_animation_loop(&"turn", false)
+	var ti := 1
+	while ResourceLoader.exists("%sturn_%02d.png" % [FRAME_DIR, ti]):
+		frames.add_frame(&"turn", load("%sturn_%02d.png" % [FRAME_DIR, ti]))
+		ti += 1
 	_visual.sprite_frames = frames
 	add_child(_visual)
 	_visual.play(&"fly")
@@ -261,6 +276,8 @@ func _physics_process(delta: float) -> void:
 func _start_dart() -> void:
 	_dart_t = dart_time * randf_range(0.85, 1.25)
 	_stall_t = 0.0
+	if _visual.animation == &"fly":
+		_visual.play(&"turn")   # every lunge is a tuck-and-burst
 	var jink := randf_range(0.5, 1.1) * (1.0 if randf() < 0.5 else -1.0)
 	if _lit and _target != null and is_instance_valid(_target) \
 			and _target.has_method("light_state"):
@@ -288,6 +305,7 @@ func _shed_ghost(delta: float) -> void:
 	get_parent().add_child(g)
 	g.global_transform = _visual.global_transform
 	g.offset = _visual.offset
+	g.flip_h = _visual.flip_h   # flip lives outside the transform
 	var tw := g.create_tween()
 	tw.tween_property(g, "modulate:a", 0.0, 0.28)
 	tw.finished.connect(g.queue_free)
@@ -336,13 +354,24 @@ func _apply_flight_look(delta: float) -> void:
 		_face_target = -1.0
 	elif _vel.x > 40.0:
 		_face_target = 1.0
-	# animated turn: the facing sweeps through 0 — a wheel-around, not a flip;
-	# stretch rides on top: the body lengthens along a burst and thins, and
-	# settles plump again when it slows
-	_face = lerpf(_face, _face_target, 1.0 - pow(0.004, delta))
+	# facing is ANIMATED: a stalk-flight direction change plays the tuck-and-
+	# burst turn sheet, and the mirror swap hides inside the fold frame (fully
+	# wrapped — no visible asymmetry to pop). Outside stalk flight (mid-dive,
+	# fly-in) the flip is instant; the speed masks it.
+	if _face_target != _facing:
+		if state == State.STALK and _visual.animation == &"fly":
+			_visual.play(&"turn")
+		elif _visual.animation != &"turn":
+			_facing = _face_target
+			_visual.flip_h = _facing > 0.0
+	if _visual.animation == &"turn" and _visual.frame >= TURN_FOLD_FRAME \
+			and _facing != _face_target:
+		_facing = _face_target
+		_visual.flip_h = _facing > 0.0
+	# stretch: the body lengthens along a burst and thins, settles plump again
 	var goal := clampf((_vel.length() - roam_speed) / (roam_speed * 2.2), 0.0, 0.34)
 	_stretch = lerpf(_stretch, goal, 1.0 - pow(0.01, delta))
-	_visual.scale = Vector2(_face * (1.0 + _stretch), 1.0 - _stretch * 0.55)
+	_visual.scale = Vector2(1.0 + _stretch, 1.0 - _stretch * 0.55)
 	var bank := clampf(_vel.x * 0.00045, -0.22, 0.22)
 	_visual.rotation = lerpf(_visual.rotation, bank, 1.0 - pow(0.002, delta))
 	if _visual.animation == &"fly":
@@ -350,6 +379,8 @@ func _apply_flight_look(delta: float) -> void:
 			_visual.speed_scale = 1.9   # a stall hangs the body, not the wings
 		else:
 			_visual.speed_scale = clampf(0.85 + _vel.length() / 420.0, 0.85, 1.6)
+	elif _visual.animation == &"turn":
+		_visual.speed_scale = 1.0
 
 
 # A fresh patch of air — wide, varied, alive. It ranges the WHOLE island:
@@ -500,6 +531,7 @@ func _on_anim_finished() -> void:
 		queue_free()
 		return
 	# the attack clip is shorter than the swoop — flow back to wings mid-
-	# flight instead of freezing on the last frame (that read as the "chop")
-	if _visual.animation == &"attack" and state != State.BURNED:
+	# flight instead of freezing on the last frame (that read as the "chop");
+	# a finished turn glide flows back the same way
+	if _visual.animation in [&"attack", &"turn"] and state != State.BURNED:
 		_visual.play(&"fly")
