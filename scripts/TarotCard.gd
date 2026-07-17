@@ -125,6 +125,7 @@ func _ready() -> void:
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 	get_tree().paused = true
+	AudioManager.set_ducked(true)  # the music dims under the card, never stops
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -134,5 +135,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	if go:
 		get_viewport().set_input_as_handled()
 		get_tree().paused = false
+		AudioManager.set_ducked(false)
 		closed.emit()
 		queue_free()

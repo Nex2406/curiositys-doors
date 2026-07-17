@@ -121,9 +121,9 @@ func _ready() -> void:
 	_build_player()
 	_build_camera()
 	_build_ui()
-	# placeholder drone until Advika's real realm-2 tracks land (Jul–Aug);
-	# the swap is this one line
-	AudioManager.play_placeholder("realm2")
+	# "Moonlight (Full Loop)" — first real track in the game (Advika's pack,
+	# 2026-07-17). Loop flag lives in the .ogg's import settings.
+	AudioManager.play_ambient(preload("res://assets/audio/realm2_moonlight.ogg"), "realm2")
 	if OS.get_environment("R2_SHOT") != "":
 		_self_screenshot(OS.get_environment("R2_SHOT"))
 
