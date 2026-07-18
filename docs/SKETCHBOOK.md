@@ -9,6 +9,20 @@ Rules:
 
 ---
 
+## 2026-07-18
+
+- **Redo Realm 1 (Advika: "can we redo lvl 1?"):** dropped at the end of a
+  long Realm 2 moth/beam session. Scope not yet defined — full rebuild vs.
+  keep-bones-redo-look vs. keep-look-redo-layout unknown. Existing R1
+  investment: 45 hand-placed jades, golems, prologue, The Crimson Hollow
+  look. Also note the 5 parked R1 leftovers (jade motivation, real hub,
+  sound, shorter prologue, custom text-box anim) — a redo may absorb or
+  invalidate them. Asked her what "redo" means before touching anything.
+  **Her answer, same day:** she has a NEW ASSET PACK she wants in place of
+  the handmade map — rebuild the R1 map from it, built the way Level 2 was
+  (she provides the pack, the level gets built from it in Godot). Next
+  step when we start: get the pack from her, then scope layout.
+
 ## 2026-07-17
 
 - **The Heart is a GIANT EYE that's been watching over Curiosity

@@ -38,7 +38,9 @@ const WAKE_TIME := 7.0  # seconds to blossom to full color during the rise
 # Strike him (J/Z, five blows — catch him mid-appear/cast, he escape-teleports
 # when you close in) and the island finally stops: died -> stop_levitation()
 # -> arrived -> DONE. The boss gate, closed at last.
-const WIZARD_APPEAR_DELAY := 7.0  # Advika 2026-07-12: a good 7s alone with the climb first
+const WIZARD_APPEAR_DELAY := 12.0  # Advika 2026-07-18: "a good 10 seconds
+                                   # after lift off or 13" — the climb gets
+                                   # a long lonely beat before he blinks in
 # Feet on the moss top: collider top is -120 rel chunk; the figure's feet sit
 # ~134px below the 512-frame center, so origin rides 134*scale above the top.
 const WIZARD_OFFSET := Vector2(255.0, -194.0)  # open moss, clear of the right hedge's dark mass
