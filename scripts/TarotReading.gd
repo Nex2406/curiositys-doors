@@ -205,8 +205,10 @@ func _build_reveal_ui() -> void:
 	moth.texture = preload("res://assets/enemies/void_moth/fly_01.png")
 	moth.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	moth.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	moth.position = Vector2(CARD_W * 0.5 - CARD_W * 0.45, CARD_H * 0.60)
-	moth.size = Vector2(CARD_W * 0.90, CARD_H * 0.22)
+	# strictly INSIDE the open zone: below the last verse, above the bottom
+	# hairline-with-diamond (Advika: it was blocking the card detailing)
+	moth.position = Vector2(CARD_W * 0.5 - CARD_W * 0.45, CARD_H * 0.618)
+	moth.size = Vector2(CARD_W * 0.90, CARD_H * 0.148)
 	moth.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_reveal_ui.add_child(moth)
 
