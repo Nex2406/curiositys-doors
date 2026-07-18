@@ -120,7 +120,7 @@ func _ready() -> void:
 	_build_reveal_ui()
 
 	_prompt = Label.new()
-	_prompt.text = "click — or any key — to begin"
+	_prompt.text = "click or press any key to begin"
 	_prompt.add_theme_font_override("font", _serif(["EB Garamond", "Georgia", "serif"]))
 	_prompt.add_theme_font_size_override("font_size", 18)
 	_prompt.add_theme_color_override("font_color", CREAM_DIM)
