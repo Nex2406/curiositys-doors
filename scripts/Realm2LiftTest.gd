@@ -992,7 +992,8 @@ func _build_camera() -> void:
 	var vp := get_viewport_rect().size
 	var z := 0.85 * vp.y / 1080.0  # zoomed out: the island travels through a big sky
 	_cam.zoom = Vector2(z, z)
-	_cam.position = Vector2(150, FLOOR_Y - 220)
+	# lifted so the dead murk below the undergrowth stays off-frame (Advika)
+	_cam.position = Vector2(150, FLOOR_Y - 360)
 	add_child(_cam)
 	_cam.make_current()
 	_chunk.camera_path = _chunk.get_path_to(_cam)  # island drives it once active
@@ -1039,7 +1040,7 @@ func _self_screenshot(path: String) -> void:
 		# park the hero at a given ground x (pre-liftoff framing checks)
 		_curi.position = Vector2(float(OS.get_environment("R2_SHOT_X")), FLOOR_Y - 140.0)
 		_curi.velocity = Vector2.ZERO
-		_cam.position = Vector2(_curi.position.x, FLOOR_Y - 220.0)
+		_cam.position = Vector2(_curi.position.x, FLOOR_Y - 360.0)
 	if OS.get_environment("R2_SHOT_LIFT") != "":
 		# jump straight to mid-ascent for the screenshot. Let the island's
 		# physics body settle at the jumped position FIRST — placing the hero
@@ -1302,6 +1303,12 @@ func _physics_process(delta: float) -> void:
 				_moth_timer -= delta
 				if _moth_timer <= 0.0:
 					_spawn_moth()
+			elif _moth_phase_begun and _moth_timer <= 0.0 \
+					and get_tree().get_nodes_in_group("moths").size() == 0 \
+					and _wizard != null and is_instance_valid(_wizard) and not _wizard._dead:
+				# at least ONE moth rides with the wizard at all times — if
+				# the sky ever empties mid-trial, the next is seconds out
+				_moth_timer = 2.5
 			# the trial's difficulty dials ride on every live orb — and so does
 			# the KILL PLANE: a fallen orb must die once it's clearly gone, or
 			# it lands on the old intro ground far below and squats in the

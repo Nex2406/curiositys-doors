@@ -14,10 +14,20 @@ measured against the fly frames so all sheets read as ONE creature.
 Repeatable: rerun when source frames in Downloads change.
 """
 import math
-from PIL import Image
+from PIL import Image, ImageEnhance
+
+
+def tone(img, sat, val):
+    """Pull vivid AI colors toward the realm's muted violet (alpha kept)."""
+    a = img.getchannel("A")
+    rgb = ImageEnhance.Brightness(
+        ImageEnhance.Color(img.convert("RGB")).enhance(sat)).enhance(val)
+    out = rgb.convert("RGBA")
+    out.putalpha(a)
+    return out
 
 DL = r"C:\Users\advik\Downloads"
-PACK = r"C:\Users\advik\cd-moth-worktree\assets\enemies\void_moth"
+PACK = r"C:\Users\advik\Curiosity's-Doors\assets\enemies\void_moth"
 ALPHA_T = 24
 
 
@@ -82,7 +92,7 @@ for n in range(1, 7):
     out.save(f"{PACK}\\turn_{n:02d}.png")
     outs.append(out)
     print(f"turn{n}: scale {s:.3f}")
-strip_of(outs, CANVAS_T, r"C:\Users\advik\cd-moth-worktree\_turn_strip.png", fly)
+strip_of(outs, CANVAS_T, r"C:\Users\advik\Curiosity's-Doors\_turn_strip.png", fly)
 
 # ---- attack 1-9: mass-match to fly, mirrored to the left-facing base ----
 CANVAS_A = (460, 376)
@@ -90,13 +100,14 @@ outs = []
 for n in range(1, 10):
     img = Image.open(f"{DL}\\voidattack{n}.png").convert("RGBA")
     img = img.transpose(Image.FLIP_LEFT_RIGHT)
+    img = tone(img, 0.80, 0.93)   # the comet was too candy-bright for the level
     area, cx, cy = measure(img)
     s = math.sqrt(fa / max(area, 1))
     out = place(img, s, cx, cy, CANVAS_A, CANVAS_A[0] / 2, CANVAS_A[1] / 2)
     out.save(f"{PACK}\\attack_{n:02d}.png")
     outs.append(out)
     print(f"attack{n}: scale {s:.3f}")
-strip_of(outs, CANVAS_A, r"C:\Users\advik\cd-moth-worktree\_attack_strip.png")
+strip_of(outs, CANVAS_A, r"C:\Users\advik\Curiosity's-Doors\_attack_strip.png")
 
 # ---- death 1-3: ONE uniform scale (frame 1 mass-matched to fly) so the
 # dispersal still shrinks naturally; per-frame matching would re-inflate
@@ -113,5 +124,5 @@ for n in range(1, 4):
     out.save(f"{PACK}\\death_{n:02d}.png")
     outs.append(out)
     print(f"death{n}: scale {s_d:.3f}")
-strip_of(outs, CANVAS_D, r"C:\Users\advik\cd-moth-worktree\_death_strip.png")
+strip_of(outs, CANVAS_D, r"C:\Users\advik\Curiosity's-Doors\_death_strip.png")
 print("strips -> _turn_strip.png / _attack_strip.png / _death_strip.png")

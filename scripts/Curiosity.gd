@@ -393,11 +393,30 @@ func _apply_attack_hits() -> void:
 		if body in _hit_this_swing:
 			continue
 		if body.is_in_group("enemies") and body.has_method("take_damage"):
+			# a rune orb between her and the target BLOCKS the blade —
+			# striking through an orb still hurt the wizard (Advika)
+			if _strike_blocked(body):
+				_hit_this_swing.append(body)
+				continue
 			_hit_this_swing.append(body)
 			var dir: float = signf(body.global_position.x - global_position.x)
 			if dir == 0.0:
 				dir = 1.0 if _facing_right else -1.0
 			body.take_damage(attack_damage, Vector2(dir * attack_knockback.x, attack_knockback.y))
+
+
+# True when a rune orb sits on the line between her and the strike target.
+func _strike_blocked(target: Node2D) -> bool:
+	for orb in get_tree().get_nodes_in_group("hazards"):
+		if not (orb is RuneOrb) or not is_instance_valid(orb):
+			continue
+		var a: Vector2 = global_position
+		var ab: Vector2 = target.global_position - a
+		var t: float = clampf((orb.global_position - a).dot(ab) \
+				/ maxf(ab.length_squared(), 1.0), 0.0, 1.0)
+		if orb.global_position.distance_to(a + ab * t) < 70.0:
+			return true
+	return false
 
 
 # Public: take a hit from a hazard/enemy. Ignored during the post-hit invulnerability

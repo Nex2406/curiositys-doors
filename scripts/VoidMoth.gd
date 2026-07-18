@@ -423,7 +423,7 @@ func _apply_flight_look(delta: float) -> void:
 		# velocity and fed the pirouette)
 		var a := _vel.angle()
 		bank = a if _visual.flip_h else wrapf(a - PI, -PI, PI)
-	_visual.rotation = lerp_angle(_visual.rotation, bank, 1.0 - pow(0.001, delta))
+	_visual.rotation = lerp_angle(_visual.rotation, bank, 1.0 - pow(0.0004, delta))
 	if _visual.animation == &"fly":
 		if _stall_t > 0.0:
 			_visual.speed_scale = 1.9   # a stall hangs the body, not the wings
@@ -518,7 +518,7 @@ func _launch_dive_whip() -> void:
 			else wrapf(tangent.angle() - PI, -PI, PI)
 	_dive_prev = global_position
 	_tw = create_tween()
-	_tw.tween_method(_dive_step, 0.0, 1.0, 0.9)\
+	_tw.tween_method(_dive_step, 0.0, 1.0, 1.05)\
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_tw.finished.connect(func() -> void:
 		if state != State.DIVE:
@@ -551,6 +551,10 @@ func _dive_step(t: float) -> void:
 		var floor_y: float = _anchor.global_position.y - 120.0 - DIVE_DECK_CLEAR
 		if global_position.y > floor_y:
 			global_position.y = floor_y
+	# the wide pendulum can re-enter through the island's FLANK — same rule
+	# as flight: the body is solid, slide around it (Advika: they flew
+	# through the platform, "physics duh")
+	_push_out_of_island(dt)
 
 
 # A dive refused by the light: kill the arc, recoil hard away from the
