@@ -76,11 +76,11 @@ const STORM_SWAY_PERIOD := 2.7   # (calm was 3.4)
 const VOID_MOTH := preload("res://scenes/VoidMoth.tscn")
 const MOTH_SCALE := 0.78         # BIG (Advika, three passes) — it fills the sky over her
 const MOTH_FROM_BELOW_P := 0.7   # rising from the void beneath is the thematic entrance
-const MOTH_STAGGER := 8.0        # gap between arrivals while building to the cap
+const MOTH_STAGGER := 6.0        # gap between arrivals while building to the cap
 @export var moth_cap := 3              # 2-3 aloft at once (Advika) — they build up staggered
-@export var moth_first_delay := 30.0   # first arrival 30s after the trial begins (Advika)
+@export var moth_first_delay := 20.0   # 20s after the wizard shows (Advika)
 @export var moth_respawn_pressure := true
-@export var moth_respawn_delay := 25.0
+@export var moth_respawn_delay := 12.0  # the sky refills fast (Advika: multiple moths)
 @export var moth_regrace := 10.0       # fall after the phase began -> next moth this soon
 
 enum Phase { INTRO, BUILD, RIDE, DONE }
