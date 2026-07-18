@@ -26,6 +26,11 @@ signal arrived
 @export var bob_amplitude := 8.0         ## px of vertical hover bob
 @export var shake_duration := 0.8        ## rumble before the tear
 @export var camera_path: NodePath        ## optional Camera2D to lock X / follow Y
+@export var cam_lowest_y := INF          ## the follow never drags the camera below
+                                         ## this world y — at uproot the island is
+                                         ## still at ground level, and without the
+                                         ## limit the camera lurched way down before
+                                         ## climbing (Advika)
 @export var trigger_area_path: NodePath  ## optional Area2D; player body entering starts it
 
 enum State { IDLE, SHAKING, RISING, HOVERING }
@@ -158,11 +163,20 @@ func _process(delta: float) -> void:
 		_cam = get_node_or_null(camera_path) as Camera2D  # path may be set post-_ready
 	if _cam == null or state == State.IDLE:
 		return
-	var target := Vector2(_base.x, position.y - 130.0)
+	var target := Vector2(_base.x, minf(position.y - 130.0, cam_lowest_y))
 	var w := 1.0 - pow(0.002, delta)
 	_cam.global_position.x = lerpf(_cam.global_position.x, target.x, w)
 	_cam.global_position.y = lerpf(_cam.global_position.y, target.y, w)
 	if state == State.SHAKING:
-		_cam.offset = Vector2(randf_range(-1.0, 1.0) * 14.0, randf_range(-1.0, 1.0) * 10.0)
+		# the quake IS the camera now — the old handoff plunge used to carry
+		# the violence; without it the ±14px jitter read as nothing (Advika).
+		# Builds toward the tear, with a rotation tremor like the strike shake.
+		var k := clampf(_t / shake_duration, 0.25, 1.0)
+		_cam.offset = Vector2(
+				randf_range(-1.0, 1.0) * 30.0 * k,
+				randf_range(-1.0, 1.0) * 22.0 * k)
+		_cam.rotation = randf_range(-1.0, 1.0) * 0.016 * k
 	else:
+		# post-tear the lerp back to zero doubles as the dying aftershock
 		_cam.offset = _cam.offset.lerp(Vector2.ZERO, w)
+		_cam.rotation = lerpf(_cam.rotation, 0.0, w)
