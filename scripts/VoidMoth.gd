@@ -19,13 +19,17 @@ class_name VoidMoth
 # exit_flyaway() sends it off upward (the wizard fell; it loses interest).
 
 signal died_to_light()
+signal burst_on_strike()   # it spent itself on the hit — one dive, one moth
 
 const FRAME_DIR := "res://assets/enemies/void_moth/"
 const FLY_FRAMES := 12
-const ATTACK_FRAMES := 5
+const ATTACK_FIRST := 4     # sheet frames 1-3 are body windups — they read
+                            # UNEVEN against the streak (Advika); the tremble
+                            # telegraph is the windup, the clip is pure speed
+const ATTACK_FRAMES := 6    # frames 4-9 of Advika's comet sheet (2026-07-17)
 const DEATH_FRAMES := 3
 const FLY_FPS := 12.0
-const ATTACK_FPS := 12.0
+const ATTACK_FPS := 14.0    # slow stepping read ROUGH (Advika) — snappy now
 const DEATH_FPS := 5.0
 # Advika's turn sheet (2026-07-17): the moth TUCKS into a wing-shroud (the
 # eye vanishes) and bursts back out into a streaking glide. The facing swap
@@ -45,8 +49,9 @@ const AVOID_MARGIN := 150.0                 # repulsion starts this far out
 const AVOID_PUSH := 1500.0                  # steering force at deepest penetration
 const DIVE_DECK_CLEAR := 140.0              # dives level off this far above the moss top
 
-@export var burn_time := 5.0         # sustained light needed to unmake it
-@export var burn_leak := 0.5         # burn decays at this rate when unlit (forgiving, not a reset)
+@export var burn_time := 3.0         # sustained light needed to unmake it
+                                     # (5.0 was unlandable in play — Advika)
+@export var burn_leak := 0.25        # burn decays at this rate when unlit (forgiving, not a reset)
 @export var bob_amplitude := 14.0
 @export var bob_period := 2.1
 @export var roam_speed := 240.0      # cruising speed while it prowls the sky
@@ -73,7 +78,7 @@ const DIVE_DECK_CLEAR := 140.0              # dives level off this far above the
 @export var impulse_wait_min := 1.3  # beat between darts/stalls
 @export var impulse_wait_max := 3.0
 @export var stall_time := 0.34       # the hover-hesitation before it whips away
-@export var panic_speed_mult := 1.35 # lit by the lantern: it flees the glow
+@export var panic_speed_mult := 1.15 # lit: it flees, but fear can't outrun light
 @export var panic_turn_boost := 1.8  # and wheels harder while it panics
 @export var turn_fps := 14.0         # turn-sheet speed (24 read as a blur — Advika)
 
@@ -102,11 +107,15 @@ var _flutter_timer := 0.0        # next erratic wing impulse
 var _face_target := -1.0         # which way it's wheeling to face (-1 left, +1 right)
 var _facing := -1.0              # displayed facing; swaps inside the turn's fold
 var _dive_prev := Vector2.ZERO   # last dive sample, for exit-velocity blending
+var _dive_pts: Array[Vector2] = []   # cubic talon-arc control points
+var _whip := false               # the carve is flying (pose locked to the path)
 var _impulse_timer := 1.5        # next dart-or-stall
 var _dart_t := 0.0               # time left in the current dart
 var _stall_t := 0.0              # time left in the current stall
-var _lit := false                # the lantern's kill-light is on it this frame
+var _lit := false                # the lantern's kill-light is on it (with grace)
+var _lit_grace := 0.0            # brief stickiness so edge flicker can't re-arm dives
 var _stretch := 0.0              # velocity squash/stretch on the sprite
+var _dive_shrink := 0.0          # late-dive shrink: the comet plunges INTO her
 var _flare := 0.0                # dive-telegraph glow (mixed into the burn tint)
 var _ghost_timer := 0.0          # afterimage shedding cadence
 
@@ -116,20 +125,24 @@ func _ready() -> void:
 	_visual = AnimatedSprite2D.new()
 	var frames := SpriteFrames.new()
 	frames.remove_animation(&"default")
-	for spec in [["fly", FLY_FRAMES, FLY_FPS, true], ["attack", ATTACK_FRAMES, ATTACK_FPS, false],
-			["death", DEATH_FRAMES, DEATH_FPS, false]]:
+	for spec in [["fly", 1, FLY_FRAMES, FLY_FPS, true],
+			["attack", ATTACK_FIRST, ATTACK_FRAMES, ATTACK_FPS, false],
+			["death", 1, DEATH_FRAMES, DEATH_FPS, false]]:
 		frames.add_animation(spec[0])
-		frames.set_animation_speed(spec[0], spec[2])
-		frames.set_animation_loop(spec[0], spec[3])
-		for i in range(1, spec[1] + 1):
+		frames.set_animation_speed(spec[0], spec[3])
+		frames.set_animation_loop(spec[0], spec[4])
+		for i in range(spec[1], spec[1] + spec[2]):
 			frames.add_frame(spec[0], load("%s%s_%02d.png" % [FRAME_DIR, spec[0], i]))
 	frames.add_animation(&"turn")
 	frames.set_animation_speed(&"turn", turn_fps)
 	frames.set_animation_loop(&"turn", false)
-	var ti := 1
-	while ResourceLoader.exists("%sturn_%02d.png" % [FRAME_DIR, ti]):
-		frames.add_frame(&"turn", load("%sturn_%02d.png" % [FRAME_DIR, ti]))
-		ti += 1
+	# PING-PONG fold (Advika, two rounds): the sheet's tail sees the moth
+	# from BEHIND and then streaks — any trim ended back-facing and popped
+	# into the front-view fly loop ("faces backward then suddenly forward").
+	# So: front → folded → front again, unfolding in reverse. The mirror
+	# swaps at the apex; both ends land on the fly silhouette.
+	for f in [1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1]:
+		frames.add_frame(&"turn", load("%sturn_%02d.png" % [FRAME_DIR, f]))
 	_visual.sprite_frames = frames
 	add_child(_visual)
 	_visual.play(&"fly")
@@ -181,6 +194,7 @@ func exit_flyaway() -> void:
 	if state in [State.BURNED, State.EXIT]:
 		return
 	state = State.EXIT
+	_whip = false
 	if _tw != null:
 		_tw.kill()
 	_visual.play(&"fly")
@@ -196,6 +210,8 @@ func _physics_process(delta: float) -> void:
 	_ht += delta
 	match state:
 		State.STALK:
+			if _visual.animation == &"attack":
+				_visual.play(&"fly")   # back from a held comet (missed dive)
 			# CONTINUOUS flight (Advika: it felt stiff, parked): it prowls
 			# from air-patch to air-patch around the climbing island, steering
 			# smoothly — and FLUTTERS: erratic little wing impulses between
@@ -244,6 +260,11 @@ func _physics_process(delta: float) -> void:
 					speed *= dart_speed_mult
 				elif _stall_t > 0.0:
 					speed *= 0.12   # wings blurring, body hanging — the hesitation
+				# the light UNMAKES what it burns: a lit moth falters, losing
+				# up to half its wings' strength — panic without escape.
+				# (Advika: holding L never finished the kill; the panic flee
+				# simply outran the lantern's 340px reach forever.)
+				speed *= 1.0 - 0.55 * clampf(_light_t / burn_time, 0.0, 1.0)
 				_vel = _vel.lerp(Vector2.from_angle(_heading) * speed, 1.0 - pow(0.001, delta))
 				_vel += _island_repulsion() * delta
 				_heading = _vel.angle()   # repulsion + flutter carve the heading too
@@ -350,7 +371,18 @@ func _push_out_of_island(delta: float) -> void:
 func _apply_flight_look(delta: float) -> void:
 	if state in [State.BURNED]:
 		return
-	if _vel.x < -40.0:
+	# WHO to face: a stalking hunter watches HER (Advika: it never faced
+	# Curiosity — it was facing its own travel direction). Darts and the
+	# exit face their motion. A DIVING moth changes nothing — its pose was
+	# locked to the carve at launch (mid-dive flips fed the 360 pirouette).
+	if state == State.DIVE:
+		pass
+	elif state == State.STALK and _dart_t <= 0.0 \
+			and _target != null and is_instance_valid(_target):
+		var dx := _target.global_position.x - global_position.x
+		if absf(dx) > 60.0:   # hysteresis: no flip-flutter straight overhead
+			_face_target = signf(dx)
+	elif _vel.x < -40.0:
 		_face_target = -1.0
 	elif _vel.x > 40.0:
 		_face_target = 1.0
@@ -371,9 +403,18 @@ func _apply_flight_look(delta: float) -> void:
 	# stretch: the body lengthens along a burst and thins, settles plump again
 	var goal := clampf((_vel.length() - roam_speed) / (roam_speed * 2.2), 0.0, 0.34)
 	_stretch = lerpf(_stretch, goal, 1.0 - pow(0.01, delta))
-	_visual.scale = Vector2(1.0 + _stretch, 1.0 - _stretch * 0.55)
+	if state != State.DIVE:
+		_dive_shrink = maxf(0.0, _dive_shrink - delta * 3.0)  # missed: swell back
+	_visual.scale = Vector2(1.0 + _stretch, 1.0 - _stretch * 0.55) \
+			* (1.0 - 0.62 * _dive_shrink)
 	var bank := clampf(_vel.x * 0.00045, -0.22, 0.22)
-	_visual.rotation = lerpf(_visual.rotation, bank, 1.0 - pow(0.002, delta))
+	if _whip and _vel.length() > 60.0:
+		# the comet aims DOWN ITS OWN PATH — but only once the carve is
+		# actually flying (aligning during the telegraph chased stale
+		# velocity and fed the pirouette)
+		var a := _vel.angle()
+		bank = a if _visual.flip_h else wrapf(a - PI, -PI, PI)
+	_visual.rotation = lerp_angle(_visual.rotation, bank, 1.0 - pow(0.001, delta))
 	if _visual.animation == &"fly":
 		if _stall_t > 0.0:
 			_visual.speed_scale = 1.9   # a stall hangs the body, not the wings
@@ -409,10 +450,10 @@ func _arm_dive() -> void:
 func _begin_dive() -> void:
 	state = State.DIVE
 	_dive_hit = false
-	_visual.play(&"attack")
-	# The dive now BREATHES first: a 0.22s cocked hang — it checks its
-	# flight, trembles, the eye flares — THEN the whip. Readable is scarier
-	# than sudden, and the hang makes the whip look twice as fast.
+	_whip = false
+	# The turn-as-windup pairing is DEAD (Advika: the whole turn-attack
+	# thing felt wrong) — the dive telegraphs with its own brief cocked
+	# tremble + eye flare, then carves. Turns belong to flight only.
 	if _tw != null:
 		_tw.kill()
 	_vel *= 0.35
@@ -427,6 +468,8 @@ func _begin_dive() -> void:
 # The exit velocity is measured off the curve, so the pull-out blends
 # straight back into the roam — no snap anywhere.
 func _launch_dive_whip() -> void:
+	if _tw != null:
+		_tw.kill()   # the flare ramp — else it keeps writing _flare
 	_flare = 0.0
 	if state != State.DIVE:
 		return
@@ -435,31 +478,55 @@ func _launch_dive_whip() -> void:
 		_pick_roam()
 		_arm_dive()
 		return
+	_visual.play(&"attack")
 	var her: Vector2 = _target.global_position
-	var dir := (her - global_position).normalized()
-	var through := her + dir * dive_overshoot
-	_enter_spawn = global_position
-	_enter_arc = -dir * 140.0 + Vector2(0, -110.0)  # reuse the bezier fields: windup bow
+	var sx := signf(her.x - global_position.x)
+	if sx == 0.0:
+		sx = 1.0
+	# THE TALON ARC (cubic bezier): bow down early, sweep in LOW from the
+	# approach side, carve THROUGH her, exit rising past her — a swoop, not
+	# a ruler line (Advika: "it moves in a straight line... not what i want")
+	_dive_pts = [
+		global_position,
+		global_position + (her - global_position) * 0.3 + Vector2(0.0, 160.0),
+		her + Vector2(-sx * 80.0, 80.0),
+		her + Vector2(sx * dive_overshoot, -120.0),
+	]
+	# pose locks to the carve at launch: face travel ONCE, rotation snapped
+	# to the opening tangent — no more mid-air pirouette (Advika: "does a
+	# 360 in air... hideous"; rotation was lerping from a stale angle while
+	# the facing flipped underneath it)
+	_whip = true
+	_facing = sx
+	_face_target = sx
+	_visual.flip_h = sx > 0.0
+	var tangent := (_dive_pts[1] - _dive_pts[0]).normalized()
+	_visual.rotation = tangent.angle() if _visual.flip_h \
+			else wrapf(tangent.angle() - PI, -PI, PI)
 	_dive_prev = global_position
 	_tw = create_tween()
-	_tw.tween_method(_dive_step.bind(through), 0.0, 1.0, 0.85)\
+	_tw.tween_method(_dive_step, 0.0, 1.0, 0.9)\
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_tw.finished.connect(func() -> void:
 		if state != State.DIVE:
 			return
+		_whip = false
 		state = State.STALK
 		# carry the swoop's exit speed into the roam — the pull-out IS flight
 		_pick_roam()
 		_arm_dive())
 
 
-# One step of the dive bezier; tracks its own derivative so the roam can
-# inherit the exit velocity.
-func _dive_step(t: float, through: Vector2) -> void:
-	var ctrl := _enter_spawn + _enter_arc
-	var a := _enter_spawn.lerp(ctrl, t)
-	var b := ctrl.lerp(through, t)
-	var pos := a.lerp(b, t)
+# One step of the talon-arc cubic; tracks its own derivative so the roam
+# can inherit the exit velocity.
+func _dive_step(t: float) -> void:
+	var q0 := _dive_pts[0].lerp(_dive_pts[1], t)
+	var q1 := _dive_pts[1].lerp(_dive_pts[2], t)
+	var q2 := _dive_pts[2].lerp(_dive_pts[3], t)
+	var pos := q0.lerp(q1, t).lerp(q1.lerp(q2, t), t)
+	# the last stretch of the swoop shrinks the comet — it doesn't hit her,
+	# it goes INSIDE her (Advika); the burst finishes the swallow
+	_dive_shrink = clampf(inverse_lerp(0.55, 1.0, t), 0.0, 1.0)
 	var dt := maxf(get_physics_process_delta_time(), 0.001)
 	_vel = (pos - _dive_prev) / dt * 0.6   # damped: inherit the sweep, not the spike
 	_dive_prev = pos
@@ -484,6 +551,41 @@ func _check_sting() -> void:
 		var kb := Vector2(signf(_target.global_position.x - global_position.x)
 				* absf(dive_knockback.x), dive_knockback.y)
 		_target.take_damage(dive_damage, kb)
+		_burst()
+
+
+# The strike consumes it (Advika: satisfying) — the moth detonates into a
+# spray of tiny purple motes and is gone. One dive, one moth.
+func _burst() -> void:
+	if state == State.BURNED:
+		return
+	state = State.BURNED
+	_whip = false
+	if _tw != null:
+		_tw.kill()
+	_visual.visible = false
+	var p := CPUParticles2D.new()
+	p.one_shot = true
+	p.emitting = true
+	p.amount = 44
+	p.lifetime = 0.8
+	p.explosiveness = 1.0
+	p.texture = load("res://assets/realms/realm2_moss/spore.png")
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 34.0
+	p.spread = 180.0
+	p.gravity = Vector2(0, -50)          # motes drift UP — void returns to void
+	p.initial_velocity_min = 90.0
+	p.initial_velocity_max = 330.0
+	p.scale_amount_min = 0.22
+	p.scale_amount_max = 0.55
+	p.color = Color(0.66, 0.42, 1.0)
+	var m := CanvasItemMaterial.new()
+	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	p.material = m
+	add_child(p)
+	burst_on_strike.emit()
+	get_tree().create_timer(1.0).timeout.connect(queue_free)
 
 
 # --- the burn (the only death) ---
@@ -491,14 +593,17 @@ func _check_sting() -> void:
 func _tick_burn(delta: float) -> void:
 	if state in [State.ENTER, State.BURNED, State.EXIT]:
 		return
-	_lit = false
+	var in_light := false
 	if _target != null and is_instance_valid(_target) and _target.has_method("light_state"):
 		var ls: Array = _target.light_state()
-		_lit = global_position.distance_to(ls[0]) <= float(ls[1])
-	if _lit:
+		in_light = global_position.distance_to(ls[0]) <= float(ls[1])
+	if in_light:
+		_lit_grace = 0.35
 		_light_t += delta
 	else:
+		_lit_grace = maxf(0.0, _lit_grace - delta)
 		_light_t = maxf(0.0, _light_t - delta * burn_leak)
+	_lit = in_light or _lit_grace > 0.0
 	# the burn shows: it whitens and trembles as the light unmakes it. The
 	# dive telegraph's flare shares this write (one owner for tint + shake,
 	# or the two effects stomp each other frame by frame).
@@ -530,8 +635,10 @@ func _on_anim_finished() -> void:
 	if state == State.BURNED and _visual.animation == &"death":
 		queue_free()
 		return
-	# the attack clip is shorter than the swoop — flow back to wings mid-
-	# flight instead of freezing on the last frame (that read as the "chop");
-	# a finished turn glide flows back the same way
-	if _visual.animation in [&"attack", &"turn"] and state != State.BURNED:
+	# a finished turn flows back to wings; a finished attack clip HOLDS its
+	# last comet frame while the dive is still flying (the wings popping
+	# back mid-swoop was the old "chop") and only reverts once it's roaming
+	if _visual.animation == &"turn" and state != State.BURNED:
+		_visual.play(&"fly")
+	elif _visual.animation == &"attack" and state not in [State.DIVE, State.BURNED]:
 		_visual.play(&"fly")

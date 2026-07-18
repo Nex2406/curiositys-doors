@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bkf88fnskb085"
-path="res://.godot/imported/1.png-dbd437642f908a70bcaf06848454dc9d.ctex"
+uid="uid://4lwrfu3qjpkv"
+path="res://.godot/imported/_attack_strip.png-3894ed4fc305f0758e11e544051c790d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/realms/realm1_caves/parallax/1.png"
-dest_files=["res://.godot/imported/1.png-dbd437642f908a70bcaf06848454dc9d.ctex"]
+source_file="res://_attack_strip.png"
+dest_files=["res://.godot/imported/_attack_strip.png-3894ed4fc305f0758e11e544051c790d.ctex"]
 
 [params]
 

@@ -78,11 +78,13 @@ func _spawn_moth() -> void:
 	var side := 1.0 if randf() < 0.5 else -1.0
 	_moth.enter_from(Vector2(side * 1300.0, -500.0), _anchor,
 			Vector2(-side * 200.0, -420.0), _curi)
-	_moth.died_to_light.connect(func() -> void:
+	var respawn := func() -> void:
 		await get_tree().create_timer(1.2).timeout
 		if is_inside_tree():
 			_spawn_moth()
-			_update_label())
+			_update_label()
+	_moth.died_to_light.connect(respawn)
+	_moth.burst_on_strike.connect(respawn)
 
 
 func _update_label() -> void:

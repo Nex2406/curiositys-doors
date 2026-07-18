@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bkf88fnskb085"
-path="res://.godot/imported/1.png-dbd437642f908a70bcaf06848454dc9d.ctex"
+uid="uid://pnpiikxpbugx"
+path="res://.godot/imported/bloom_finale_mock_2026-07-16.png-2ff660b82c39b319b70d4c33e4b7f397.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/realms/realm1_caves/parallax/1.png"
-dest_files=["res://.godot/imported/1.png-dbd437642f908a70bcaf06848454dc9d.ctex"]
+source_file="res://assets/_reference/bloom_finale_mock_2026-07-16.png"
+dest_files=["res://.godot/imported/bloom_finale_mock_2026-07-16.png-2ff660b82c39b319b70d4c33e4b7f397.ctex"]
 
 [params]
 

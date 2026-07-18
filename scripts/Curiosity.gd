@@ -48,7 +48,7 @@ const ATTACK_HITBOX_OFFSET: Vector2 = Vector2(240.0, -120.0)  # forward (sign fl
 @export var light_burn_ramp := 2.2        # seconds of holding to reach full glow
 @export var light_burn_decay := 1.1       # seconds to settle back after release
 @export var light_burn_max := 2.6         # glow scale/energy multiplier at full charge
-@export var light_base_radius := 130.0    # WORLD px: the resting light's kill-reach —
+@export var light_base_radius := 170.0    # WORLD px: the resting light's kill-reach —
                                           # small enough that HOLDING L is the verb
                                           # (full charge = this * light_burn_max ≈ 340px)
 

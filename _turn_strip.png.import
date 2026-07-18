@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bkf88fnskb085"
-path="res://.godot/imported/1.png-dbd437642f908a70bcaf06848454dc9d.ctex"
+uid="uid://dv07rang4yclp"
+path="res://.godot/imported/_turn_strip.png-202d9bff62a4da4990dde21535dca546.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/realms/realm1_caves/parallax/1.png"
-dest_files=["res://.godot/imported/1.png-dbd437642f908a70bcaf06848454dc9d.ctex"]
+source_file="res://_turn_strip.png"
+dest_files=["res://.godot/imported/_turn_strip.png-202d9bff62a4da4990dde21535dca546.ctex"]
 
 [params]
 

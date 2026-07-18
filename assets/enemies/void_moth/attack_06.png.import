@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bkf88fnskb085"
-path="res://.godot/imported/1.png-dbd437642f908a70bcaf06848454dc9d.ctex"
+uid="uid://b6wgskau3o8tl"
+path="res://.godot/imported/attack_06.png-2b6c6fceea0ee5ab04deda1abdc81103.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/realms/realm1_caves/parallax/1.png"
-dest_files=["res://.godot/imported/1.png-dbd437642f908a70bcaf06848454dc9d.ctex"]
+source_file="res://assets/enemies/void_moth/attack_06.png"
+dest_files=["res://.godot/imported/attack_06.png-2b6c6fceea0ee5ab04deda1abdc81103.ctex"]
 
 [params]
 
