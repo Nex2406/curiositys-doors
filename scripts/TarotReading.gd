@@ -195,8 +195,8 @@ func _build_reveal_ui() -> void:
 	art.texture = portrait
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	art.position = Vector2(CARD_W * 0.5 - CARD_W * 0.36, CARD_H * 0.075)
-	art.size = Vector2(CARD_W * 0.72, CARD_H * 0.30)
+	art.position = Vector2(CARD_W * 0.5 - CARD_W * 0.40, CARD_H * 0.06)
+	art.size = Vector2(CARD_W * 0.80, CARD_H * 0.34)
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_reveal_ui.add_child(art)
 
@@ -205,17 +205,17 @@ func _build_reveal_ui() -> void:
 	moth.texture = preload("res://assets/enemies/void_moth/fly_01.png")
 	moth.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	moth.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	moth.position = Vector2(CARD_W * 0.5 - CARD_W * 0.26, CARD_H * 0.615)
-	moth.size = Vector2(CARD_W * 0.52, CARD_H * 0.16)
+	moth.position = Vector2(CARD_W * 0.5 - CARD_W * 0.33, CARD_H * 0.60)
+	moth.size = Vector2(CARD_W * 0.66, CARD_H * 0.185)
 	moth.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_reveal_ui.add_child(moth)
 
-	var y := CARD_H * 0.425   # open zone below the eyes (eyes ≈ 0.347)
+	var y := CARD_H * 0.41    # tucked up so the bigger moth fits below
 	for verse in verses:
 		var l := _label(_reveal_ui, verse, _serif(garamond), int(CARD_H * 0.028), y)
 		l.visible_characters = 0
 		_verse_labels.append(l)
-		y += CARD_H * 0.054
+		y += CARD_H * 0.05
 
 
 func _process(delta: float) -> void:

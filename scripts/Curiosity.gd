@@ -45,9 +45,12 @@ const ATTACK_HITBOX_OFFSET: Vector2 = Vector2(240.0, -120.0)  # forward (sign fl
 # back. Void creatures (the moth) can only be slain by sustained light —
 # the swing means nothing to them. The charge ramps over ~2s so growing
 # the light is a commitment, not a flick.
-@export var light_burn_ramp := 2.2        # seconds of holding to reach full glow
+@export var light_burn_ramp := 1.4        # seconds of holding to reach full glow
 @export var light_burn_decay := 1.1       # seconds to settle back after release
-@export var light_burn_max := 2.6         # glow scale/energy multiplier at full charge
+@export var light_burn_max := 4.0         # glow scale/energy multiplier at full charge
+                                          # (2.6 gave a 442px kill-reach vs a moth
+                                          # roaming a ±450px sky — it kited forever;
+                                          # at full burn the light OWNS the airspace)
 @export var light_base_radius := 170.0    # WORLD px: the resting light's kill-reach —
                                           # small enough that HOLDING L is the verb
                                           # (full charge = this * light_burn_max ≈ 340px)
@@ -424,6 +427,11 @@ func hurt(knockback: Vector2 = Vector2.ZERO) -> void:
 # first pass multiplied by her 0.24 world scale and the light reached ~55px:
 # the moth hovered untouched and the burn read as broken. Advika caught it.)
 func light_state() -> Array:
+	# the RESTING flame doesn't burn the void — only the grown light does.
+	# (With the light-wall dive aborts, a passive 170px kill-field meant the
+	# moth could never land a dive at all — Advika caught it.)
+	if _burn_charge < 0.12:
+		return [lantern.global_position, 0.0]
 	var radius: float = light_base_radius * (1.0 + _burn_charge * (light_burn_max - 1.0))
 	return [lantern.global_position, radius]
 

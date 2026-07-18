@@ -50,6 +50,13 @@ func _ready() -> void:
 	_curi.position = Vector2(-220, FLOOR_Y - 120)
 	_curi.scale = Vector2(0.24, 0.24)
 	add_child(_curi)
+	# the rig is for the MOTH — Curiosity can't die here. At 0 health the
+	# lantern's burn gate (health > 0) silently turns L off, which read as
+	# "holding L never dissolves it" once enough dives had landed (Advika,
+	# three rounds of it).
+	_curi.health_changed.connect(func(h: int, _m: int) -> void:
+		if h < 30:
+			_curi.health = 100)
 
 	# phantom island: deck top = anchor.y - 120, matching the trial's geometry
 	_anchor = Node2D.new()
@@ -88,8 +95,26 @@ func _spawn_moth() -> void:
 
 
 func _update_label() -> void:
-	_label.text = "VOID MOTH RIG    turn fps %.0f%s\nT turn   D dive   [ ] fps   S slow-mo   L burn   R restart" \
-			% [_moth.turn_fps, "   (SLOW-MO)" if _slow else ""]
+	pass  # superseded — _process paints the label live
+
+
+func _draw() -> void:
+	# the kill-light's actual reach, drawn true — no more arguing with
+	# invisible geometry (rig-only debug ring)
+	if is_instance_valid(_curi) and _curi.has_method("light_state"):
+		var ls: Array = _curi.light_state()
+		draw_arc(to_local(ls[0]), float(ls[1]), 0.0, TAU, 64,
+				Color(1.0, 0.85, 0.45, 0.35), 2.0)
+
+
+func _process(_delta: float) -> void:
+	queue_redraw()
+	if not is_instance_valid(_moth):
+		return
+	var burn := "burn %d%%%s" % [int(100.0 * clampf(_moth._light_t / _moth.burn_time, 0.0, 1.0)),
+			"  ⚡LIT" if _moth._lit else ""]
+	_label.text = "VOID MOTH RIG    turn fps %.0f    %s%s\nT turn   D dive   [ ] fps   S slow-mo   hold L to burn   R restart" \
+			% [_moth.turn_fps, burn, "   (SLOW-MO)" if _slow else ""]
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -49,8 +49,7 @@ const AVOID_MARGIN := 150.0                 # repulsion starts this far out
 const AVOID_PUSH := 1500.0                  # steering force at deepest penetration
 const DIVE_DECK_CLEAR := 140.0              # dives level off this far above the moss top
 
-@export var burn_time := 3.0         # sustained light needed to unmake it
-                                     # (5.0 was unlandable in play — Advika)
+@export var burn_time := 4.0         # seconds in the light before it bursts (Advika)
 @export var burn_leak := 0.25        # burn decays at this rate when unlit (forgiving, not a reset)
 @export var bob_amplitude := 14.0
 @export var bob_period := 2.1
@@ -275,14 +274,24 @@ func _physics_process(delta: float) -> void:
 			# dives launch only from ABOVE the deck — a belly-roamer waits
 			# until its prowl brings it around (a dive from below would have
 			# to tunnel the island)
-			# a lit moth never dives — fear owns it until it shakes the light
-			if _dive_timer <= 0.0 and not _lit \
+			# a lit moth still TRIES — the dive breaks on the light-wall and
+			# costs it burn, so defiance is how it dies fastest (a hard
+			# no-dive-while-lit gate just made it circle harmlessly; Advika:
+			# "now hes not attacking only")
+			if _dive_timer <= 0.0 \
 					and _target != null and is_instance_valid(_target) \
 					and _anchor != null and is_instance_valid(_anchor) \
 					and global_position.y < _anchor.global_position.y - 120.0:
 				_begin_dive()
 		State.DIVE:
-			_check_sting()
+			# the light is a WALL to it: a dive that meets the swelled glow
+			# BREAKS OFF, scorched — it cannot press the attack through the
+			# burn. (Advika: "when it starts attacking it doesnt detect the
+			# light" — the scripted arc used to fly through regardless.)
+			if _lit and not _dive_hit:
+				_abort_dive()
+			else:
+				_check_sting()
 		_:
 			pass
 	_apply_flight_look(delta)
@@ -540,6 +549,25 @@ func _dive_step(t: float) -> void:
 			global_position.y = floor_y
 
 
+# A dive refused by the light: kill the arc, recoil hard away from the
+# glow, and take a bite of burn for daring — aggressive light play chews
+# through it dive by dive.
+func _abort_dive() -> void:
+	if _tw != null:
+		_tw.kill()
+	_whip = false
+	_light_t += 0.35
+	state = State.STALK
+	_visual.play(&"fly")
+	if _target != null and is_instance_valid(_target) \
+			and _target.has_method("light_state"):
+		var away: Vector2 = (global_position - _target.light_state()[0]).normalized()
+		_vel = away * roam_speed * 1.6
+		_heading = _vel.angle()
+	_pick_roam()
+	_arm_dive()
+
+
 func _check_sting() -> void:
 	if _dive_hit or _target == null or not is_instance_valid(_target):
 		return
@@ -564,6 +592,14 @@ func _burst() -> void:
 	if _tw != null:
 		_tw.kill()
 	_visual.visible = false
+	_mote_burst()
+	burst_on_strike.emit()
+	get_tree().create_timer(1.0).timeout.connect(queue_free)
+
+
+# The moth's one death look: a spray of tiny purple motes drifting upward —
+# void returns to void.
+func _mote_burst() -> void:
 	var p := CPUParticles2D.new()
 	p.one_shot = true
 	p.emitting = true
@@ -574,7 +610,7 @@ func _burst() -> void:
 	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
 	p.emission_sphere_radius = 34.0
 	p.spread = 180.0
-	p.gravity = Vector2(0, -50)          # motes drift UP — void returns to void
+	p.gravity = Vector2(0, -50)
 	p.initial_velocity_min = 90.0
 	p.initial_velocity_max = 330.0
 	p.scale_amount_min = 0.22
@@ -584,8 +620,6 @@ func _burst() -> void:
 	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	p.material = m
 	add_child(p)
-	burst_on_strike.emit()
-	get_tree().create_timer(1.0).timeout.connect(queue_free)
 
 
 # --- the burn (the only death) ---
@@ -617,18 +651,18 @@ func _tick_burn(delta: float) -> void:
 
 
 func _burn_out() -> void:
+	# no death sheet (Advika): four lit seconds and it BURSTS into motes,
+	# the same death the strike buys — one death language for the moth
+	if state == State.BURNED:
+		return
 	state = State.BURNED
+	_whip = false
 	if _tw != null:
 		_tw.kill()
-	# the flash — then the death motes, fading as they scatter
-	var flash := create_tween()
-	flash.tween_property(_visual, "modulate", Color(2.6, 2.2, 3.0), 0.08)
-	flash.finished.connect(func() -> void:
-		_visual.play(&"death")
-		var dur := DEATH_FRAMES / DEATH_FPS
-		var fade := create_tween()
-		fade.tween_property(self, "modulate:a", 0.0, dur)
-		died_to_light.emit())
+	_visual.visible = false
+	_mote_burst()
+	died_to_light.emit()
+	get_tree().create_timer(1.0).timeout.connect(queue_free)
 
 
 func _on_anim_finished() -> void:
