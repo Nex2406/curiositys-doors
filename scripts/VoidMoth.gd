@@ -29,7 +29,7 @@ const ATTACK_FIRST := 4     # sheet frames 1-3 are body windups — they read
 const ATTACK_FRAMES := 6    # frames 4-9 of Advika's comet sheet (2026-07-17)
 const DEATH_FRAMES := 3
 const FLY_FPS := 12.0
-const ATTACK_FPS := 14.0    # slow stepping read ROUGH (Advika) — snappy now
+const ATTACK_FPS := 18.0    # fast — sparse frames at dive speed read choppy
 const DEATH_FPS := 5.0
 # Advika's turn sheet (2026-07-17): the moth TUCKS into a wing-shroud (the
 # eye vanishes) and bursts back out into a streaking glide. The facing swap
@@ -324,7 +324,7 @@ func _shed_ghost(delta: float) -> void:
 	_ghost_timer -= delta
 	if _ghost_timer > 0.0:
 		return
-	_ghost_timer = 0.05
+	_ghost_timer = 0.038   # tight trail — it smooths the fast frames
 	var tex := _visual.sprite_frames.get_frame_texture(_visual.animation, _visual.frame)
 	if tex == null or get_parent() == null:
 		return
@@ -492,13 +492,17 @@ func _launch_dive_whip() -> void:
 	var sx := signf(her.x - global_position.x)
 	if sx == 0.0:
 		sx = 1.0
-	# THE TALON ARC (cubic bezier): bow down early, sweep in LOW from the
-	# approach side, carve THROUGH her, exit rising past her — a swoop, not
-	# a ruler line (Advika: "it moves in a straight line... not what i want")
+	# THE TALON ARC (cubic bezier) with a GUARANTEED lateral swing: from
+	# straight overhead the old control points collapsed onto a vertical
+	# line and the dive read as a ruler drop (Advika, twice). Now it always
+	# swings OUT to a side, sweeps down-across, carves through her at the
+	# bottom, and exits rising on the far side — a pendulum, from anywhere.
+	var lat := maxf(200.0, absf(her.x - global_position.x) * 0.5)
 	_dive_pts = [
 		global_position,
-		global_position + (her - global_position) * 0.3 + Vector2(0.0, 160.0),
-		her + Vector2(-sx * 80.0, 80.0),
+		global_position + Vector2(-sx * lat * 0.7,
+				(her.y - global_position.y) * 0.35 + 110.0),
+		Vector2(her.x - sx * lat, her.y + 60.0),
 		her + Vector2(sx * dive_overshoot, -120.0),
 	]
 	# pose locks to the carve at launch: face travel ONCE, rotation snapped
