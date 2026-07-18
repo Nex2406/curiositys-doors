@@ -56,26 +56,37 @@ overgrown silhouettes that flicker amber under the lantern (Joy's
 buried threads). One of them hums Grief's first lullaby.
 Play-feel: careful, lantern-lit, accumulating dread.
 
-### Act 1.5 — THE UNDERHOLLOW (added 2026-07-16, Advika: "topsy turvy —
-falls in the ground, floating, has to fight")
-The fall doesn't land. CANON: the Hollow's shelves "rose and fell with
-no gravity to guide them, yet they never seemed to let go completely."
-Inside the ruined archive, down stops meaning anything:
-- **Movement = low-gravity drift** (floaty jumps, long hangs, strong
-  air control — underwater-dreamlike), platforms are shelf-islands
-  slowly rising/falling.
-- **Gravity-FLIP set-piece beats** on top: moments where the world
-  turns over — walk the underside of a shelf, fall UP through a stack.
-  Flips are authored moments, not a constant mechanic.
-- **Combat: the Remembered Ones** — hooded echoes of consumed travelers
-  drifting out of the dark. They GRAB, they hold, they pull toward the
-  walls (the Hollow keeps what enters) — Curiosity fights free with the
-  existing slash/dash kit. Melancholic, never monstrous: they don't
-  hate; they miss.
-Play-feel: weightless, wrong, beautiful; the game's combat finally
-lands inside the finale realm.
-**Prerequisite: M2 combat wiring** (attack/hurt/dash into the state
-machine) — now REQUIRED by R3, which pulls it up the priority list.
+### Act 1.5 — THE UNDERHOLLOW: the map writes itself
+(Advika 2026-07-16, two beats: "topsy turvy — falls in the ground,
+floating, has to fight" + "the ground crumbles into bits and pieces and
+REARRANGES itself as Curiosity travels — the map is literally making
+itself as they go down.")
+CANON: the Hollow's shelves "rose and fell with no gravity to guide
+them"; "The Hollow shifted. Shelves groaned softly, realigning
+themselves with purpose. It was guiding me."; the Tower "doesn't just
+collapse. It rearranges."
+**The underground has no map — it is a map being written:**
+- Ground **crumbles under Curiosity** into the same pebble-pieces the
+  masses are built from; behind them the path un-builds — no way back.
+- Ahead/below, **debris flies in and assembles**: pebbles snap into
+  rim-lines, fills grow between them, shelves slide from walls to
+  become platforms exactly when needed. The Hollow authors the level
+  around the player in real time.
+- **It ESCALATES downward:** near the surface, crumble+rebuild under
+  normal gravity → deeper, gravity loosens and pieces AND Curiosity
+  drift (low-grav base + authored gravity-flip beats) while the map
+  keeps assembling → the Heart.
+- **Guiding, then gripping:** on the way DOWN the Hollow builds FOR
+  them (it wants to be witnessed). After the wake, the same system
+  builds AGAINST them — walls closing, pieces gripping — it wants to
+  KEEP them. Same mechanic, flipped intent = the realm's betrayal beat.
+- **Combat: the Remembered Ones** — hooded echoes drifting out of the
+  dark; they GRAB and pull toward the walls. Curiosity fights free
+  with the slash/dash kit. They don't hate; they miss.
+Play-feel: the floor is a sentence being written under your feet.
+**Prerequisites: the rearrange rig is now the #1 prototype (riskiest,
+most load-bearing system), then bounce, then M2 combat wiring — all
+REQUIRED by R3.**
 
 ### Act 2 — THE HEART
 The bottom: the Heart of the Hollow — a vast breathing archive-mass,

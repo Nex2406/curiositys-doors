@@ -7,6 +7,31 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 
 ---
 
+## 2026-07-16/17 — The finale finds its shape: The Bloom, the book, the layered underworld
+
+**Shipped (main, pre no-commit rule):** R3 ref set-pieces (PR #170 — hanging
+rimmed chunks + slab bridges, kept RARE); The Bloom finale spec
+(docs/realms/realm3.md): villain = Consciousness, the sleeper = the Heart
+of the Binding Hollow, ritual wake by accident, defiant-tease ending —
+all canon-grounded after reading Written by Silence end to end (digest in
+assistant memory); finale concept frame mocked from real assets
+(assets/_reference/bloom_finale_mock_2026-07-16.png).
+
+**Built, approved, UNCOMMITTED (Advika's new rule: no main commits without
+her word):** the LAYERED UNDERWORLD (scenes/UnderforestTest.tscn) — the
+realm 3 builder rerun verbatim per layer with a fresh seed; floor gaps are
+bottomless throats that drop Curiosity into the next layer, forever.
+Five look iterations died before the lesson landed: "exactly like level 3"
+means rerun level 3's builder, not invent new grammar.
+
+**Didn't land:** the self-writing/crumbling map rig (mechanic parked, look
+rejected), chamber-stack underworld, four static act mocks (motion-first
+won).
+
+**Next 3:** 1) commit conversation (review branch of approved pieces);
+2) surface floor opens into underworld layer 1; 3) bounce prototype →
+M2 combat wiring → the Heart layer.
+
 ## 2026-07-15 — Realm 3 becomes a place: the long fungal forest, iterated live
 
 **Shipped** (branch `feat/r3-fungal-shell` → main, closes #166 — one long

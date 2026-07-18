@@ -9,7 +9,49 @@ Rules:
 
 ---
 
-## 2026-07-16
+## 2026-07-17
+
+- **The Heart is a GIANT EYE that's been watching over Curiosity
+  (Advika, mid-thought — "BUT THEN WAIT" unresolved):** not a heart with
+  an eye on it — the Heart of the Hollow IS one vast eye. It has watched
+  over Curiosity (all game?). Open thread she hit: how giant-eye-watching
+  squares with (a) Curiosity's cloak of blinking eyes — signature motif,
+  (b) Consciousness the villain, whose whole thing is cold surveillance,
+  (c) the book's ending line "I wasn't watching. I was being seen."
+  Candidate resolution discussed: two kinds of being seen — Consciousness
+  WATCHES (cold, corrective); the Heart WITNESSES/remembers (warm). The
+  wake = the first time anything ever witnessed IT back. Not locked.
+
+- **Underhollow combat = fungal, option C (Advika):** the Sporebound
+  (travelers the forest consumed, mushroom-overgrown, mycelium-puppeted,
+  burst into lingering spore clouds on death — "you don't take from the
+  Hollow, you become part of it" made flesh) as the hands; the mycelium
+  itself as the will (wall tendrils, chain-detonating puffballs, drifting
+  spore swarms, escalating coordination downward); a mushroom COLOSSUS
+  (stalk-limbs, cap-armor, glowing spore-heart, built from the level's own
+  caps/stems) as the deep mini-boss. Book stays underneath (amber
+  ledger-name glints), screen shows caps/stalks/spores. Rejected on the
+  way here: grabby ghost mobs (filler), pure novel-echo fights
+  (siblings' endings — didn't fit the mushroom forest).
+
+- **Three drops, and the third drops you INTO the Heart (Advika):**
+  the layered underworld has three floor-gap drops; instead of a third
+  combat layer, drop 3 is a straight fall into the Heart of the world
+  (Act 2's chamber). Advika: "this is gonna be very tough" — the section
+  before/around drop 3 is meant to be the hardest stretch of the game.
+  Shape TBD (colossus guarding the last gap? gauntlet fall?). Not yet
+  promoted into realm3.md — promote once the drop ladder is pinned.
+
+- **The map writes itself (Advika): "the ground crumbles into bits and
+  pieces and REARRANGES itself as Curiosity travels — the map is literally
+  making itself as they go down."** Locked same session: it ESCALATES
+  downward (crumble+rebuild underfoot near the surface -> gravity loosens,
+  pieces AND Curiosity drift while the map assembles + Remembered Ones
+  fight -> Heart -> Bloom) and it's GUIDING on the way down, GRIPPING on
+  the way out (the wake flips its intent). Canon: the Hollow's shelves
+  "realigning themselves with purpose. It was guiding me"; the Tower
+  "doesn't just collapse. It rearranges." The four static act mocks were
+  rejected in favor of this motion-first idea — the rig is the pitch now.
 
 - **The Underhollow (Advika, mid-session): "topsy turvy — falls in the
   ground, floating, has to fight."** The Bloom's descent doesn't land:

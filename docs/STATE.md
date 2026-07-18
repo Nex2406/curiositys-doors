@@ -1,5 +1,15 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-07-15_
+_Last updated: 2026-07-17_
+
+## ⚠ Working tree holds APPROVED-BUT-UNCOMMITTED work (2026-07-17)
+Advika's standing rule since 2026-07-16: **no commits to main without her
+explicit say-so.** Approved and waiting: the LAYERED UNDERWORLD
+(`scenes/UnderforestTest.tscn` + `scripts/UnderforestTest.gd` — the realm 3
+builder rerun per layer, floor gaps drop endlessly deeper), realm3.md
+Underhollow edits, SKETCHBOOK entries, session docs. Parked/rejected but
+present: `scenes/RearrangeTest.*`, `tools/R3ActMocks.*`,
+`_r3_mocks_preview/`. The finale design itself (The Bloom, Consciousness,
+the Heart of the Hollow) IS on main in `docs/realms/realm3.md`.
 
 ## Realm 3 — the fungal forest, iterated live with Advika (2026-07-15)
 `scenes/realms/Realm3FungalTest.tscn` (+`scripts/Realm3FungalTest.gd`) — a
