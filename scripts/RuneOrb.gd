@@ -206,6 +206,7 @@ func _try_push() -> void:
 		if body.is_in_group("player") and body.has_method("shove"):
 			_push_cd = push_cooldown
 			var impulse := Vector2(_dir * push_force, -push_up_kick)
+			Haptics.buzz(70, 0.5)
 			body.shove(impulse)
 			print("[RuneOrb] shoved player  dir=%d  impulse=%s  at=%s" %
 					[int(_dir), impulse, global_position])

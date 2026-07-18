@@ -31,7 +31,9 @@ const AMBIENT_DB: float = -6.0
 
 const PLACEHOLDER_NAME: String = "placeholder_drone"
 # How far the Ambient bus sinks while an overlay holds the stage.
-const DUCK_DB: float = -12.0
+# Tuned live with Advika: -12 fought the chime, -18 left it naked —
+# -14 with a softened chime (-7dB) is the blend.
+const DUCK_DB: float = -10.0
 
 var _players: Array[AudioStreamPlayer] = []
 var _active: int = 0
@@ -92,7 +94,7 @@ func play_placeholder(track_name: String = PLACEHOLDER_NAME, fade: float = DEFAU
 # Duck the whole Ambient bus under an overlay (tarot card, dialogue…) and
 # swell back when it clears. Bus-level, so crossfades keep working under it.
 # Quick dip, slow recovery — the return should feel like surfacing.
-func duck_music(fade: float = 0.3) -> void:
+func duck_music(fade: float = 0.5) -> void:
 	_duck_to(DUCK_DB, fade)
 
 

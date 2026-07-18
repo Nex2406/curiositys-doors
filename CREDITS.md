@@ -21,6 +21,11 @@ work is not reviewed).
 - **Curiosity** — full hero sprite set (idle / walk / run / jump / combat / dash)
 - **Golems** — Realm 1 enemy sprites (patrol / alert / attack / death)
 - **Jade** — collectible sprites (Realm 1)
+- **Void Moth turn + attack sheets** — the voidturn fold (11f) and
+  voidattack comet (9f) sequences, size-normalized in-house
+  (`tools/align_voidmoth_turn.py`)
+- **Tarot trial card** — both painted faces (`assets/ui/tarot/`): door-arch
+  front + ornamental reveal frame
 
 ### Licensed / third-party packs
 | Asset | Source | Used in |
@@ -29,6 +34,7 @@ work is not reviewed).
 | Mossy tileset: terrain, floating platforms, hills, background decoration, hanging plants, decorations & hazards | **Maaot** — itch.io | Realm 2 backgrounds + terrain (purple hue-shift applied in-house) |
 | BlueWizard Animations (idle / walk / jump / dash) | **Maaot** — itch.io (same pack family — confirm exact pack page before submission) | Realm 2 boss, the Wizard — purple cloak + red eyes shifted in-house (`tools/tint_wizard_pack.gd`) |
 | Rune orb (12-frame roll + 12-frame conjure smoke) | Sourced by Advika — **confirm exact pack/page before submission** | Realm 2 wizard's rolling hazard — crystal shifted onto the realm violet in-house (`tools/tint_runeorb_pack.gd`) |
+| Void Moth base sheets (fly 12 / death 3) | Sourced by Advika — **confirm origin: pack page or own generation, before submission** | Realm 2 trial stalker — slain only by lantern-light |
 | Slimes, animated plants | **Maaot** — itch.io (same pack family — confirm exact pack page before submission) | Realm 2 (planned) |
 
 ### Procedural / generated in-repo
@@ -41,6 +47,7 @@ work is not reviewed).
 | Track | Source | License | Used in |
 |---|---|---|---|
 | "Moonlight (Full Loop)" (`assets/audio/realm2_moonlight.ogg`) | **AlkaKrab** — *Free 12 Fairytale Magical Fantasy Tracks* | Royalty-free, commercial use allowed, credit appreciated (License Info.pdf in pack; contact alkakrab04@gmail.com) | Realm 2 ambient |
+| Card reveal chime (`assets/audio/wizard_card_reveal.ogg`, from `UI/Notifications/GP_Disconnected.wav`) | **Olex Mazur** — *Card Game SFX Pack* | Per pack terms — confirm exact page before submission | Realm 2 trial card reveal |
 
 - All other ambience is still the placeholder drone synthesized in code
   (`AudioManager`); tracks/SFX get a row here as they land.

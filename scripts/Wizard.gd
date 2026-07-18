@@ -210,6 +210,19 @@ func start_trial() -> void:
 	_begin_cast()
 
 
+# Public: a fall reset — drop any mid-cycle momentum (vanish fades included)
+# and stand a fresh idle beat. Cast pacing restarts kindly; strikes are NOT
+# reset — her progress on him survives her fall.
+func reset_pacing() -> void:
+	if _trial == Trial.OFF or _dead:
+		return
+	if _fade_tween != null:
+		_fade_tween.kill()
+	modulate.a = 1.0
+	_hurt_shape.set_deferred("disabled", false)
+	_enter_trial_idle()
+
+
 func stop_trial() -> void:
 	if _trial == Trial.OFF:
 		return
