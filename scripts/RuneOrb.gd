@@ -66,6 +66,10 @@ var _push_zone: Area2D
 
 
 func _ready() -> void:
+	# long snap: a climbing/bobbing deck (the lift island) must not shed its
+	# riders between frames — without this the rise outpaced the default
+	# snap and orbs fell THROUGH the moss (Advika)
+	floor_snap_length = 36.0
 	_visual = AnimatedSprite2D.new()
 	var frames := SpriteFrames.new()
 	frames.remove_animation(&"default")

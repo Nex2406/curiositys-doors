@@ -20,8 +20,16 @@ Rules:
   invalidate them. Asked her what "redo" means before touching anything.
   **Her answer, same day:** she has a NEW ASSET PACK she wants in place of
   the handmade map — rebuild the R1 map from it, built the way Level 2 was
-  (she provides the pack, the level gets built from it in Godot). Next
-  step when we start: get the pack from her, then scope layout.
+  (she provides the pack, the level gets built from it in Godot). Pack:
+  Downloads/CaveAssetsMaaot.zip (5 sheets @1024: BigRocks, Floor,
+  Platforms, RockCombinations, SmallRocks). Two more cave packs sit in
+  Downloads (Parallax_Backgrounds_Cave, PixelFantasy_Caves_1.0) —
+  relationship unconfirmed. **And: Realm 1 should be a PLATFORMER** (her
+  words) — platforming-first layout, not a walk-through. Three direction
+  mocks composed same day (scratchpad r1_mocks): wide crossing (violet),
+  vertical climb (violet), crossing (crimson). **She picked THE CLIMB** —
+  vertical-shaft platforming is the R1 read. Palette not explicitly
+  called, but the pick was a violet mock; crimson variant didn't win.
 
 ## 2026-07-17
 

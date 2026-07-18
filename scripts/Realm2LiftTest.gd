@@ -77,12 +77,12 @@ const STORM_SWAY_PERIOD := 2.7   # (calm was 3.4)
 # one leaves on his defeat, flying off upward.
 const VOID_MOTH := preload("res://scenes/VoidMoth.tscn")
 const MOTH_SCALE := 0.78         # BIG (Advika, three passes) — it fills the sky over her
-const MOTH_FROM_BELOW_P := 0.7   # rising from the void beneath is the thematic entrance
 const MOTH_STAGGER := 6.0        # gap between arrivals while building to the cap
 @export var moth_cap := 3              # 2-3 aloft at once (Advika) — they build up staggered
 @export var moth_first_delay := 10.0   # 10s after the wizard shows (Advika)
 @export var moth_respawn_pressure := true
-@export var moth_respawn_delay := 12.0  # the sky refills fast (Advika: multiple moths)
+@export var moth_respawn_delay := 7.0   # a death re-arms the clock: the sky
+                                        # refills 7s later (Advika, 2026-07-18)
 @export var moth_regrace := 10.0       # fall after the phase began -> next moth this soon
 
 enum Phase { INTRO, BUILD, RIDE, DONE }
@@ -106,6 +106,7 @@ var _wizard: Wizard = null
 var _airborne_t := 0.0  # seconds the island has been RISING (wizard spawn clock)
 var _moth_timer := -1.0        # counts down to the next arrival while > 0
 var _moth_phase_begun := false # first moth has arrived at least once
+var _moth_side := 0            # entry sides cycle: left, right, below
 var _soak := false             # R2_TRIAL_LOG: deaths don't spend lifelines
 var _hp_fill: ColorRect       # the ember health strip under the lifeline eyes
 var _hp_track: ColorRect
@@ -1233,23 +1234,10 @@ func _spawn_wizard(instant := false) -> void:
 # curved 1.2s approach to a hover post near the deck. Harmless until it
 # lands; then the stalk begins. Arrivals stagger until the cap is aloft;
 # every light-kill re-arms the pressure timer.
-func _spawn_moth() -> void:
-	_moth_phase_begun = true
+func _spawn_one(spawn: Vector2, hover: Vector2) -> void:
 	var moth: VoidMoth = VOID_MOTH.instantiate()
 	moth.scale = Vector2(MOTH_SCALE, MOTH_SCALE)
 	add_child(moth)
-	# from-below entries start OUTSIDE the island's span, so the rise passes
-	# its side and curves in — never through the deck's body
-	var from_below := randf() < MOTH_FROM_BELOW_P
-	var sx := (1.0 if randf() < 0.5 else -1.0) * randf_range(700.0, 950.0) if from_below \
-			else randf_range(-500.0, 500.0)
-	var spawn: Vector2 = _chunk.global_position \
-			+ (Vector2(sx, 950.0) if from_below else Vector2(sx, -1000.0))
-	# each moth claims its own first post so the flock spreads, not stacks;
-	# below-entries post on their OWN side so the approach never needs to
-	# cross the island's body
-	var hover := Vector2(signf(sx) * randf_range(260.0, 430.0), randf_range(-420.0, -260.0)) \
-			if from_below else Vector2(randf_range(-400.0, 400.0), randf_range(-420.0, -260.0))
 	moth.enter_from(spawn, _chunk, hover, _curi)
 	var rearm := func(tag: String) -> void:
 		print("[VoidMoth] %s" % tag)
@@ -1260,9 +1248,92 @@ func _spawn_moth() -> void:
 	# a moth that spends itself on a strike also re-arms the pressure —
 	# without this the trial ran out of moths after every landed dive
 	moth.burst_on_strike.connect(func() -> void: rearm.call("spent on the strike"))
+
+
+func _spawn_moth() -> void:
+	_moth_phase_begun = true
+	if get_tree().get_nodes_in_group("moths").is_empty():
+		# an empty sky refills with a VARIED wave (Advika: "send 2 or one or
+		# how many ever") — mostly a pair in formation, sometimes a lone
+		# hunter, rarely the whole flock at once
+		var roll := randf()
+		if roll < 0.3:
+			_spawn_door_moth()
+			print("[VoidMoth] lone refill")
+		else:
+			_spawn_formation()
+			if roll > 0.85 and moth_cap >= 3:
+				# the rare third rides the formation in from the void
+				var c3 := _chunk.global_position
+				var sx3 := (1.0 if randf() < 0.5 else -1.0) * randf_range(700.0, 950.0)
+				_spawn_one(c3 + Vector2(sx3, 950.0),
+						Vector2(signf(sx3) * randf_range(260.0, 430.0),
+								randf_range(-420.0, -260.0)))
+				print("[VoidMoth] ...and a third from the void")
+	else:
+		_spawn_door_moth()
 	# more to come until the cap flies
 	_moth_timer = MOTH_STAGGER if get_tree().get_nodes_in_group("moths").size() < moth_cap else -1.0
-	print("[VoidMoth] inbound (%s)" % ("from below" if spawn.y > _chunk.global_position.y else "from above"))
+
+
+# A pair enters in FORMATION, drawn from a repertoire — the criss-cross is
+# ONE of the many ways they enter (Advika), never the routine.
+func _spawn_formation() -> void:
+	var c := _chunk.global_position
+	var f := randi() % 4
+	match f:
+		0:  # criss-cross: left and right at once, posts SWAPPED so the
+			# entry arcs cross over the deck
+			_spawn_one(c + Vector2(-1650.0, randf_range(-750.0, -250.0)),
+					Vector2(randf_range(240.0, 430.0), randf_range(-420.0, -260.0)))
+			_spawn_one(c + Vector2(1650.0, randf_range(-750.0, -250.0)),
+					Vector2(randf_range(-430.0, -240.0), randf_range(-420.0, -260.0)))
+		1:  # pincer: both flanks at once, each HOLDING its own side —
+			# the island is enveloped, nothing crosses
+			_spawn_one(c + Vector2(-1650.0, randf_range(-600.0, -200.0)),
+					Vector2(randf_range(-430.0, -240.0), randf_range(-420.0, -260.0)))
+			_spawn_one(c + Vector2(1650.0, randf_range(-600.0, -200.0)),
+					Vector2(randf_range(240.0, 430.0), randf_range(-420.0, -260.0)))
+		2:  # void rise: both climb out of the dark beneath, opposite
+			# flanks, curving in past the island's sides
+			var sx := randf_range(700.0, 950.0)
+			_spawn_one(c + Vector2(-sx, 950.0),
+					Vector2(randf_range(-430.0, -260.0), randf_range(-420.0, -260.0)))
+			_spawn_one(c + Vector2(sx, 950.0),
+					Vector2(randf_range(260.0, 430.0), randf_range(-420.0, -260.0)))
+		_:  # tandem: both pour in from ONE door — high and low — then
+			# split to opposite posts across the sky
+			var sd := -1.0 if randf() < 0.5 else 1.0
+			_spawn_one(c + Vector2(sd * 1650.0, randf_range(-850.0, -450.0)),
+					Vector2(randf_range(-430.0, -240.0), randf_range(-420.0, -260.0)))
+			_spawn_one(c + Vector2(sd * 1650.0, randf_range(-400.0, -100.0)),
+					Vector2(randf_range(240.0, 430.0), randf_range(-420.0, -260.0)))
+	print("[VoidMoth] formation entrance: %s" %
+			["criss-cross", "pincer", "void-rise", "tandem"][f])
+
+
+# A lone arrival cycles its door — left, right, void-below — so single
+# reinforcements never pour in from one direction.
+func _spawn_door_moth() -> void:
+	var c := _chunk.global_position
+	var side := _moth_side % 3
+	_moth_side += 1
+	var spawn: Vector2
+	var hover: Vector2
+	match side:
+		0:  # sweeping in from the LEFT sky
+			spawn = c + Vector2(-1650.0, randf_range(-750.0, -150.0))
+			hover = Vector2(randf_range(-430.0, -240.0), randf_range(-420.0, -260.0))
+		1:  # sweeping in from the RIGHT sky
+			spawn = c + Vector2(1650.0, randf_range(-750.0, -150.0))
+			hover = Vector2(randf_range(240.0, 430.0), randf_range(-420.0, -260.0))
+		_:  # rising from the void BELOW — outside the island's span, so
+			# the climb passes its flank and curves in, never the deck
+			var sx := (1.0 if randf() < 0.5 else -1.0) * randf_range(700.0, 950.0)
+			spawn = c + Vector2(sx, 950.0)
+			hover = Vector2(signf(sx) * randf_range(260.0, 430.0), randf_range(-420.0, -260.0))
+	_spawn_one(spawn, hover)
+	print("[VoidMoth] inbound (%s)" % ["left", "right", "below"][side])
 
 
 func _return_to_hub() -> void:
@@ -1290,6 +1361,20 @@ func _set_phase(p: Phase) -> void:
 func _physics_process(delta: float) -> void:
 	# AnimatableBody2D with sync_to_physics MUST be moved here, not _process.
 	_pt += delta
+	# Orbs leave the deck by its EDGES, never through its body (Advika: "the
+	# balls go off the platform not through it") — the climb can outpace a
+	# rider's floor snap, and depenetration sometimes ejects DOWN. Any orb
+	# embedded below the moss top while still over the island pops back on.
+	if _chunk != null and _chunk.state != LevitatingIsland.State.IDLE:
+		var deck_y := _chunk.global_position.y - 120.0
+		for orb in get_tree().get_nodes_in_group("hazards"):
+			if orb is RuneOrb \
+					and absf(orb.global_position.x - _chunk.global_position.x) < 660.0:
+				var want := deck_y - RuneOrb.BALL_RADIUS * ORB_SCALE
+				if orb.global_position.y > want + 10.0 \
+						and orb.global_position.y < deck_y + 220.0:
+					orb.global_position.y = want
+					orb.velocity.y = 0.0
 	match phase:
 		Phase.INTRO:
 			# trigger: Curiosity steps onto the chunk region
@@ -1312,18 +1397,23 @@ func _physics_process(delta: float) -> void:
 					_spawn_wizard()
 			# the void moths keep their own clock — they are no one's conjuration.
 			# They build up staggered until the cap flies together.
-			if _moth_timer > 0.0 \
-					and get_tree().get_nodes_in_group("moths").size() < moth_cap \
-					and _wizard != null and is_instance_valid(_wizard) and not _wizard._dead:
+			var wizard_up := _wizard != null and is_instance_valid(_wizard) \
+					and not _wizard._dead
+			# escort pressure CAPS the pending clock first (Advika): an empty
+			# sky refills on the 7s clock — her number — and a lone moth gets
+			# its wingman thrown in fast ("dont be shy"). A cap, not a
+			# one-shot, so a death re-arm can't push arrivals out.
+			if _moth_phase_begun and wizard_up \
+					and get_tree().get_nodes_in_group("moths").size() < 2:
+				# HARD RULE (Advika): the sky never stays empty — or lonely —
+				# past 3 seconds
+				if _moth_timer <= 0.0 or _moth_timer > 3.0:
+					_moth_timer = 3.0
+			if _moth_timer > 0.0 and wizard_up \
+					and get_tree().get_nodes_in_group("moths").size() < moth_cap:
 				_moth_timer -= delta
 				if _moth_timer <= 0.0:
 					_spawn_moth()
-			elif _moth_phase_begun and _moth_timer <= 0.0 \
-					and get_tree().get_nodes_in_group("moths").size() == 0 \
-					and _wizard != null and is_instance_valid(_wizard) and not _wizard._dead:
-				# at least ONE moth rides with the wizard at all times — if
-				# the sky ever empties mid-trial, the next is seconds out
-				_moth_timer = 2.5
 			# the trial's difficulty dials ride on every live orb — and so does
 			# the KILL PLANE: a fallen orb must die once it's clearly gone, or
 			# it lands on the old intro ground far below and squats in the
