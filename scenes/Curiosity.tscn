@@ -60,7 +60,7 @@ shape = SubResource("RectangleShape2D_body")
 
 [node name="Lantern" type="PointLight2D" parent="."]
 position = Vector2(-138, 136)
-color = Color(1, 0.82, 0.42, 1)
+color = Color(1, 0.85098, 0.494118, 1)
 energy = 3.6
 texture = ExtResource("56_lantern_halo")
 texture_scale = 6.3

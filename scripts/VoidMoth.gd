@@ -26,9 +26,13 @@ const FLY_FRAMES := 12
 const ATTACK_FIRST := 4     # sheet frames 1-3 are body windups — they read
                             # UNEVEN against the streak (Advika); the tremble
                             # telegraph is the windup, the clip is pure speed
-const ATTACK_FRAMES := 6    # frames 4-9 of Advika's comet sheet (2026-07-17)
+const ATTACK_FRAMES := 4    # frames 4-7 of Advika's comet sheet (2026-07-17);
+                            # 8-9 dropped — the beam form takes over from the
+                            # held last frame, and fewer body frames before
+                            # the morph reads smoother (Advika)
 const DEATH_FRAMES := 3
-const FLY_FPS := 12.0
+const FLY_FPS := 15.0       # up from 12 — the wingbeat reads smoother without
+                            # changing the sheet (Advika: smoothest, still original)
 const ATTACK_FPS := 18.0    # fast — sparse frames at dive speed read choppy
 const DEATH_FPS := 5.0
 # Advika's turn sheet (2026-07-17): the moth TUCKS into a wing-shroud (the
@@ -47,7 +51,10 @@ const STING_REACH := 130.0     # pre-scale contact reach during a dive (distance
 const ISLAND_HALF := Vector2(660.0, 210.0)  # the moss body incl. fringe
 const AVOID_MARGIN := 150.0                 # repulsion starts this far out
 const AVOID_PUSH := 1500.0                  # steering force at deepest penetration
-const DIVE_DECK_CLEAR := 140.0              # dives level off this far above the moss top
+const DIVE_DECK_CLEAR := 25.0               # dives level off this far above the moss
+                                            # top — thrice lowered (Advika): 140 and
+                                            # 95 skimmed the head, 60 still read high;
+                                            # 25 carves the lower body
 
 @export var burn_time := 4.0         # seconds in the light before it bursts (Advika)
 @export var burn_leak := 0.25        # burn decays at this rate when unlit (forgiving, not a reset)
@@ -63,8 +70,9 @@ const DIVE_DECK_CLEAR := 140.0              # dives level off this far above the
 @export var wander_drift := 0.9      # rad/s of continuous heading wander — it never
                                      # flies straight, even when it likes its patch
 @export var wingbeat_surge := 0.32   # speed pulses with the wingbeat (surge + coast)
-@export var dive_wait_min := 2.6     # beat between dives
-@export var dive_wait_max := 4.6
+@export var dive_wait_min := 2.0     # beat between dives (Advika: fly max ~5s
+@export var dive_wait_max := 3.5     # then it HAS to attack — wait + climb-in
+                                     # to the dive gate stays under that)
 @export var dive_damage := 10
 @export var dive_knockback := Vector2(300.0, -140.0)
 @export var dive_overshoot := 150.0  # px past her position the swoop carries
@@ -118,6 +126,8 @@ var _dive_shrink := 0.0          # late-dive shrink: the comet plunges INTO her
 var _flare := 0.0                # dive-telegraph glow (mixed into the burn tint)
 var _ghost_timer := 0.0          # afterimage shedding cadence
 var _attack_dust: CPUParticles2D # violet motes streaming off the comet clip
+var _beam: Sprite2D              # the moth's light-form during the carve
+var _beam_mix := 0.0             # 0 = wings, 1 = light; the morph is a fade
 
 
 func _ready() -> void:
@@ -147,6 +157,8 @@ func _ready() -> void:
 	add_child(_visual)
 	_visual.play(&"fly")
 	_visual.animation_finished.connect(_on_anim_finished)
+	# palette: ORIGINAL sheet colors (Advika tried wizard-match and map-match
+	# tints, then called it — the moth keeps its own void purple)
 	# violet dust bleeding off the comet while the attack clip plays — the
 	# sparse sheet reads as a moving image without it (Advika); world-space
 	# motes hang in the carve the way the ghost sprites hang the pose
@@ -173,6 +185,30 @@ func _ready() -> void:
 	_attack_dust.material = dust_add
 	_attack_dust.z_index = -1   # dust behind the body, never over the eye
 	add_child(_attack_dust)
+	# the beam form (Advika: on the comet's last frame the moth BECOMES a
+	# beam of light) — a streak with a white-hot core in a violet sheath,
+	# head at the body, tail trailing the carve. Swapped in for the sprite
+	# while the attack clip holds its final frame.
+	_beam = Sprite2D.new()
+	var bgrad := Gradient.new()
+	bgrad.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
+	bgrad.colors = PackedColorArray([Color(1.0, 0.95, 1.0, 1.0),
+			Color(0.66, 0.42, 1.0, 0.55), Color(0.4, 0.25, 0.9, 0.0)])
+	var bt := GradientTexture2D.new()
+	bt.gradient = bgrad
+	bt.fill = GradientTexture2D.FILL_RADIAL
+	bt.fill_from = Vector2(0.5, 0.5)
+	bt.fill_to = Vector2(1.0, 0.5)
+	bt.width = 256
+	bt.height = 256
+	_beam.texture = bt
+	_beam.offset = Vector2.ZERO   # symmetric streak — the angle-fold trick
+	                              # needs head and tail interchangeable
+	var beam_add := CanvasItemMaterial.new()
+	beam_add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_beam.material = beam_add
+	_beam.visible = false
+	add_child(_beam)
 
 
 # Fly in from `spawn_global` to a hover post (anchor + offset) on a gentle
@@ -307,9 +343,16 @@ func _physics_process(delta: float) -> void:
 			# "now hes not attacking only")
 			if _dive_timer <= 0.0 \
 					and _target != null and is_instance_valid(_target) \
-					and _anchor != null and is_instance_valid(_anchor) \
-					and global_position.y < _anchor.global_position.y - 120.0:
-				_begin_dive()
+					and _anchor != null and is_instance_valid(_anchor):
+				if global_position.y < _anchor.global_position.y - 120.0:
+					_begin_dive()
+				elif _roam_offset.y > -260.0 or absf(_roam_offset.x) > 450.0:
+					# overdue and out of position (Advika: it arrived and
+					# just flew around awkwardly) — no more sightseeing,
+					# the prowl is FORCED to the sky over the deck so the
+					# dive gate clears in a beat
+					_roam_offset = Vector2(randf_range(-350.0, 350.0),
+							randf_range(-520.0, -280.0))
 		State.DIVE:
 			# the light is a WALL to it: a dive that meets the swelled glow
 			# BREAKS OFF, scorched — it cannot press the attack through the
@@ -323,12 +366,59 @@ func _physics_process(delta: float) -> void:
 			pass
 	_apply_flight_look(delta)
 	_tick_burn(delta)
-	# void afterimages whenever it's truly moving fast — dive whips and darts
-	if state != State.BURNED and _vel.length() > roam_speed * 1.5:
+	# the comet's held LAST frame IS the beam (Advika): from that frame on
+	# the moth travels as pure light until the pull-out hands back the
+	# wings — and _dive_shrink drains the streak as it goes INSIDE her
+	# beam for the WHOLE carve (Advika: "i want it to just convert") — the
+	# old 180-swing is dead anyway: the streak is a symmetric line and its
+	# angle folds to the nearest half-turn, so the bow's direction reversal
+	# is the SAME orientation, no sweep
+	var as_beam := state == State.DIVE and _whip
+	_beam_mix = clampf(_beam_mix + (16.0 if as_beam else -5.0) * delta, 0.0, 1.0)
+	var mm := _beam_mix * _beam_mix * (3.0 - 2.0 * _beam_mix)
+	if state != State.BURNED:
+		_visual.visible = mm < 0.995
+		_beam.visible = mm > 0.005
+		_visual.self_modulate.a = 1.0 - mm
+		# her idea: the body SCALES DOWN through the swap — it collapses
+		# into the gathering light instead of just fading under it (and
+		# grows back out of it on a missed dive's reform)
+		_visual.scale *= 1.0 - 0.6 * mm
+		if _beam.visible:
+			# ALIVE, not a ruler (Advika: more dynamic) — the light writhes:
+			# fast length/width pulse on offset clocks, a shimmer in the
+			# alpha, and a slight serpentine wobble around the flight line
+			# a beam is a LINE, not an arrow: fold the target angle to the
+			# nearest half-turn so a velocity reversal never spins it, then
+			# chase through a fast lerp so jinks stay continuous
+			var trot := _vel.angle() + sin(_ht * 27.0) * 0.05
+			if mm < 0.1:
+				_beam.global_rotation = trot
+			else:
+				var diff := wrapf(trot - _beam.global_rotation, -PI, PI)
+				if absf(diff) > PI * 0.5:
+					trot -= signf(diff) * PI
+				_beam.global_rotation = lerp_angle(_beam.global_rotation,
+						trot, 1.0 - pow(0.0001, delta))
+			# length floor raised: a slow moment must still read as a BEAM,
+			# never a disc (Advika)
+			var stretch := clampf(_vel.length() / 900.0, 1.0, 2.0)
+			var swallow := 1.0 - _dive_shrink * 0.9
+			var gather := 0.35 + 0.65 * mm
+			var pulse_l := 1.0 + 0.16 * sin(_ht * 23.0)
+			var pulse_w := 1.0 + 0.28 * sin(_ht * 41.0 + 1.7)
+			_beam.modulate.a = mm * (0.86 + 0.14 * sin(_ht * 53.0 + 0.6))
+			_beam.scale = Vector2(1.6 * stretch * swallow * gather * pulse_l,
+					0.17 * swallow * (1.35 - 0.35 * mm) * pulse_w)
+	else:
+		_beam.visible = false
+		_visual.self_modulate.a = 1.0
+	# void afterimages whenever it's truly moving fast — dive whips and
+	# darts, but never in beam form (light sheds no body-ghosts)
+	if state != State.BURNED and _vel.length() > roam_speed * 1.5 and not as_beam:
 		_shed_ghost(delta)
-	# the dust runs exactly as long as the comet clip carves the dive
-	_attack_dust.emitting = state == State.DIVE \
-			and _visual.animation == &"attack" and _visual.visible
+	# the dust runs as long as the carve flies — body or beam
+	_attack_dust.emitting = as_beam
 
 
 # A lunge: the heading JUMPS (the one place a snap is right — moths dart),
@@ -495,7 +585,13 @@ func _begin_dive() -> void:
 	# tremble + eye flare, then carves. Turns belong to flight only.
 	if _tw != null:
 		_tw.kill()
-	_vel *= 0.35
+	# close in during the telegraph (Advika: it hangs at a distance like an
+	# invisible bubble blocks it) — the cocked breath DRIFTS toward her, so
+	# the whip launches from near, not from across the sky
+	if _target != null and is_instance_valid(_target):
+		_vel = (_target.global_position - global_position).normalized() * 320.0
+	else:
+		_vel *= 0.35
 	_tw = create_tween()
 	_tw.tween_method(func(k: float) -> void: _flare = k, 0.0, 1.0, 0.22)
 	_tw.finished.connect(_launch_dive_whip)
@@ -517,8 +613,15 @@ func _launch_dive_whip() -> void:
 		_pick_roam()
 		_arm_dive()
 		return
-	_visual.play(&"attack")
+	# no attack clip at all (Advika: get rid of it, fade straight to the
+	# beam) — the wings hold until the fast crossfade eats them
 	var her: Vector2 = _target.global_position
+	# aim BELOW the origin (Advika, four rounds of "it hits the head"): the
+	# rising exit overshoot (p3 at -120) pulls the curve's actual closest
+	# pass ~60px above whatever we aim at — the deck-clearance clamp was
+	# never the binding constraint. Aiming +70 lands the carve on the
+	# lower body.
+	her.y += 70.0
 	var sx := signf(her.x - global_position.x)
 	if sx == 0.0:
 		sx = 1.0
@@ -527,7 +630,9 @@ func _launch_dive_whip() -> void:
 	# line and the dive read as a ruler drop (Advika, twice). Now it always
 	# swings OUT to a side, sweeps down-across, carves through her at the
 	# bottom, and exits rising on the far side — a pendulum, from anywhere.
-	var lat := maxf(200.0, absf(her.x - global_position.x) * 0.5)
+	# capped: from far away the half-distance swing threw a huge pendulum
+	# that started the carve across the sky (part of the "bubble" read)
+	var lat := clampf(absf(her.x - global_position.x) * 0.5, 200.0, 340.0)
 	_dive_pts = [
 		global_position,
 		global_position + Vector2(-sx * lat * 0.7,
