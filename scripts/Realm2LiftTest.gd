@@ -965,6 +965,9 @@ func _build_chunk() -> void:
 func _build_player() -> void:
 	_curi = load("res://scenes/Curiosity.tscn").instantiate()
 	_curi.position = Vector2(150, FLOOR_Y - 120)
+	# spawn facing RIGHT (Advika) — the walk goes right; the default left
+	# face read backwards here
+	_curi._facing_right = true
 	# the world is authored at 1080-scale; shrink the hero to stand ~110px tall
 	_curi.scale = Vector2(0.24, 0.24)
 	# this level jumps slightly higher (Advika) — the wizard's orbs must be clearable
@@ -1118,6 +1121,12 @@ func _die() -> void:
 	if _curi.has_method("hurt"):
 		_curi.hurt()
 	var remaining: int = 99 if _soak else _lives.lose_eye()
+	if remaining <= 0:
+		# all three eyes closed — the level begins again, and so must its
+		# music (Advika). Stopping clears AudioManager's same-track guard,
+		# so the reloaded scene's play_ambient starts realm2 from the top;
+		# the fade rides the death beat.
+		AudioManager.stop_ambient(0.35)
 	await get_tree().create_timer(0.45).timeout
 	if remaining <= 0:
 		get_tree().reload_current_scene()
