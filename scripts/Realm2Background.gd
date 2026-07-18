@@ -318,6 +318,30 @@ func build_chunk_visuals(parent: Node2D) -> Sprite2D:
 		em.material = add_m
 		parent.add_child(em)
 
+	# richer flight dressing (Advika: the lone island read boring) — beards
+	# trailing off the belly, ferns at the flanks, another perched rock and
+	# bloom on the deck. All rooted; the sway shader carries the hangers.
+	for p in [[-380.0, 140.0, 0.55, 0.0, 0], [60.0, 168.0, 0.62, 2.1, 1],
+			[410.0, 142.0, 0.5, 4.2, 0]]:
+		var beard := _hanging("hang_beard_%d.png" % int(p[4]), 9.0, 0.6, p[3])
+		beard.position = Vector2(p[0], p[1])
+		beard.scale = Vector2(p[2], p[2])
+		parent.add_child(beard)
+	for p in [[-618.0, -30.0, 0.5, 1.1, 0], [612.0, -44.0, 0.46, 3.6, 3]]:
+		var fern := _hanging("hang_fern_%d.png" % int(p[4]), 12.0, 0.75, p[3])
+		fern.position = Vector2(p[0], p[1])
+		fern.scale = Vector2(p[2], p[2])
+		parent.add_child(fern)
+	var perch := Sprite2D.new()
+	perch.texture = load(BASE + "rock_moss_1.png")
+	perch.scale = Vector2(0.3, 0.3)
+	perch.position = Vector2(238.0, -128.0)
+	perch.modulate = Color(0.8, 0.78, 0.9)
+	parent.add_child(perch)
+	var bloom := _animated("flower", 7.0, 0.24)
+	bloom.position = Vector2(-262.0, -136.0)
+	parent.add_child(bloom)
+
 	# front fringe overlay: the island's own top grass drawn OVER the rider,
 	# so anyone standing on it stands IN the moss, not on a shelf above it.
 	# The region crop ends mid-texture, so its bottom quarter dissolves —

@@ -53,7 +53,7 @@ const FLICKER_INTERVAL := 0.045
 @export var trial_idle_min := 2.0   # beat between teleports (calmer — he lingers, Advika)
 @export var trial_idle_max := 3.5
 @export var max_orbs := 2           # he conjures at most this many onto the deck
-@export var strikes_to_fell := 5    # blows it takes to bring him down (Advika, 2026-07-12: settled at five)
+@export var strikes_to_fell := 10   # blows to bring him down (Advika 2026-07-18: ten)
 @export var escape_range := 280.0   # global px: Curiosity this close while he idles -> he blinks away
 @export var escape_grace := 0.9     # seconds after landing before the escape reflex arms —
                                     # he stands his ground a beat even with her bearing down
@@ -97,6 +97,7 @@ var _fade_tween: Tween
 var _hurtbox: Hurtbox
 var _hurt_shape: CollisionShape2D
 var _hpbar: EnemyHealthBar
+var _hpbar_tween: Tween
 var _strikes_left := 0
 var _dead := false
 
@@ -206,6 +207,7 @@ func start_trial() -> void:
 	appear_instant()
 	_strikes_left = strikes_to_fell
 	_hpbar.set_ratio(1.0)
+	_hpbar.hide()   # the bar only surfaces when a blow lands (Advika)
 	_hurt_shape.set_deferred("disabled", false)
 	_begin_cast()
 
@@ -342,11 +344,24 @@ func _face_watch_now() -> void:
 # A blow lands. Non-fatal: flash, panic-teleport — the next strike must be
 # earned fresh. The fifth: bright flash, then he dissolves out through his
 # own blink smear — and this time nothing reappears.
+# The bar is SHY (Advika): it surfaces when a blow lands, holds 2.5s,
+# and fades away — the sky stays clean between strikes.
+func _show_hpbar_briefly() -> void:
+	if _hpbar_tween != null and _hpbar_tween.is_valid():
+		_hpbar_tween.kill()
+	_hpbar.show()
+	_hpbar.modulate.a = 1.0
+	_hpbar_tween = create_tween()
+	_hpbar_tween.tween_interval(2.5)
+	_hpbar_tween.tween_property(_hpbar, "modulate:a", 0.0, 0.5)
+
+
 func _on_struck() -> void:
 	if _dead or _trial == Trial.OFF:
 		return
 	_strikes_left -= 1
 	_hpbar.set_ratio(float(_strikes_left) / float(strikes_to_fell))
+	_show_hpbar_briefly()
 	if _strikes_left > 0:
 		_visual.modulate = Color(2.4, 2.0, 2.6)   # the strike registers
 		var flash := create_tween()
