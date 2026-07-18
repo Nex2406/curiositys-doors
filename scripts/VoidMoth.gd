@@ -117,6 +117,7 @@ var _stretch := 0.0              # velocity squash/stretch on the sprite
 var _dive_shrink := 0.0          # late-dive shrink: the comet plunges INTO her
 var _flare := 0.0                # dive-telegraph glow (mixed into the burn tint)
 var _ghost_timer := 0.0          # afterimage shedding cadence
+var _attack_dust: CPUParticles2D # violet motes streaming off the comet clip
 
 
 func _ready() -> void:
@@ -146,6 +147,32 @@ func _ready() -> void:
 	add_child(_visual)
 	_visual.play(&"fly")
 	_visual.animation_finished.connect(_on_anim_finished)
+	# violet dust bleeding off the comet while the attack clip plays — the
+	# sparse sheet reads as a moving image without it (Advika); world-space
+	# motes hang in the carve the way the ghost sprites hang the pose
+	_attack_dust = CPUParticles2D.new()
+	_attack_dust.emitting = false
+	_attack_dust.amount = 36
+	_attack_dust.lifetime = 0.5
+	_attack_dust.local_coords = false
+	_attack_dust.texture = load("res://assets/realms/realm2_moss/spore.png")
+	_attack_dust.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	_attack_dust.emission_sphere_radius = 26.0
+	_attack_dust.spread = 180.0
+	_attack_dust.gravity = Vector2(0, -30)
+	_attack_dust.initial_velocity_min = 15.0
+	_attack_dust.initial_velocity_max = 70.0
+	_attack_dust.scale_amount_min = 0.14
+	_attack_dust.scale_amount_max = 0.38
+	var dust_fade := Gradient.new()
+	dust_fade.set_color(0, Color(0.66, 0.42, 1.0, 0.85))
+	dust_fade.set_color(1, Color(0.5, 0.3, 0.9, 0.0))
+	_attack_dust.color_ramp = dust_fade
+	var dust_add := CanvasItemMaterial.new()
+	dust_add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_attack_dust.material = dust_add
+	_attack_dust.z_index = -1   # dust behind the body, never over the eye
+	add_child(_attack_dust)
 
 
 # Fly in from `spawn_global` to a hover post (anchor + offset) on a gentle
@@ -299,6 +326,9 @@ func _physics_process(delta: float) -> void:
 	# void afterimages whenever it's truly moving fast — dive whips and darts
 	if state != State.BURNED and _vel.length() > roam_speed * 1.5:
 		_shed_ghost(delta)
+	# the dust runs exactly as long as the comet clip carves the dive
+	_attack_dust.emitting = state == State.DIVE \
+			and _visual.animation == &"attack" and _visual.visible
 
 
 # A lunge: the heading JUMPS (the one place a snap is right — moths dart),

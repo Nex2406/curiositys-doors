@@ -992,8 +992,9 @@ func _build_camera() -> void:
 	var vp := get_viewport_rect().size
 	var z := 0.85 * vp.y / 1080.0  # zoomed out: the island travels through a big sky
 	_cam.zoom = Vector2(z, z)
-	# lifted so the dead murk below the undergrowth stays off-frame (Advika)
-	_cam.position = Vector2(150, FLOOR_Y - 360)
+	# lifted so the dead murk below the undergrowth stays off-frame (Advika,
+	# round 2: -360 still let the black band peek in on her screen)
+	_cam.position = Vector2(150, FLOOR_Y - 550)
 	add_child(_cam)
 	_cam.make_current()
 	_chunk.camera_path = _chunk.get_path_to(_cam)  # island drives it once active
@@ -1040,7 +1041,7 @@ func _self_screenshot(path: String) -> void:
 		# park the hero at a given ground x (pre-liftoff framing checks)
 		_curi.position = Vector2(float(OS.get_environment("R2_SHOT_X")), FLOOR_Y - 140.0)
 		_curi.velocity = Vector2.ZERO
-		_cam.position = Vector2(_curi.position.x, FLOOR_Y - 360.0)
+		_cam.position = Vector2(_curi.position.x, FLOOR_Y - 550.0)
 	if OS.get_environment("R2_SHOT_LIFT") != "":
 		# jump straight to mid-ascent for the screenshot. Let the island's
 		# physics body settle at the jumped position FIRST — placing the hero
@@ -1368,7 +1369,10 @@ func _process(delta: float) -> void:
 	if _chunk.state == LevitatingIsland.State.IDLE:
 		var target := Vector2(
 			clampf(_curi.global_position.x, -450.0, CHUNK_X + 250.0),
-			clampf(_curi.global_position.y - 130.0, LIFT_TOP_Y - 200.0, FLOOR_Y - 220.0))
+			# bottom clamp -550: the dead murk band under the undergrowth must
+			# never enter the frame (this clamp, not _build_camera, is what
+			# actually holds the ground framing — it lerps every frame)
+			clampf(_curi.global_position.y - 130.0, LIFT_TOP_Y - 200.0, FLOOR_Y - 550.0))
 		_cam.position = _cam.position.lerp(target, 1.0 - pow(0.001, delta))
 		var sh := _trauma * _trauma
 		_cam.offset = Vector2(
