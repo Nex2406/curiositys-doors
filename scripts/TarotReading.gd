@@ -121,7 +121,7 @@ func _ready() -> void:
 
 	_prompt = Label.new()
 	_prompt.text = "click or press any key to begin"
-	_prompt.add_theme_font_override("font", _serif(["EB Garamond", "Georgia", "serif"]))
+	_prompt.add_theme_font_override("font", _garamond)
 	_prompt.add_theme_font_size_override("font_size", 18)
 	_prompt.add_theme_color_override("font_color", CREAM_DIM)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -143,6 +143,19 @@ func _ready() -> void:
 	# to sit IN the dipped music, not on top of it (Advika: blend both)
 	AudioManager.play_sfx(preload("res://assets/audio/wizard_card_reveal.ogg"), -10.0)
 
+	# CARD_SHOT=<path>: flip immediately, snap the verses, screenshot the
+	# reveal side, quit — layout gets verified by EYE before it ships
+	# (the web-font spill shipped blind; never again)
+	if OS.get_environment("CARD_SHOT") != "":
+		_flip()
+		await get_tree().create_timer(1.2).timeout
+		for l in _verse_labels:
+			l.visible_characters = -1
+		_typing = false
+		await get_tree().create_timer(0.3).timeout
+		get_viewport().get_texture().get_image().save_png(OS.get_environment("CARD_SHOT"))
+		get_tree().quit()
+
 
 # Crop a texture to its opaque pixels so aspect-fit sizes the BODY, not
 # the canvas padding.
@@ -159,15 +172,18 @@ func _cropped(tex: Texture2D) -> Texture2D:
 	return at
 
 
-func _serif(names: Array) -> SystemFont:
-	var f := SystemFont.new()
-	f.font_names = PackedStringArray(names)
-	return f
+# BUNDLED fonts (assets/fonts/, OFL): the web build has no system fonts —
+# SystemFont silently fell back to Godot's wider default and the verses
+# spilled off the card on the live link (Advika). Bundled files render
+# identically on every platform, and the card finally gets its real
+# typography.
+var _cinzel: Font = preload("res://assets/fonts/cinzel.ttf")
+var _garamond: Font = preload("res://assets/fonts/eb_garamond.ttf")
 
 
-func _title_font(names: Array, spacing: int) -> FontVariation:
+func _title_font(spacing: int) -> FontVariation:
 	var v := FontVariation.new()
-	v.base_font = _serif(names)
+	v.base_font = _cinzel
 	v.spacing_glyph = spacing
 	return v
 
@@ -196,16 +212,13 @@ func _build_reveal_ui() -> void:
 	_reveal_ui.visible = false
 	_card.add_child(_reveal_ui)
 
-	var cinzel := ["Cinzel", "Georgia", "Times New Roman", "serif"]
-	var garamond := ["EB Garamond", "Georgia", "serif"]
-
 	# CROP to the opaque pixels: both portraits are tall canvases that are
 	# mostly transparent padding — aspect-fit sized the PADDING, so every
 	# "bigger box" bought almost nothing (Advika, at volume, correctly)
 
 	# everything below is a FRACTION of the card, so resizing the card never
 	# unships the layout again (round 1 hard-coded pixels; text overflowed)
-	_label(_reveal_ui, numeral, _title_font(cinzel, 3), int(CARD_H * 0.063),
+	_label(_reveal_ui, numeral, _title_font(3), int(CARD_H * 0.063),
 			CARD_H * 0.032)                                     # above y≈183/1720
 
 	# the illustration: the storm's author himself, above the flanking eyes
@@ -231,12 +244,12 @@ func _build_reveal_ui() -> void:
 	moth.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_reveal_ui.add_child(moth)
 
-	_label(_reveal_ui, card_title, _title_font(cinzel, 6), int(CARD_H * 0.05),
+	_label(_reveal_ui, card_title, _title_font(6), int(CARD_H * 0.05),
 			CARD_H * 0.795)                                     # below y≈1335/1720
 
 	var y := CARD_H * 0.378   # five verses, tight, clearing the big moth below
 	for verse in verses:
-		var l := _label(_reveal_ui, verse, _serif(garamond), int(CARD_H * 0.026), y)
+		var l := _label(_reveal_ui, verse, _garamond, int(CARD_H * 0.026), y)
 		l.visible_characters = 0
 		_verse_labels.append(l)
 		y += CARD_H * 0.042

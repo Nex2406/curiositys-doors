@@ -56,3 +56,9 @@ work is not reviewed).
 
 *Update rule: any new asset that enters `assets/` gets a row here in the same
 PR. No orphan art.*
+
+## Fonts
+| Font | Source | License | Used in |
+|---|---|---|---|
+| Cinzel (`assets/fonts/cinzel.ttf`) | Google Fonts | SIL OFL 1.1 | Tarot card titles |
+| EB Garamond (`assets/fonts/eb_garamond.ttf`) | Google Fonts | SIL OFL 1.1 | Tarot card verses + prompts |
