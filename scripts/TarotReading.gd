@@ -144,6 +144,21 @@ func _ready() -> void:
 	AudioManager.play_sfx(preload("res://assets/audio/wizard_card_reveal.ogg"), -10.0)
 
 
+# Crop a texture to its opaque pixels so aspect-fit sizes the BODY, not
+# the canvas padding.
+func _cropped(tex: Texture2D) -> Texture2D:
+	var img := tex.get_image()
+	if img == null:
+		return tex
+	var used := img.get_used_rect()
+	if used.size.x <= 0 or used.size.y <= 0:
+		return tex
+	var at := AtlasTexture.new()
+	at.atlas = tex
+	at.region = used
+	return at
+
+
 func _serif(names: Array) -> SystemFont:
 	var f := SystemFont.new()
 	f.font_names = PackedStringArray(names)
@@ -184,6 +199,10 @@ func _build_reveal_ui() -> void:
 	var cinzel := ["Cinzel", "Georgia", "Times New Roman", "serif"]
 	var garamond := ["EB Garamond", "Georgia", "serif"]
 
+	# CROP to the opaque pixels: both portraits are tall canvases that are
+	# mostly transparent padding — aspect-fit sized the PADDING, so every
+	# "bigger box" bought almost nothing (Advika, at volume, correctly)
+
 	# everything below is a FRACTION of the card, so resizing the card never
 	# unships the layout again (round 1 hard-coded pixels; text overflowed)
 	_label(_reveal_ui, numeral, _title_font(cinzel, 3), int(CARD_H * 0.063),
@@ -191,36 +210,36 @@ func _build_reveal_ui() -> void:
 
 	# the illustration: the storm's author himself, above the flanking eyes
 	var art := TextureRect.new()
-	art.texture = portrait
+	art.texture = _cropped(portrait)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	art.position = Vector2(CARD_W * 0.5 - CARD_W * 0.40, CARD_H * 0.06)
-	art.size = Vector2(CARD_W * 0.80, CARD_H * 0.34)
+	art.position = Vector2(CARD_W * 0.5 - CARD_W * 0.342, CARD_H * 0.145)
+	art.size = Vector2(CARD_W * 0.685, CARD_H * 0.208)  # clears the II above
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_reveal_ui.add_child(art)
 
 	# and the second threat: the void moth OWNS the card's foot — big, with
 	# THE TRIAL drawn over its lower wisps (title added after = on top)
 	var moth := TextureRect.new()
-	moth.texture = preload("res://assets/enemies/void_moth/fly_01.png")
+	moth.texture = _cropped(preload("res://assets/enemies/void_moth/fly_01.png"))
 	moth.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	moth.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	# strictly INSIDE the open zone: below the last verse, above the bottom
 	# hairline-with-diamond (Advika: it was blocking the card detailing)
-	moth.position = Vector2(CARD_W * 0.5 - CARD_W * 0.45, CARD_H * 0.618)
-	moth.size = Vector2(CARD_W * 0.90, CARD_H * 0.148)
+	moth.position = Vector2(CARD_W * 0.5 - CARD_W * 0.40, CARD_H * 0.60)
+	moth.size = Vector2(CARD_W * 0.80, CARD_H * 0.15)  # breathing room to the diamond
 	moth.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_reveal_ui.add_child(moth)
 
 	_label(_reveal_ui, card_title, _title_font(cinzel, 6), int(CARD_H * 0.05),
 			CARD_H * 0.795)                                     # below y≈1335/1720
 
-	var y := CARD_H * 0.40    # five verses now — tucked so the big moth fits
+	var y := CARD_H * 0.378   # five verses, tight, clearing the big moth below
 	for verse in verses:
-		var l := _label(_reveal_ui, verse, _serif(garamond), int(CARD_H * 0.028), y)
+		var l := _label(_reveal_ui, verse, _serif(garamond), int(CARD_H * 0.026), y)
 		l.visible_characters = 0
 		_verse_labels.append(l)
-		y += CARD_H * 0.046
+		y += CARD_H * 0.042
 
 
 func _process(delta: float) -> void:
