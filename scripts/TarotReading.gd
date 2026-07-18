@@ -28,10 +28,11 @@ const TYPE_CPS := 28.0                     # typewriter chars/sec
 # One uniform voice: threat — answer (Advika: fit the text, make it uniform,
 # say how the moths are expelled).
 @export var verses: Array[String] = [
-	"Strike the conjurer — J.",
-	"Grow the light — hold L.",
-	"The orbs only push — keep moving.",
-	"The void moth dies only to light — hold L.",
+	"Strike the conjurer — J",
+	"Grow the light — hold L",
+	"The orbs only push — keep moving",
+	"The void moth dies only to light — hold L",
+	"Kill the conjurer to secure victory",
 ]
 
 var _wrapper: Control
@@ -187,8 +188,6 @@ func _build_reveal_ui() -> void:
 	# unships the layout again (round 1 hard-coded pixels; text overflowed)
 	_label(_reveal_ui, numeral, _title_font(cinzel, 3), int(CARD_H * 0.063),
 			CARD_H * 0.032)                                     # above y≈183/1720
-	_label(_reveal_ui, card_title, _title_font(cinzel, 6), int(CARD_H * 0.05),
-			CARD_H * 0.795)                                     # below y≈1335/1720
 
 	# the illustration: the storm's author himself, above the flanking eyes
 	var art := TextureRect.new()
@@ -200,22 +199,26 @@ func _build_reveal_ui() -> void:
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_reveal_ui.add_child(art)
 
-	# and the second threat: the void moth, seated at the card's foot
+	# and the second threat: the void moth OWNS the card's foot — big, with
+	# THE TRIAL drawn over its lower wisps (title added after = on top)
 	var moth := TextureRect.new()
 	moth.texture = preload("res://assets/enemies/void_moth/fly_01.png")
 	moth.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	moth.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	moth.position = Vector2(CARD_W * 0.5 - CARD_W * 0.33, CARD_H * 0.60)
-	moth.size = Vector2(CARD_W * 0.66, CARD_H * 0.185)
+	moth.position = Vector2(CARD_W * 0.5 - CARD_W * 0.45, CARD_H * 0.60)
+	moth.size = Vector2(CARD_W * 0.90, CARD_H * 0.22)
 	moth.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_reveal_ui.add_child(moth)
 
-	var y := CARD_H * 0.41    # tucked up so the bigger moth fits below
+	_label(_reveal_ui, card_title, _title_font(cinzel, 6), int(CARD_H * 0.05),
+			CARD_H * 0.795)                                     # below y≈1335/1720
+
+	var y := CARD_H * 0.40    # five verses now — tucked so the big moth fits
 	for verse in verses:
 		var l := _label(_reveal_ui, verse, _serif(garamond), int(CARD_H * 0.028), y)
 		l.visible_characters = 0
 		_verse_labels.append(l)
-		y += CARD_H * 0.05
+		y += CARD_H * 0.046
 
 
 func _process(delta: float) -> void:

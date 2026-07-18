@@ -21,6 +21,11 @@ work is not reviewed).
 - **Curiosity** — full hero sprite set (idle / walk / run / jump / combat / dash)
 - **Golems** — Realm 1 enemy sprites (patrol / alert / attack / death)
 - **Jade** — collectible sprites (Realm 1)
+- **Void Moth** — full sprite family: fly (12f), turn fold (voidturn sheet),
+  comet attack (voidattack sheet), death motes — size-normalized in-house
+  (`tools/align_voidmoth_turn.py`)
+- **Tarot trial card** — both painted faces (`assets/ui/tarot/`): door-arch
+  front + ornamental reveal frame
 
 ### Licensed / third-party packs
 | Asset | Source | Used in |
