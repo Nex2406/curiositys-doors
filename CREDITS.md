@@ -39,8 +39,13 @@ work is not reviewed).
   licensed audio committed
 
 ## Audio
-- Currently placeholder (synthesized in code). Real ambient tracks / SFX will
-  be listed here with source + license as they land.
+| Track | Source | License | Used in |
+|---|---|---|---|
+| Card reveal chime (`assets/audio/wizard_card_reveal.ogg`, from `UI/Notifications/GP_Disconnected.wav`) | **Olex Mazur** — *Card Game SFX Pack* | Per pack terms — confirm exact page before submission | Realm 2 trial card reveal |
+
+- Realm 2's "Moonlight" ambient is credited on main's CREDITS.md (AlkaKrab).
+- All other ambience is still the placeholder drone synthesized in code
+  (`AudioManager`); tracks/SFX get a row here as they land.
 
 ---
 

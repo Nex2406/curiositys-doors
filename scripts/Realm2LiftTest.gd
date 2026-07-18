@@ -78,7 +78,7 @@ const MOTH_SCALE := 0.78         # BIG (Advika, three passes) — it fills the s
 const MOTH_FROM_BELOW_P := 0.7   # rising from the void beneath is the thematic entrance
 const MOTH_STAGGER := 8.0        # gap between arrivals while building to the cap
 @export var moth_cap := 3              # 2-3 aloft at once (Advika) — they build up staggered
-@export var moth_first_delay := 10.0   # TEST VALUE — flip back to 90.0 (Advika: remind her)
+@export var moth_first_delay := 90.0   # ship value (test sessions ran at 10.0)
 @export var moth_respawn_pressure := true
 @export var moth_respawn_delay := 25.0
 @export var moth_regrace := 10.0       # fall after the phase began -> next moth this soon
@@ -1201,7 +1201,10 @@ func _spawn_wizard(instant := false) -> void:
 			get_tree().create_timer(0.8).timeout.connect(func() -> void:
 				if _wizard == null or not is_instance_valid(_wizard):
 					return
-				var card := TarotCard.new()
+				# Advika's card art reading (2026-07-17) — replaces the
+				# code-drawn TarotCard
+				var card: TarotReading = \
+						load("res://scenes/UI/TarotReading.tscn").instantiate()
 				add_child(card)
 				card.closed.connect(func() -> void:
 					if _wizard != null and is_instance_valid(_wizard):
@@ -1232,11 +1235,15 @@ func _spawn_moth() -> void:
 	var hover := Vector2(signf(sx) * randf_range(260.0, 430.0), randf_range(-420.0, -260.0)) \
 			if from_below else Vector2(randf_range(-400.0, 400.0), randf_range(-420.0, -260.0))
 	moth.enter_from(spawn, _chunk, hover, _curi)
-	moth.died_to_light.connect(func() -> void:
-		print("[VoidMoth] unmade by the light")
+	var rearm := func(tag: String) -> void:
+		print("[VoidMoth] %s" % tag)
 		if moth_respawn_pressure and _wizard != null and is_instance_valid(_wizard) \
 				and not _wizard._dead:
-			_moth_timer = moth_respawn_delay)
+			_moth_timer = moth_respawn_delay
+	moth.died_to_light.connect(func() -> void: rearm.call("unmade by the light"))
+	# a moth that spends itself on a strike also re-arms the pressure —
+	# without this the trial ran out of moths after every landed dive
+	moth.burst_on_strike.connect(func() -> void: rearm.call("spent on the strike"))
 	# more to come until the cap flies
 	_moth_timer = MOTH_STAGGER if get_tree().get_nodes_in_group("moths").size() < moth_cap else -1.0
 	print("[VoidMoth] inbound (%s)" % ("from below" if spawn.y > _chunk.global_position.y else "from above"))
