@@ -22,6 +22,8 @@ const TYPE_CPS := 28.0                     # typewriter chars/sec
 # This card REPLACES the code-drawn TarotCard as the wizard's trial gate
 # (Advika) — same numeral, portrait, and verses, her painted faces. The moth
 # verse is hers ("Linger too long and the void moth wakes", styled to match).
+@export var type_sound := true    # the tick that stuck: crisp-tip-in-muffled-body
+                                  # (Advika picked "3 and 5 mixed" off the board)
 @export var numeral := "II"
 @export var card_title := "THE TRIAL"
 @export var portrait: Texture2D = preload("res://assets/enemies/wizard/idle/idle_00.png")
@@ -48,6 +50,7 @@ var _t := 0.0
 var _flipped := false
 var _typing := false
 var _type_line := 0
+var _tick: AudioStreamPlayer   # soft felt-blip under the typewriter
 var _type_chars := 0.0
 var _done := false
 var _closing := false
@@ -141,7 +144,14 @@ func _ready() -> void:
 	AudioManager.duck_music()
 	# the reveal chime, once, as the card enters (Olex Mazur pack) — softened
 	# to sit IN the dipped music, not on top of it (Advika: blend both)
-	AudioManager.play_sfx(preload("res://assets/audio/wizard_card_reveal.ogg"), -10.0)
+	AudioManager.play_sfx(preload("res://assets/audio/wizard_card_reveal.ogg"), -14.0)
+	# the typewriter's voice: a tiny synthesized felt-tick, pitch-wobbled per
+	# use so 14/s doesn't read as a machine gun. Child of the card, so it
+	# plays through the pause like everything else here.
+	_tick = AudioStreamPlayer.new()
+	_tick.stream = preload("res://assets/audio/ui_type_tick.wav")
+	_tick.volume_db = -15.0
+	add_child(_tick)
 
 	# CARD_SHOT=<path>: flip immediately, snap the verses, screenshot the
 	# reveal side, quit — layout gets verified by EYE before it ships
@@ -265,7 +275,14 @@ func _process(delta: float) -> void:
 		_type_chars += TYPE_CPS * delta
 		while _type_line < _verse_labels.size():
 			var l := _verse_labels[_type_line]
-			l.visible_characters = int(_type_chars)
+			# the held breath leaves _type_chars NEGATIVE — and any negative
+			# visible_characters means SHOW ALL, so the whole upcoming verse
+			# flashed for the breath's length (Advika caught it). Clamp to 0.
+			var vc := maxi(0, int(_type_chars))
+			if type_sound and vc > l.visible_characters and vc % 2 == 0:
+				_tick.pitch_scale = randf_range(0.9, 1.1)
+				_tick.play()
+			l.visible_characters = vc
 			if l.visible_characters < l.text.length():
 				break
 			l.visible_characters = -1
