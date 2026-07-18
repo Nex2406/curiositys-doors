@@ -41,18 +41,25 @@ var _current_name: String = ""
 var _placeholder: AudioStreamWAV
 var _fade_tween: Tween
 var _duck_tween: Tween
+# Web export runs the no-threads SAMPLE audio path, which does not honor
+# runtime-created buses — everything routed to Ambient/SFX played SILENT
+# on the live build (Advika, 2026-07-18). On web: Master bus only, and
+# ducking moves the player's own volume instead of a bus.
+var _web := false
 
 
 func _ready() -> void:
 	# Music survives a paused tree (the tarot card pauses the game; the track
 	# should dim, not stop — Advika 2026-07-17). Duck/unduck does the dimming.
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_ensure_bus(AMBIENT_BUS)
-	_ensure_bus(SFX_BUS)
+	_web = OS.has_feature("web")
+	if not _web:
+		_ensure_bus(AMBIENT_BUS)
+		_ensure_bus(SFX_BUS)
 	_placeholder = _make_placeholder_drone()
 	for i in 2:
 		var p: AudioStreamPlayer = AudioStreamPlayer.new()
-		p.bus = AMBIENT_BUS
+		p.bus = "Master" if _web else AMBIENT_BUS
 		p.volume_db = SILENCE_DB
 		add_child(p)
 		_players.append(p)
@@ -103,12 +110,17 @@ func unduck_music(fade: float = 1.0) -> void:
 
 
 func _duck_to(target: float, fade: float) -> void:
-	var idx: int = AudioServer.get_bus_index(AMBIENT_BUS)
-	if idx == -1:
-		return
 	if _duck_tween and _duck_tween.is_valid():
 		_duck_tween.kill()
 	_duck_tween = create_tween()
+	if _web:
+		# no bus to duck on web — dim the active player itself
+		var p: AudioStreamPlayer = _players[_active]
+		_duck_tween.tween_property(p, "volume_db", AMBIENT_DB + target, fade)
+		return
+	var idx: int = AudioServer.get_bus_index(AMBIENT_BUS)
+	if idx == -1:
+		return
 	_duck_tween.tween_method(
 			func(v: float) -> void: AudioServer.set_bus_volume_db(idx, v),
 			AudioServer.get_bus_volume_db(idx), target, fade)
@@ -145,7 +157,7 @@ func play_sfx(stream: AudioStream, volume_db: float = 0.0) -> void:
 	if stream == null:
 		return
 	var p: AudioStreamPlayer = AudioStreamPlayer.new()
-	p.bus = SFX_BUS
+	p.bus = "Master" if _web else SFX_BUS
 	p.stream = stream
 	p.volume_db = volume_db
 	add_child(p)
