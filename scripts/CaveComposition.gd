@@ -57,6 +57,7 @@ func _ready() -> void:
 	_build_columns()
 	_build_ceiling()
 	_build_ground()
+	_build_moss()
 	_build_foreground()
 	_build_lighting()
 	var cam := Camera2D.new()
@@ -224,6 +225,65 @@ func _build_ground() -> void:
 				64.0 + 256.0 * float((int(absf(dx[0])) / 7) % 4), 200.0, 190.0)
 		_decal(SHEET_SMALLROCKS, dr, Vector2(dx[0], 448.0), dx[1], false,
 				Color(0.18, 0.18, 0.15))
+
+
+# ---------- moss boundaries (Advika 2026-07-19: the level-2 pack's moss,
+# in its green, wrapped around the rock EDGES — the flat faces stay bare
+# rock, the silhouette lines grow) ----------
+
+const MBASE := "res://assets/realms/realm1_moss/"
+
+func _moss(tex_name: String, pos: Vector2, sc: float, b: float,
+		fh := false, fv := false, z := 2, rot := 0.0) -> Sprite2D:
+	var s := Sprite2D.new()
+	s.texture = load(MBASE + tex_name)
+	s.position = pos
+	s.scale = Vector2(-sc if fh else sc, sc)
+	s.flip_v = fv
+	s.modulate = Color(b, b, b)
+	s.z_index = z
+	s.rotation_degrees = rot
+	add_child(s)
+	return s
+
+
+func _build_moss() -> void:
+	# LEFT COLUMN (cx -280, cap top -230, lit from the left/above):
+	# a moss lip riding the cap, hangers dripping off it, tufts hugging the
+	# shaft edges — lit side brighter, shadow side dim
+	_moss("moss_mat.png", Vector2(-280.0, -234.0), 0.078, 0.72)
+	_moss("hang_fern_1.png", Vector2(-392.0, -212.0), 0.30, 0.62)
+	_moss("hang_beard_0.png", Vector2(-168.0, -206.0), 0.26, 0.44)
+	for t: Array in [[-398.0, -60.0, 0.14, 0.60, true], [-390.0, 160.0, 0.11, 0.52, true],
+			[-396.0, 330.0, 0.13, 0.45, true], [-162.0, 40.0, 0.12, 0.38, false],
+			[-170.0, 260.0, 0.10, 0.34, false]]:
+		_moss("tuft_%d.png" % (int(absf(t[0] + t[1])) % 3), Vector2(t[0], t[1]),
+				t[2], t[3], t[4], false, 2, (-8.0 if t[4] else 8.0))
+	_moss("tuft_1.png", Vector2(-330.0, 442.0), 0.20, 0.50)     # base clump
+	_moss("tuft_2.png", Vector2(-220.0, 450.0), 0.15, 0.42, true)
+
+	# RIGHT COLUMN (cx 620, cap top -30): same treatment, dimmer overall
+	_moss("moss_mat.png", Vector2(620.0, -34.0), 0.075, 0.60, true)
+	_moss("hang_fern_3.png", Vector2(510.0, -8.0), 0.28, 0.52)
+	_moss("hang_curl_1.png", Vector2(742.0, -14.0), 0.24, 0.40, true)
+	for t2: Array in [[498.0, 150.0, 0.12, 0.48, true], [504.0, 330.0, 0.11, 0.40, true],
+			[744.0, 220.0, 0.11, 0.32, false], [738.0, 390.0, 0.10, 0.28, false]]:
+		_moss("tuft_%d.png" % (int(t2[0] + t2[1]) % 3), Vector2(t2[0], t2[1]),
+				t2[2], t2[3], t2[4], false, 2, (-8.0 if t2[4] else 8.0))
+	_moss("tuft_0.png", Vector2(560.0, 446.0), 0.18, 0.46)
+
+	# the floating slab wears a sprig; the maw mound gets a lit crest
+	_moss("tuft_2.png", Vector2(322.0, 96.0), 0.10, 0.55)
+	_moss("moss_mat.png", Vector2(210.0, 240.0), 0.060, 0.50, true)
+	_moss("tuft_1.png", Vector2(140.0, 242.0), 0.13, 0.44, true)
+
+	# ground line: sprigs woven between the pebbles, brightest at the light
+	for g: Array in [[-760.0, 0.14, 0.40], [-450.0, 0.11, 0.46], [-60.0, 0.15, 0.55],
+			[300.0, 0.12, 0.50], [760.0, 0.13, 0.38], [1000.0, 0.11, 0.33]]:
+		_moss("tuft_%d.png" % (int(absf(g[0])) % 3), Vector2(g[0], 444.0),
+				g[1], g[2], int(g[0]) % 2 == 0, false, 3)
+	# and a beard dripping from the ceiling band into the lit gap
+	_moss("hang_beard_1.png", Vector2(140.0, -470.0), 0.26, 0.42)
 
 
 func _build_foreground() -> void:
