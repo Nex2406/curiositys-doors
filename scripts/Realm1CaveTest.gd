@@ -1,30 +1,23 @@
 extends Node2D
-## REALM 1 REBUILD — THE MOSSY CAVERN, built the way Realm 2 was built
-## (Advika 2026-07-19: "exactly like level 2, keep the original palette").
-## Two Maaot packs in their ORIGINAL colors — no hue shift, no color grade:
-##   - "Cave Assets" (assets/realms/realm1_cavern/, tools/slice_cave_pack.gd):
-##     brown painterly rock — ground slabs, platform blocks, boulders,
-##     stalagmites/stalactites, rubble
-##   - the Mossy pack in its native GREEN (assets/realms/realm1_moss/,
-##     tools/tint_moss_green.gd rotates the proven realm2_moss slices back
-##     to the pack's original palette, same crops + names)
-## Realm 2's dressing grammar, carried whole:
-##   - grounded TREE assemblies: vine trunk rooted in the floor, canopy moss
-##     slab on the crown, hangers underneath (no twins), rock at the base,
-##     an animated plant breathing beside it
-##   - GRAND landmarks: twin trunks + grand ledge + dark cascade + hangers
-##   - boulder clusters half-buried, leaning together — merged, never slivers
-##   - UNDERGROWTH CARPET: a tuft/rock/plant every ~150px, deterministic,
-##     so no stretch ever rolls bare
-##   - platforms wear moss: fringe lip on top, hangers under the edges
-## Layout is a PLATFORMER: climb arcs (dome -> block -> high block -> slat),
-## lone hop domes, golem guards + jades kept from the old realm.
+## REALM 1 REBUILD — THE CAVERN, Maaot's "Cave Assets" pack ONLY (Advika
+## 2026-07-19: no other packs' art in this level). The pack's own promo
+## mood, kept SUBTLE: a dark green gloom in the air — carried entirely by
+## the backdrop, fog masses and faint light pools (generated glows, not
+## art) — while every visible piece is the cave pack in its original
+## painted brown, silhouette-forward:
+##   - ground = near-black soil + staggered slab rows; a rubble mat of
+##     pebbles/small rocks at graded depths (LOW — enemies must read)
+##   - platforms = the pack's blocks/slats; big rocks stay decor
+##   - MOVING platforms (Realm 1's signature): AnimatableBody2D sine
+##     tweens — arc slats alternate elevator/slider + free movers
+##   - ONE roof line: pale teeth deep behind, black fingers in front
+##   - set-pieces RARE: the maw / the standing stones / the spike garden
+##   - golem guards + jades kept from the old realm
 ## Controls: Curiosity's own. R restarts. ESC returns to the Hub.
 ## R1_SHOT env: screenshot at 1s + quit. R1_SHOT_X: park the hero first.
 ## R1_SHOT_CAMY: freeze the camera at a fixed Y (inspect the roof view).
 
 const BASE := "res://assets/realms/realm1_cavern/"
-const MBASE := "res://assets/realms/realm1_moss/"
 const LIVES_HUD := preload("res://scenes/UI/LivesHUD.tscn")
 const HUB_SCENE := "res://scenes/Hub.tscn"
 const JADE_SCENE := preload("res://scenes/Jade.tscn")
@@ -40,28 +33,23 @@ const ROOF_Y := -380.0   # ONE ceiling line, end to end
 # anchor x of each climbing arc down the walk (low dome -> mid -> high)
 const ARC_XS: Array[float] = [2200.0, 4400.0, 6600.0, 8800.0, 11000.0]
 
-# THE PACK'S OWN MOOD (Advika's reference, 2026-07-19 — the promo shot):
-# near-black rock silhouettes swimming in a GREEN-LIT haze. No color grade —
-# the green lives in the backdrop, the fog masses and the light pools; the
-# art keeps its painted colors and reads dark against the glow. Depth is
-# value: background haze is the brightest thing, gameplay rock is dark with
-# a rim of light, the lantern's gold is the one warm accent.
-const SOIL := Color(0.030, 0.026, 0.018)          # near-black earth body
-const BG_TOP := Color(0.062, 0.078, 0.042)        # backdrop: dark olive-green
-const BG_BOTTOM := Color(0.022, 0.028, 0.016)
-const HAZE_GREEN := Color(0.46, 0.55, 0.30)       # the fog masses' green
-const POOL_GREEN := Color(0.62, 0.78, 0.40)       # the bright light pools
-const SIL_FAR := Color(0.22, 0.22, 0.20)          # far band: darkest shapes
-const SIL_MID := Color(0.34, 0.34, 0.31)          # mid band silhouettes
-const GOLD := Color(1.0, 0.82, 0.48)              # the lantern's family
-const AMBIENT := Color(0.82, 0.84, 0.78)          # mild dim, a breath of green
-const FOG_TINT := HAZE_GREEN                      # haze bands ride the green
+# SUBTLE DARK GREEN (Advika: not the bright one): the gloom sits low and
+# deep — dark olive backdrop, faint haze, dim pools. The art is never
+# tinted green; it silhouettes dark against the glow. Gold stays the one
+# warm accent (the lantern's family).
+const SOIL := Color(0.026, 0.024, 0.016)          # near-black earth body
+const BG_TOP := Color(0.042, 0.055, 0.030)        # backdrop: deep dark olive
+const BG_BOTTOM := Color(0.018, 0.023, 0.013)
+const HAZE_GREEN := Color(0.26, 0.34, 0.18)       # the fog masses, muted
+const POOL_GREEN := Color(0.40, 0.52, 0.26)       # the light pools, dimmed
+const SIL_FAR := Color(0.20, 0.20, 0.18)          # far band: darkest shapes
+const SIL_MID := Color(0.32, 0.32, 0.29)          # mid band silhouettes
+const GOLD := Color(1.0, 0.82, 0.48)
+const AMBIENT := Color(0.76, 0.79, 0.72)          # mild dim, a breath of green
+const FOG_TINT := HAZE_GREEN
 const MAX_GLOW_LIGHTS := 16
-const MOSS_FOG := "res://assets/realms/realm2_moss/fog.png"
-const MOSS_SPORE := "res://assets/realms/realm2_moss/spore.png"
-const MOSS_FIREFLY := "res://assets/realms/realm2_moss/firefly.png"
 
-# ---- cave-pack vocabulary (indices into the sliced sheets) ----
+# ---- pack vocabulary (indices into the sliced sheets) ----
 const LONG_SLABS: Array[int] = [0, 2, 3, 4, 10, 12, 13, 14]   # floor_* logs
 const XL_SLABS: Array[int] = [9, 17, 21]                      # very long ridges
 const MOUNDS: Array[int] = [20, 24, 25]                       # smooth big mounds
@@ -92,28 +80,17 @@ var _jade_got := 0
 var _jade_lbl: Label
 var _rng := RandomNumberGenerator.new()
 
-# moss texture pools, loaded once in _ready
-var _m_vines: Array[Texture2D] = []
-var _m_plats: Array[Texture2D] = []
-var _m_ferns: Array[Texture2D] = []
-var _m_beards: Array[Texture2D] = []
-var _m_rocks: Array[Texture2D] = []
-var _m_boulders: Array[Texture2D] = []
-var _m_tufts: Array[Texture2D] = []
-
 
 func _ready() -> void:
-	RenderingServer.set_default_clear_color(Color(0.045, 0.036, 0.028))
+	RenderingServer.set_default_clear_color(Color(0.030, 0.038, 0.022))
 	_rng.seed = 20260719
-	_load_moss_pools()
 	_build_backdrop()
 	_build_background()
 	_build_terrain()
 	_build_platforms()
 	_build_ceiling()
 	_build_setpieces()
-	_build_forest()
-	_build_undergrowth()
+	_build_dressing()
 	_build_foreground()
 	_build_atmosphere()
 	_build_fog_layers()
@@ -123,31 +100,13 @@ func _ready() -> void:
 	_build_exit_door()
 	_build_camera()
 	_build_ui()
-	# a mild neutral dim — hue-honest, so both packs keep their own colors;
+	# a mild dim with a breath of green — the art keeps its painted browns;
 	# the lantern's ADDED gold stays the brightest thing in the cave
 	var grade := CanvasModulate.new()
 	grade.color = AMBIENT
 	add_child(grade)
 	if OS.get_environment("R1_SHOT") != "":
 		_self_screenshot(OS.get_environment("R1_SHOT"))
-
-
-func _load_moss_pools() -> void:
-	for n in ["vine_trunk_0", "vine_trunk_1", "vine_trunk_2", "vine_trunk_3"]:
-		_m_vines.append(load(MBASE + n + ".png"))
-	for n in ["platform_wide_0", "platform_wide_1", "platform_wide_2"]:
-		_m_plats.append(load(MBASE + n + ".png"))
-	for n in ["hang_fern_0", "hang_fern_1", "hang_fern_2", "hang_fern_3",
-			"hang_fern_4", "hang_curl_0", "hang_curl_1", "hang_curl_2"]:
-		_m_ferns.append(load(MBASE + n + ".png"))
-	for n in ["hang_beard_0", "hang_beard_1"]:
-		_m_beards.append(load(MBASE + n + ".png"))
-	for n in ["rock_moss_0", "rock_moss_1", "rock_moss_2"]:
-		_m_rocks.append(load(MBASE + n + ".png"))
-	for n in ["boulder_0", "boulder_1", "boulder_2"]:
-		_m_boulders.append(load(MBASE + n + ".png"))
-	for n in ["tuft_0", "tuft_1", "tuft_2"]:
-		_m_tufts.append(load(MBASE + n + ".png"))
 
 
 # ---------- shared little builders ----------
@@ -179,21 +138,6 @@ func _prop(tex_name: String, x: float, base_y: float, sc: float, z: int,
 			sc, z, tint, fh)
 
 
-## a raw-texture sprite (for the moss pools, already loaded)
-func _tsprite(tex: Texture2D, pos: Vector2, sc: float, z: int,
-		tint := Color.WHITE, fh := false, fv := false) -> Sprite2D:
-	var s := Sprite2D.new()
-	s.texture = tex
-	s.scale = Vector2(sc, sc)
-	s.position = pos
-	s.z_index = z
-	s.modulate = tint
-	s.flip_h = fh
-	s.flip_v = fv
-	add_child(s)
-	return s
-
-
 func _fill_rect(x0: float, x1: float, y0: float, y1: float, z: int,
 		col := SOIL) -> void:
 	var p := Polygon2D.new()
@@ -219,7 +163,7 @@ func _collider_rect(x0: float, x1: float, y0: float, y1: float,
 
 func _glow_light(host: Node2D, col: Color, energy: float, tsc: float) -> void:
 	if host is Sprite2D:
-		_bloom(host as Sprite2D, col, 0.20)
+		_bloom(host as Sprite2D, col, 0.18)
 	if _glow_lights >= MAX_GLOW_LIGHTS:
 		return
 	_glow_lights += 1
@@ -260,31 +204,11 @@ func _soft_glow_texture() -> GradientTexture2D:
 	return _glow_tex
 
 
-## the pack's animated plants (flower / plant1 / plant_wind), original green.
-## Realm 2's recipe: SpriteFrames off the frame_%03d.png strips.
-func _plant(dir: String, fps: float, sc: float) -> AnimatedSprite2D:
-	var frames := SpriteFrames.new()
-	frames.add_animation("sway")
-	frames.set_animation_loop("sway", true)
-	frames.set_animation_speed("sway", fps)
-	var i := 0
-	while ResourceLoader.exists(MBASE + dir + "/frame_%03d.png" % i):
-		frames.add_frame("sway", load(MBASE + dir + "/frame_%03d.png" % i))
-		i += 1
-	var a := AnimatedSprite2D.new()
-	a.sprite_frames = frames
-	a.scale = Vector2(sc, sc)
-	a.play("sway")
-	a.frame = _rng.randi() % maxi(1, frames.get_frame_count("sway"))
-	add_child(a)
-	return a
-
-
 # ---------- backdrop / background ----------
 
 func _build_backdrop() -> void:
-	# screen-anchored vertical gradient: deep neutral brown sinking to
-	# near-black. The art carries the color; the backdrop just recedes.
+	# screen-anchored vertical gradient: deep dark olive sinking to
+	# near-black — the gloom, not a glow
 	var cl := CanvasLayer.new()
 	cl.layer = -10
 	add_child(cl)
@@ -318,87 +242,75 @@ func _build_background() -> void:
 	_hills_mid = Node2D.new()
 	_hills_mid.z_index = -6
 	add_child(_hills_mid)
-	# FAR: a boulder-and-monolith skyline at 35% value — ranked stone
-	# receding into the dark, the art's own browns kept
-	var fx := FAR_L + 100.0
+	# FAR: the promo's TEETH FOREST — ranks of stalagmite silhouettes
+	# receding into the gloom, two interleaved depths, with a few big soft
+	# boulder masses looming between them
+	_spike_forest(_hills_far, FAR_L, FAR_R, FLOOR_Y + 60.0, 0.40, 0.62,
+			Color(SIL_FAR.r * 0.9, SIL_FAR.g * 0.9, SIL_FAR.b * 0.9),
+			170.0, 280.0)
+	_spike_forest(_hills_far, FAR_L + 90.0, FAR_R, FLOOR_Y + 45.0, 0.62, 0.9,
+			Color(SIL_FAR.r * 1.2, SIL_FAR.g * 1.2, SIL_FAR.b * 1.2),
+			260.0, 420.0)
+	var fx := FAR_L + 300.0
 	var fi := 0
 	while fx < FAR_R:
 		var b_id: int = [1, 4, 6, 7, 8, 2][fi % 6]
 		var tex: Texture2D = load(BASE + _tex("bigrock", b_id))
-		var sc := _rng.randf_range(0.85, 1.2)
+		var sc := _rng.randf_range(0.85, 1.15)
 		var s := Sprite2D.new()
 		s.texture = tex
 		s.scale = Vector2(sc, sc)
 		s.flip_h = fi % 2 == 1
 		s.position = Vector2(fx, FLOOR_Y + 40.0 - tex.get_height() * sc * 0.5)
-		s.modulate = SIL_FAR
+		s.modulate = Color(SIL_FAR.r * 1.1, SIL_FAR.g * 1.1, SIL_FAR.b * 1.1)
 		_hills_far.add_child(s)
-		fx += _rng.randf_range(420.0, 640.0)
+		fx += _rng.randf_range(750.0, 1100.0)
 		fi += 1
-	# far vine ghosts threading the skyline — the cavern grew green long ago
-	var gx := FAR_L + 260.0
-	var gi := 0
-	while gx < FAR_R:
-		var vt: Texture2D = _m_vines[gi % _m_vines.size()]
-		var sc := _rng.randf_range(0.4, 0.55)
-		var s := Sprite2D.new()
-		s.texture = vt
-		s.scale = Vector2(sc, sc)
-		s.flip_h = _rng.randf() < 0.5
-		s.position = Vector2(gx, FLOOR_Y + 20.0 - vt.get_height() * sc * 0.5)
-		s.modulate = Color(SIL_FAR.r * 1.2, SIL_FAR.g * 1.25, SIL_FAR.b * 1.15)
-		_hills_far.add_child(s)
-		gx += _rng.randf_range(520.0, 780.0)
-		gi += 1
-	# MID BAND VIGNETTES — composed silhouette groups on a rhythm, each with
-	# one warm gold glint: monolith + mossy boulder / spike grove + vine /
-	# boulder family under a tuft crown
+	# MID BAND VIGNETTES — composed silhouette groups on a rhythm: monolith
+	# pair / spike grove / boulder family; each holds one faint gold glint
 	var vx := MID_L + 250.0
 	var vi := 0
 	while vx < MID_R:
+		var mdark := Color(SIL_MID.r * 0.75, SIL_MID.g * 0.75, SIL_MID.b * 0.75)
 		if vi % 2 == 0:
-			_mid_sprite(load(BASE + _tex("bigrock", [0, 6, 8][vi % 3])),
-					vx + 100.0, 36.0, _rng.randf_range(1.0, 1.3),
-					Color(SIL_MID.r * 0.7, SIL_MID.g * 0.7, SIL_MID.b * 0.7),
-					vi % 4 == 0)
+			_mid_sprite(_tex("bigrock", [0, 6, 8][vi % 3]), vx + 100.0, 36.0,
+					_rng.randf_range(1.0, 1.3), mdark, vi % 4 == 0)
 		match vi % 3:
-			0:  # monolith + mossy boulder at its foot
-				_mid_sprite(load(BASE + _tex("bigrock", [3, 5][vi % 2])), vx,
-						40.0, _rng.randf_range(0.7, 0.85), SIL_MID, vi % 2 == 0)
-				_mid_sprite(_m_boulders[vi % 3], vx + 170.0, 26.0,
-						_rng.randf_range(0.3, 0.4), SIL_MID, vi % 2 == 1)
-			1:  # spike grove + a vine rising behind it
-				_mid_sprite(_m_vines[vi % 4], vx + 120.0, 30.0,
-						_rng.randf_range(0.45, 0.6),
-						Color(SIL_MID.r * 0.85, SIL_MID.g * 0.9, SIL_MID.b * 0.8),
-						vi % 2 == 1)
-				_mid_sprite(load(BASE + _tex("combo", SPIKE_CLUSTERS[vi % 4])), vx,
-						40.0, _rng.randf_range(0.62, 0.78), SIL_MID, vi % 2 == 0)
-			2:  # boulder family wearing a tuft
-				_mid_sprite(load(BASE + _tex("combo", [5, 7, 10][vi % 3])), vx,
-						28.0, _rng.randf_range(0.6, 0.75), SIL_MID, vi % 2 == 0)
-				_mid_sprite(_m_tufts[vi % 3], vx - 60.0, 16.0,
-						_rng.randf_range(0.22, 0.3), SIL_MID, vi % 2 == 1)
-		# one soft gold glint per vignette — distant lantern-kin in the dark
+			0:  # monolith pair + seat boulder
+				_mid_sprite(_tex("bigrock", [3, 5][vi % 2]), vx, 40.0,
+						_rng.randf_range(0.7, 0.85), SIL_MID, vi % 2 == 0)
+				_mid_sprite(_tex("rock", 32), vx + 160.0, 30.0,
+						_rng.randf_range(0.5, 0.62), mdark, vi % 2 == 1)
+				_mid_sprite(_tex("rock", 34), vx - 150.0, 22.0, 0.6, mdark)
+			1:  # spike grove + one tall tooth
+				_mid_sprite(_tex("combo", SPIKE_CLUSTERS[vi % 4]), vx, 40.0,
+						_rng.randf_range(0.62, 0.78), SIL_MID, vi % 2 == 0)
+				_mid_sprite(_tex("rock", [31, 37][vi % 2]), vx + 190.0, 30.0,
+						_rng.randf_range(0.5, 0.65), mdark, vi % 2 == 1)
+			2:  # boulder family
+				_mid_sprite(_tex("combo", [5, 7, 10][vi % 3]), vx, 28.0,
+						_rng.randf_range(0.6, 0.75), SIL_MID, vi % 2 == 0)
+				_mid_sprite(_tex("rock", [15, 18][vi % 2]), vx + 170.0, 22.0,
+						0.55, mdark, vi % 2 == 1)
 		var fg := Sprite2D.new()
 		fg.texture = _soft_glow_texture()
 		fg.position = Vector2(vx + _rng.randf_range(-60.0, 60.0),
 				FLOOR_Y - _rng.randf_range(30.0, 90.0))
 		fg.scale = Vector2(1.0, 1.0)
-		fg.modulate = Color(GOLD.r, GOLD.g, GOLD.b, 0.10)
+		fg.modulate = Color(GOLD.r, GOLD.g, GOLD.b, 0.07)
 		_hills_mid.add_child(fg)
 		vx += _rng.randf_range(360.0, 500.0)
 		vi += 1
-	# distant ceiling teeth in both bands — the windows between the roof's
-	# fingers show dark depth, never bare gradient
+	# distant ceiling teeth in both bands
 	_teeth_row(_hills_far, FAR_L, FAR_R, ROOF_Y - 60.0, 0.55, 0.75,
 			Color(SIL_FAR.r * 1.1, SIL_FAR.g * 1.1, SIL_FAR.b * 1.1))
 	_teeth_row(_hills_mid, MID_L, MID_R, ROOF_Y - 40.0, 0.6, 0.85, SIL_MID)
 
 
 ## a bottom-anchored silhouette sprite in the MID parallax band
-func _mid_sprite(tex: Texture2D, x: float, sink: float, sc: float,
+func _mid_sprite(tex_name: String, x: float, sink: float, sc: float,
 		tint: Color, fh := false) -> Sprite2D:
+	var tex: Texture2D = load(BASE + tex_name)
 	var s := Sprite2D.new()
 	s.texture = tex
 	s.scale = Vector2(sc, sc)
@@ -407,6 +319,33 @@ func _mid_sprite(tex: Texture2D, x: float, sink: float, sc: float,
 	s.modulate = tint
 	_hills_mid.add_child(s)
 	return s
+
+
+## a rank of floor teeth for a parallax band — stalagmite clusters and
+## single spikes tiled tightly into a continuous silhouette skyline
+func _spike_forest(band: Node2D, x0: float, x1: float, base_y: float,
+		sc_lo: float, sc_hi: float, tint: Color,
+		step_lo: float, step_hi: float) -> void:
+	var x := x0 + _rng.randf_range(0.0, 100.0)
+	var i := 0
+	while x < x1:
+		var use_cluster := i % 3 != 2
+		var tex_name: String
+		if use_cluster:
+			tex_name = _tex("combo", SPIKE_CLUSTERS[i % 4])
+		else:
+			tex_name = _tex("rock", STALAG[i % 4])
+		var tex: Texture2D = load(BASE + tex_name)
+		var sc := _rng.randf_range(sc_lo, sc_hi) * (0.55 if not use_cluster else 1.0)
+		var s := Sprite2D.new()
+		s.texture = tex
+		s.scale = Vector2(sc, sc)
+		s.flip_h = _rng.randf() < 0.5
+		s.position = Vector2(x, base_y - tex.get_height() * sc * 0.5)
+		s.modulate = tint
+		band.add_child(s)
+		x += _rng.randf_range(step_lo, step_hi)
+		i += 1
 
 
 ## distant ceiling teeth for a parallax band
@@ -440,36 +379,57 @@ func _build_terrain() -> void:
 	_collider_rect(WORLD_L - 60.0, WORLD_L + 40.0, FLOOR_Y - 900.0, FLOOR_Y)
 	_fill_rect(WORLD_R - 40.0, WORLD_R + 900.0, -1400.0, FLOOR_Y, 0)
 	_collider_rect(WORLD_R - 40.0, WORLD_R + 60.0, FLOOR_Y - 900.0, FLOOR_Y)
-	# the walls end in STONE + GROWTH, not a cut line: pebble columns with a
-	# vine leaning on each face
+	# the walls end in STONE, not a cut line: pebble-stack columns leaning
+	# on each face
 	for wp: Array in [[WORLD_L - 10.0, 7, 1.6, false], [WORLD_L + 130.0, 18, 1.3, true],
 			[WORLD_R + 10.0, 8, 1.6, true], [WORLD_R - 130.0, 19, 1.3, false]]:
 		var wtex: Texture2D = load(BASE + _tex("floor", wp[1]))
 		var wsc: float = wp[2]
 		_sprite(_tex("floor", wp[1]),
 				Vector2(wp[0], FLOOR_Y + 40.0 - wtex.get_height() * wsc * 0.5),
-				wsc, 1, Color(0.30, 0.30, 0.28), wp[3])
-	var wl_vine: Texture2D = _m_vines[1]
-	_tsprite(wl_vine, Vector2(WORLD_L + 120.0,
-			FLOOR_Y + 20.0 - wl_vine.get_height() * 0.55 * 0.5), 0.55, 2,
-			Color(0.5, 0.5, 0.5))
-	var wr_vine: Texture2D = _m_vines[2]
-	_tsprite(wr_vine, Vector2(WORLD_R - 120.0,
-			FLOOR_Y + 20.0 - wr_vine.get_height() * 0.55 * 0.5), 0.55, 2,
-			Color(0.5, 0.5, 0.5), true)
-	# THE GROUND BAND — staggered slab rows, silhouette-forward (the ref:
-	# ground reads dark against the green haze, the walk row catches just
-	# enough light to hold its painted brown)
+				wsc, 1, Color(0.28, 0.28, 0.26), wp[3])
+	_prop(_tex("bigrock", 1), WORLD_L + 110.0, FLOOR_Y + 30.0, 0.42, 2,
+			Color(0.32, 0.32, 0.30))
+	_prop(_tex("bigrock", 7), WORLD_R - 110.0, FLOOR_Y + 30.0, 0.42, 2,
+			Color(0.32, 0.32, 0.30), true)
+	# THE GROUND BAND — staggered slab rows, silhouette-forward: dark against
+	# the gloom, the walk row holding just enough light to read its brown
 	_slab_row(FLOOR_Y + 40.0, 0.62, 0, Color(0.30, 0.30, 0.28))   # crest skyline
 	_slab_row(FLOOR_Y + 82.0, 0.55, 2, Color(0.62, 0.62, 0.58))   # the walk row
 	_slab_row(FLOOR_Y + 145.0, 0.50, 3, Color(0.40, 0.40, 0.37))
 	_slab_row(FLOOR_Y + 212.0, 0.48, 4, Color(0.26, 0.26, 0.24))
-	# THROUGH-ROW — tips rising past her feet so she walks IN the scree
-	_slab_row(FLOOR_Y + 165.0, 0.44, 6, Color(0.17, 0.17, 0.16))
+	# THE PEBBLE STRIP (the promo's ground line): pebble-row pieces tiled
+	# along the walk line — the floor SHE reads, riding the walk row's crest
+	var strip_x := WORLD_L - 200.0
+	var si := 0
+	while strip_x < WORLD_R + 200.0:
+		var sp_id: int = [22, 23][si % 2]
+		var tex: Texture2D = load(BASE + _tex("floor", sp_id))
+		var sc := _rng.randf_range(0.42, 0.52)
+		var b := _rng.randf_range(0.48, 0.60)
+		_sprite(_tex("floor", sp_id),
+				Vector2(strip_x, FLOOR_Y + 34.0 - tex.get_height() * sc * 0.5),
+				sc, 3, Color(b, b, b), _rng.randf() < 0.5)
+		strip_x += tex.get_width() * sc * _rng.randf_range(0.72, 0.9)
+		si += 1
+	# THROUGH-ROW — kept LOW and sparse (Advika: the floor must never hide
+	# a golem): a shallow scree lip, not a hedge
+	_slab_row(FLOOR_Y + 195.0, 0.38, 6, Color(0.16, 0.16, 0.15),
+			WORLD_L - 250.0, WORLD_R + 250.0, 0.72, 0.95)
 	_slab_row(FLOOR_Y + 290.0, 0.5, 6, Color(0.10, 0.10, 0.09))   # deep front lip
-	# THE MOSS LINE — Realm 2's walk-line move: green moss mats riding the
-	# lit row's crest, undulating, the cave floor wearing its growth
-	_moss_line()
+	# TINY BLACK TEETH in the front row (the promo's foreground): short
+	# spikes — ankle-height, they can never mask a golem
+	var tx := WORLD_L - 200.0
+	var ti := 0
+	while tx < WORLD_R + 200.0:
+		var tg_id: int = STALAG[ti % 4]
+		var tex2: Texture2D = load(BASE + _tex("rock", tg_id))
+		var tsc := _rng.randf_range(0.07, 0.13)
+		_sprite(_tex("rock", tg_id),
+				Vector2(tx, FLOOR_Y + 26.0 - tex2.get_height() * tsc * 0.42),
+				tsc, 6, Color(0.055, 0.055, 0.05), _rng.randf() < 0.5)
+		tx += _rng.randf_range(90.0, 200.0)
+		ti += 1
 	_rubble_mat()
 
 
@@ -497,31 +457,8 @@ func _slab_row(base_y: float, sc_base: float, z: int, tint: Color,
 		x += tex.get_width() * sc * _rng.randf_range(step_lo, step_hi)
 
 
-## green moss mats along the walk line: moss_mat strips riding the lit row,
-## height and value undulating — a continuous grown lip, never a hedge
-func _moss_line() -> void:
-	var mat: Texture2D = load(MBASE + "moss_mat.png")
-	var front: Texture2D = load(MBASE + "moss_front.png")
-	var x := WORLD_L - 200.0
-	var i := 0
-	while x < WORLD_R + 200.0:
-		var tex := mat if i % 3 != 2 else front
-		var sc := _rng.randf_range(0.30, 0.44)
-		var w := tex.get_width() * sc
-		var h := tex.get_height() * sc
-		var b := _rng.randf_range(0.55, 0.75)
-		var z := 3 if i % 2 == 0 else 6
-		if z == 6:
-			b *= 0.45   # the front passes sit in shadow, same value law as the rock
-		_tsprite(tex, Vector2(x, FLOOR_Y + 26.0 - h * 0.5 +
-				_rng.randf_range(-8.0, 10.0)), sc, z, Color(b, b, b),
-				_rng.randf() < 0.5)
-		x += w * _rng.randf_range(0.55, 0.75)
-		i += 1
-
-
-## the scree field between the moss: pebbles and small rocks at their own
-## depths — the cave floor under the growth
+## the scree field: pebbles and small rocks at graded depths. The FRONT
+## depth stays sparse and small — nothing tall enough to mask an enemy.
 func _rubble_mat() -> void:
 	var x := WORLD_L - 200.0
 	while x < WORLD_R + 200.0:
@@ -535,46 +472,66 @@ func _rubble_mat() -> void:
 		var wave: float = clampf(0.5 + 0.28 * sin(x * 0.0021)
 				+ 0.22 * sin(x * 0.0063 + 1.7), 0.0, 1.0)
 		var sc := lerpf(0.10, 0.20, wave) * _rng.randf_range(0.75, 1.3)
+		if t >= 0.45:
+			sc *= 0.7   # the front depth shrinks — the walk line stays open
 		var h := tex.get_height() * sc
 		var base := FLOOR_Y + lerpf(4.0, 30.0, t)
-		var b := lerpf(0.58, 0.18, t) * _rng.randf_range(0.86, 1.14)
+		var b := lerpf(0.55, 0.20, t) * _rng.randf_range(0.86, 1.14)
 		_sprite(_tex("rock", pi), Vector2(x, base - h * 0.5 + h * 0.06),
 				sc, 4 if t < 0.45 else 6, Color(b, b, b), _rng.randf() < 0.5)
-		x += tex.get_width() * sc * _rng.randf_range(0.7, 1.1)
+		x += tex.get_width() * sc * _rng.randf_range(0.85, 1.3)
+	# woven accents: a half-sunk pebble pile or a lone small spike, on a
+	# long rhythm, always in the BACK depth
+	var ax := WORLD_L + _rng.randf_range(200.0, 450.0)
+	while ax < WORLD_R:
+		if _rng.randf() < 0.6:
+			var pp: int = PEBBLE_PILES[_rng.randi() % PEBBLE_PILES.size()]
+			_prop(_tex("floor", pp), ax, FLOOR_Y + 26.0,
+					_rng.randf_range(0.28, 0.4), 4,
+					Color(0.35, 0.35, 0.33), _rng.randf() < 0.5)
+		else:
+			var sg: int = STALAG[_rng.randi() % STALAG.size()]
+			_prop(_tex("rock", sg), ax, FLOOR_Y + 18.0,
+					_rng.randf_range(0.18, 0.26), 4,
+					Color(0.28, 0.28, 0.26), _rng.randf() < 0.5)
+		ax += _rng.randf_range(420.0, 760.0)
 
 
 # ---------- platforms (the platformer spine) ----------
 
 func _build_platforms() -> void:
 	# Walkable = platform blocks + half-buried domes; big rocks stay decor.
-	# Every walkable top wears MOSS (the R2 overhang law: fringe lip + tufts
-	# + hangers under the edges).
 	_dome_step(950.0, FLOOR_Y - 115.0)
-	_block_platform(1550.0, FLOOR_Y - 235.0, 3)
+	_pillar(1550.0, FLOOR_Y - 235.0, 0)
 	# free-standing movers on the long gaps — the ride is part of the walk
 	_moving_platform(3450.0, FLOOR_Y - 200.0, 8, "side", 220.0, 6.5)
 	_moving_platform(7450.0, FLOOR_Y - 190.0, 6, "updown", -150.0, 5.5)
 	_moving_platform(12480.0, FLOOR_Y - 210.0, 9, "side", -220.0, 6.0)
 	for ai in ARC_XS.size():
 		var amx: float = ARC_XS[ai]
-		var caps: Array = [[0, 3], [2, 4], [10, 7], [3, 0], [4, 10]][ai % 5]
 		_dome_step(amx, FLOOR_Y - _rng.randf_range(108.0, 128.0), ai % 2 == 0)
-		_block_platform(amx + 500.0, FLOOR_Y - 240.0, caps[0], ai % 2 == 1)
-		_block_platform(amx + 1000.0, FLOOR_Y - 355.0, caps[1], ai % 2 == 0)
-		# the step off the high block MOVES (Realm 1's signature): rising
-		# elevators and sliding shelves alternate down the walk
+		# the promo's climb: a grounded PILLAR carries the mid step, a small
+		# floating slab hops the gap, the high step alternates tall pillar /
+		# floating block
+		_pillar(amx + 500.0, FLOOR_Y - 240.0, ai % 2, ai % 2 == 1)
+		_float_slab(amx + 760.0, FLOOR_Y - 300.0, ai % 2 == 0)
+		if ai % 2 == 0:
+			_pillar(amx + 1000.0, FLOOR_Y - 355.0, (ai + 1) % 2, ai % 4 == 0)
+		else:
+			_block_platform(amx + 1000.0, FLOOR_Y - 355.0,
+					PLAT_CHUNKY[ai % PLAT_CHUNKY.size()], ai % 2 == 0)
+		# the step off the high point MOVES (Realm 1's signature)
 		if ai % 2 == 0:
 			_moving_platform(amx + 1440.0, FLOOR_Y - 300.0, PLAT_THIN[ai % 3],
 					"updown", -130.0, 5.2)
 		else:
 			_moving_platform(amx + 1440.0, FLOOR_Y - 300.0, PLAT_THIN[ai % 3],
 					"side", 200.0, 6.0)
-		# mossy boulder cluster resting at the arc's feet — DECOR
-		_boulder_cluster(amx - 320.0)
-	# LONE HOP DOMES between the arcs (clear of set-piece ground: stones
-	# ~6150, spike garden ~12900-13520)
-	var used: Array[float] = [950.0, 1550.0, 6150.0, 6390.0,
-			12900.0, 13240.0, 13520.0]
+		# a boulder MOUND at the arc's feet (the promo's rounded piles)
+		_boulder_mound(amx - 320.0)
+	# LONE HOP DOMES between the arcs (clear of the set-piece ground)
+	var used: Array[float] = [950.0, 1550.0, 3450.0, 7450.0, 12480.0,
+			6150.0, 6390.0, 12900.0, 13240.0, 13520.0]
 	for amx in ARC_XS:
 		for off in [0.0, 500.0, 1000.0, 1440.0]:
 			used.append(amx + off)
@@ -592,57 +549,7 @@ func _build_platforms() -> void:
 		hx += _rng.randf_range(680.0, 980.0)
 
 
-## moss dressing for any walkable top: a green fringe lip sunk into the
-## surface, a tuft or two, hangers tucked under the edges (no twins)
-func _moss_top(cx: float, top_y: float, half_w: float, under_y: float) -> void:
-	# the lip: two moss mats overlapping across the span, crowns above the top
-	var mat: Texture2D = load(MBASE + "moss_mat.png")
-	var msc := half_w * 2.2 / mat.get_width() * 0.62
-	for i in 2:
-		var mx := cx + (-half_w * 0.42 if i == 0 else half_w * 0.42)
-		var b := _rng.randf_range(0.58, 0.75)
-		_tsprite(mat, Vector2(mx, top_y + 6.0 - mat.get_height() * msc * 0.32),
-				msc, 2, Color(b, b, b), i == 1)
-	# a tuft breaking the lip line
-	var tt: Texture2D = _m_tufts[_rng.randi() % _m_tufts.size()]
-	var tsc := _rng.randf_range(0.14, 0.2)
-	_tsprite(tt, Vector2(cx + _rng.randf_range(-half_w * 0.5, half_w * 0.5),
-			top_y + 8.0 - tt.get_height() * tsc * 0.38), tsc, 2,
-			Color(0.65, 0.65, 0.60), _rng.randf() < 0.5)
-	# hangers under the edges — no twins, halves split (the R2 law)
-	var pool: Array[Texture2D] = []
-	pool.append_array(_m_ferns)
-	pool.append_array(_m_beards)
-	var n_hang := 1 + (_rng.randi() % 2)
-	for i in n_hang:
-		var pick := _rng.randi() % pool.size()
-		var ht: Texture2D = pool[pick]
-		pool.remove_at(pick)
-		var hsc := _rng.randf_range(0.26, 0.4)
-		var hg := Sprite2D.new()
-		hg.texture = ht
-		hg.centered = false
-		hg.offset = Vector2(-ht.get_width() * 0.5, -24.0)
-		hg.scale = Vector2(hsc, hsc)
-		hg.flip_h = _rng.randf() < 0.5
-		var hx := -half_w * 0.7 if (n_hang == 2 and i == 0) \
-				else (half_w * 0.7 if n_hang == 2 else _rng.randf_range(-half_w * 0.6, half_w * 0.6))
-		hg.position = Vector2(cx + hx, under_y - 6.0)
-		hg.z_index = 2
-		var hb := _rng.randf_range(0.5, 0.68)
-		hg.modulate = Color(hb, hb, hb)
-		add_child(hg)
-	# an animated plant breathing on some tops
-	if _rng.randf() < 0.5:
-		var pdir: String = ["flower", "plant1", "plant_wind"][_rng.randi() % 3]
-		var plant := _plant(pdir, _rng.randf_range(7.0, 10.0),
-				_rng.randf_range(0.14, 0.2))
-		plant.position = Vector2(cx + _rng.randf_range(-half_w * 0.4, half_w * 0.4),
-				top_y - 4.0)
-		plant.z_index = 2
-
-
-## a half-buried dome swelling out of the scree — the LOW step, mossed
+## a half-buried dome swelling out of the scree — the LOW step
 func _dome_step(cx: float, top_y: float, fh := false) -> void:
 	var d_id: int = DOMES[int(absf(cx)) % DOMES.size()]
 	var tex: Texture2D = load(BASE + _tex("rock", d_id))
@@ -652,24 +559,95 @@ func _dome_step(cx: float, top_y: float, fh := false) -> void:
 	_sprite(_tex("rock", d_id), Vector2(cx, FLOOR_Y + 200.0 - h * 0.5),
 			sc, 1, Color(0.52, 0.52, 0.49), fh)
 	_collider_rect(cx - w * 0.24, cx + w * 0.24, top_y, top_y + 24.0, true)
-	_moss_top(cx, top_y, w * 0.24, top_y + 60.0)
+	# a pebble or two perched on the crown — lived-on stone
+	_prop(_tex("rock", PEBBLES[_rng.randi() % PEBBLES.size()]),
+			cx - w * 0.1, top_y + 12.0, 0.14, 2, Color(0.5, 0.5, 0.47),
+			_rng.randf() < 0.5)
 
 
-## a floating chunky block platform — the MID/HIGH step, mossed
+## a PILLAR (the pack's promo grammar): vertical pebble-stack pieces tiled
+## into a tower rising from the soil, capped with a thin slab — the cap is
+## the platform. Black core, pale pebble rims: the art's own light.
+func _pillar(cx: float, top_y: float, style := 0, fh := false) -> void:
+	var col_ids: Array = [[18, 19], [7, 8]][style % 2]
+	var seg: Texture2D = load(BASE + _tex("floor", col_ids[0]))
+	var sc := 200.0 / seg.get_width() * _rng.randf_range(0.92, 1.05)
+	var seg_h := seg.get_height() * sc
+	var base_y := FLOOR_Y + 80.0
+	var n := maxi(1, ceili((base_y - top_y - 20.0) / (seg_h * 0.86)))
+	var y := base_y
+	for i in n:
+		var cid: int = col_ids[i % 2]
+		var t: Texture2D = load(BASE + _tex("floor", cid))
+		var h := t.get_height() * sc
+		_sprite(_tex("floor", cid), Vector2(cx, y - h * 0.5), sc, 1,
+				Color(0.55, 0.55, 0.52), fh if i % 2 == 0 else not fh)
+		y -= h * 0.86
+	# the cap slab, a touch wider than the shaft, top flush with top_y
+	var cap_id: int = [6, 8][style % 2]
+	var cap: Texture2D = load(BASE + _tex("plat", cap_id))
+	var csc := 250.0 / cap.get_width()
+	var ch := cap.get_height() * csc
+	_sprite(_tex("plat", cap_id), Vector2(cx, top_y + ch * 0.5 - ch * 0.18),
+			csc, 1, Color(0.42, 0.42, 0.40), fh)
+	_collider_rect(cx - 112.0, cx + 112.0, top_y, top_y + 22.0, true)
+	# a pebble perched on the cap
+	_prop(_tex("rock", PEBBLES[_rng.randi() % PEBBLES.size()]),
+			cx + _rng.randf_range(-60.0, 60.0), top_y + 10.0, 0.13, 2,
+			Color(0.5, 0.5, 0.47), _rng.randf() < 0.5)
+
+
+## a small floating slab fragment (the promo's lone hovering step)
+func _float_slab(cx: float, top_y: float, fh := false) -> void:
+	var f_id: int = [6, 11, 12, 13, 14][int(absf(cx)) % 5]
+	var tex: Texture2D = load(BASE + _tex("floor", f_id))
+	var sc := _rng.randf_range(0.62, 0.78)
+	var w := tex.get_width() * sc
+	var h := tex.get_height() * sc
+	_sprite(_tex("floor", f_id), Vector2(cx, top_y + h * 0.5 - h * 0.10),
+			sc, 1, Color(0.45, 0.45, 0.42), fh)
+	_collider_rect(cx - w * 0.38, cx + w * 0.38, top_y, top_y + 18.0, true)
+
+
+## a boulder MOUND (the promo's rounded piles): rounded rocks stacked and
+## overlapped into one merged mass behind the walk line — decor only
+func _boulder_mound(cx: float, z := 3) -> void:
+	var ids: Array = [15, 16, 17, 18, 23, 24]
+	var n := 3 + (_rng.randi() % 2)
+	var x := cx
+	for i in n:
+		var r_id: int = ids[_rng.randi() % ids.size()]
+		var tex: Texture2D = load(BASE + _tex("rock", r_id))
+		var sc := _rng.randf_range(0.30, 0.5) * (1.25 if i == 1 else 1.0)
+		var b := _rng.randf_range(0.36, 0.5)
+		_sprite(_tex("rock", r_id),
+				Vector2(x, FLOOR_Y + 24.0 - tex.get_height() * sc * 0.32
+				+ _rng.randf_range(0.0, 12.0)), sc, z, Color(b, b, b),
+				_rng.randf() < 0.5)
+		x += tex.get_width() * sc * 0.55
+
+
+## a floating chunky block platform — dark stone, rim of light
 func _block_platform(cx: float, top_y: float, p_id: int, fh := false) -> void:
 	var tex: Texture2D = load(BASE + _tex("plat", p_id))
 	var target_w := 300.0
 	var sc := target_w / tex.get_width()
 	var h := tex.get_height() * sc
-	# dark block, rim of light — the ref's floating steps
 	_sprite(_tex("plat", p_id), Vector2(cx, top_y + h * 0.5 - h * 0.055),
 			sc, 1, Color(0.50, 0.50, 0.47), fh)
 	_collider_rect(cx - target_w * 0.42, cx + target_w * 0.42, top_y,
 			top_y + 24.0, true)
-	_moss_top(cx, top_y, target_w * 0.42, top_y + h * 0.8)
+	# perched pebbles + an occasional small spike — grouped, grounded
+	_prop(_tex("rock", PEBBLES[_rng.randi() % PEBBLES.size()]),
+			cx + target_w * 0.22, top_y + 10.0, 0.13, 2,
+			Color(0.5, 0.5, 0.47), _rng.randf() < 0.5)
+	if _rng.randf() < 0.5:
+		_prop(_tex("rock", STALAG[_rng.randi() % STALAG.size()]),
+				cx - target_w * 0.24, top_y + 10.0, 0.14, 2,
+				Color(0.34, 0.34, 0.32), _rng.randf() < 0.5)
 
 
-## a thin slat platform — a narrow shelf off the high path, mossed lightly
+## a thin slat platform — a narrow shelf off the high path
 func _slat_platform(cx: float, top_y: float, p_id: int, fh := false) -> void:
 	var tex: Texture2D = load(BASE + _tex("plat", p_id))
 	var target_w := 230.0
@@ -679,16 +657,11 @@ func _slat_platform(cx: float, top_y: float, p_id: int, fh := false) -> void:
 			sc, 1, Color(0.50, 0.50, 0.47), fh)
 	_collider_rect(cx - target_w * 0.4, cx + target_w * 0.4, top_y,
 			top_y + 20.0, true)
-	var tt: Texture2D = _m_tufts[_rng.randi() % _m_tufts.size()]
-	var tsc := _rng.randf_range(0.12, 0.16)
-	_tsprite(tt, Vector2(cx + _rng.randf_range(-target_w * 0.3, target_w * 0.3),
-			top_y + 6.0 - tt.get_height() * tsc * 0.38), tsc, 2,
-			Color(0.62, 0.62, 0.58), _rng.randf() < 0.5)
 
 
-## a MOVING platform — Realm 1's signature, carried into the rebuild.
-## AnimatableBody2D with sync_to_physics, driven by a looping sine tween,
-## so she rides it (the old realm's proven recipe). motion: "side" / "updown".
+## a MOVING platform — Realm 1's signature. AnimatableBody2D with
+## sync_to_physics, driven by a looping sine tween, so she rides it.
+## motion: "side" / "updown".
 func _moving_platform(cx: float, top_y: float, p_id: int, motion: String,
 		dist: float, period: float) -> void:
 	var tex: Texture2D = load(BASE + _tex("plat", p_id))
@@ -706,16 +679,15 @@ func _moving_platform(cx: float, top_y: float, p_id: int, motion: String,
 	spr.z_index = 1
 	spr.modulate = Color(0.50, 0.50, 0.47)
 	body.add_child(spr)
-	# a tuft riding the mover — alive, and telegraphs the motion
-	var tt: Texture2D = _m_tufts[_rng.randi() % _m_tufts.size()]
-	var tsc := 0.13
-	var tuft := Sprite2D.new()
-	tuft.texture = tt
-	tuft.scale = Vector2(tsc, tsc)
-	tuft.position = Vector2(target_w * 0.18, 4.0 - tt.get_height() * tsc * 0.38)
-	tuft.z_index = 2
-	tuft.modulate = Color(0.62, 0.62, 0.58)
-	body.add_child(tuft)
+	# a pebble riding the mover — telegraphs the motion
+	var pt: Texture2D = load(BASE + _tex("rock", PEBBLES[_rng.randi() % PEBBLES.size()]))
+	var pb := Sprite2D.new()
+	pb.texture = pt
+	pb.scale = Vector2(0.13, 0.13)
+	pb.position = Vector2(target_w * 0.18, 6.0 - pt.get_height() * 0.13 * 0.4)
+	pb.z_index = 2
+	pb.modulate = Color(0.5, 0.5, 0.47)
+	body.add_child(pb)
 	var cs := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
 	rect.size = Vector2(target_w * 0.8, 20.0)
@@ -731,30 +703,12 @@ func _moving_platform(cx: float, top_y: float, p_id: int, motion: String,
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
-## a mossy boulder cluster: masses half-buried, leaning together — merged
-func _boulder_cluster(cx: float, z := 3) -> void:
-	var n := 2 + (_rng.randi() % 2)
-	var x := cx
-	for i in n:
-		var tex: Texture2D
-		if _rng.randf() < 0.55:
-			tex = _m_boulders[_rng.randi() % _m_boulders.size()]
-		else:
-			tex = _m_rocks[_rng.randi() % _m_rocks.size()]
-		var sc := _rng.randf_range(0.26, 0.42)
-		var b := _rng.randf_range(0.5, 0.72)
-		_tsprite(tex, Vector2(x, FLOOR_Y + 14.0 - tex.get_height() * sc * 0.30),
-				sc, z, Color(b, b, b), _rng.randf() < 0.5)
-		x += tex.get_width() * sc * 0.62
-
-
 # ---------- ceiling ----------
 
 func _build_ceiling() -> void:
 	# ONE continuous roof: gradient dark above the line, a hanging slab
-	# curtain, stalactites on an even rhythm — and GREEN dripping off it
-	# (beards + ferns among the teeth, the R2 corridor's underside idiom)
-	var roof_deep := Color(0.026, 0.020, 0.015)
+	# curtain, stalactites — pale teeth deep behind, black fingers in front
+	var roof_deep := Color(0.022, 0.020, 0.014)
 	var grad_p := Polygon2D.new()
 	grad_p.polygon = PackedVector2Array([
 			Vector2(WORLD_L - 900.0, -820.0), Vector2(WORLD_R + 900.0, -820.0),
@@ -763,12 +717,11 @@ func _build_ceiling() -> void:
 	grad_p.z_index = 0
 	add_child(grad_p)
 	_fill_rect(WORLD_L - 900.0, WORLD_R + 900.0, -1400.0, -820.0, 0, roof_deep)
-	# the ref's roof read: PALE teeth deep behind, BLACK fingers in front
 	_slab_row_hang(ROOF_Y - 30.0, 0.50, 1, Color(0.48, 0.48, 0.44), 0.48, 0.60)
 	_slab_row_hang(ROOF_Y - 18.0, 0.55, 1, Color(0.26, 0.26, 0.24), 0.44, 0.55)
 	_slab_row_hang(ROOF_Y - 8.0, 0.62, 2, Color(0.115, 0.115, 0.105), 0.40, 0.5)
 	# stalactites end to end — alternating pale (behind) and near-black
-	# (front), the ref's two-depth teeth
+	# (front), the two-depth teeth
 	var stx := WORLD_L - 350.0
 	var sti := 0
 	while stx < WORLD_R + 350.0:
@@ -783,24 +736,6 @@ func _build_ceiling() -> void:
 				_rng.randf() < 0.5)
 		stx += _rng.randf_range(330.0, 430.0)
 		sti += 1
-	# green hangers between the teeth — tops tucked into the curtain
-	var hgx := WORLD_L - 150.0
-	while hgx < WORLD_R + 150.0:
-		var pool: Array[Texture2D] = _m_beards if _rng.randf() < 0.4 else _m_ferns
-		var ht: Texture2D = pool[_rng.randi() % pool.size()]
-		var hsc := _rng.randf_range(0.3, 0.5)
-		var hg := Sprite2D.new()
-		hg.texture = ht
-		hg.centered = false
-		hg.offset = Vector2(-ht.get_width() * 0.5, -24.0)
-		hg.scale = Vector2(hsc, hsc)
-		hg.flip_h = _rng.randf() < 0.5
-		hg.position = Vector2(hgx, ROOF_Y + 6.0)
-		hg.z_index = 2
-		var hb := _rng.randf_range(0.38, 0.58)
-		hg.modulate = Color(hb, hb, hb)
-		add_child(hg)
-		hgx += _rng.randf_range(420.0, 680.0)
 
 
 ## the slab row upside down, for the roof curtain
@@ -826,40 +761,26 @@ func _slab_row_hang(base_y: float, sc_base: float, z: int, tint: Color,
 
 func _build_setpieces() -> void:
 	# 1 — THE MAW (over the zone A walk): the cave-mouth mass hanging off
-	# the roof, a beard dripping from its lip
+	# the roof, teeth dropping into open air
 	var maw: Texture2D = load(BASE + _tex("combo", 2))
 	var msc := 1.15
 	_sprite(_tex("combo", 2), Vector2(1200.0,
 			ROOF_Y + 40.0 + maw.get_height() * msc * 0.5 - 30.0), msc, 2,
 			Color(0.30, 0.30, 0.28))
-	var mb: Texture2D = _m_beards[0]
-	var mbs := Sprite2D.new()
-	mbs.texture = mb
-	mbs.centered = false
-	mbs.offset = Vector2(-mb.get_width() * 0.5, -24.0)
-	mbs.scale = Vector2(0.45, 0.45)
-	mbs.position = Vector2(1310.0, ROOF_Y + maw.get_height() * msc - 60.0)
-	mbs.z_index = 2
-	mbs.modulate = Color(0.6, 0.6, 0.6)
-	add_child(mbs)
 	# 2 — THE STANDING STONES (the breather between arcs 2 and 3): two
-	# monoliths rooted in the moss, vines climbing them, one gold glint
+	# monoliths rooted in the scree, one faint gold seam at their feet
 	var stones_x := 6150.0
 	_prop(_tex("bigrock", 3), stones_x, FLOOR_Y + 50.0, 0.72, 3,
 			Color(0.48, 0.48, 0.45))
 	_prop(_tex("bigrock", 5), stones_x + 240.0, FLOOR_Y + 44.0, 0.60, 4,
 			Color(0.38, 0.38, 0.36), true)
-	var sv: Texture2D = _m_vines[3]
-	_tsprite(sv, Vector2(stones_x - 40.0,
-			FLOOR_Y + 20.0 - sv.get_height() * 0.5 * 0.5), 0.5, 4,
-			Color(0.52, 0.52, 0.48))
 	_prop(_tex("rock", 34), stones_x - 190.0, FLOOR_Y + 26.0, 0.55, 4,
 			Color(0.42, 0.42, 0.40))
 	var seam := _prop(_tex("floor", 15), stones_x + 90.0, FLOOR_Y + 34.0,
-			0.4, 4)
-	_glow_light(seam, GOLD, 0.36, 1.2)
+			0.4, 4, Color(0.55, 0.55, 0.50))
+	_glow_light(seam, GOLD, 0.30, 1.2)
 	# 3 — THE SPIKE GARDEN (the last stretch before the door): stalagmite
-	# clusters the path threads between, moss creeping to their feet
+	# clusters the path threads between
 	var sg_x := 12900.0
 	_prop(_tex("combo", 12), sg_x, FLOOR_Y + 44.0, 0.62, 3,
 			Color(0.52, 0.52, 0.48))
@@ -867,290 +788,56 @@ func _build_setpieces() -> void:
 			Color(0.15, 0.15, 0.14), true)
 	_prop(_tex("combo", 15), sg_x + 620.0, FLOOR_Y + 46.0, 0.55, 3,
 			Color(0.40, 0.40, 0.37))
-	_boulder_cluster(sg_x + 180.0, 4)
 
 
-# ---------- the forest pass (Realm 2's grammar, whole) ----------
+# ---------- dressing: grouped grounded assemblies, cave pack only ----------
 
-## keep-clear test for tree/landmark posts: the platform arcs' ground
-## footprints, the set-pieces, the spawn and the door
-func _ground_clear(x: float) -> bool:
-	if x < WORLD_L + 300.0 or x > WORLD_R - 800.0:
-		return false
-	for amx in ARC_XS:
-		if x > amx - 260.0 and x < amx + 1650.0:
-			return false
-	if absf(x - 950.0) < 260.0 or absf(x - 1550.0) < 260.0:
-		return false
-	if x > 5850.0 and x < 6550.0:
-		return false      # standing stones
-	if x > 12650.0 and x < 13800.0:
-		return false      # spike garden
-	return true
-
-
-func _build_forest() -> void:
-	# GRAND landmarks at fixed posts down the walk — the exclamation marks
-	for gx in [-700.0, 3350.0, 7750.0, 10050.0]:
-		_spawn_grand(gx)
-	# trees + boulder clusters where the ground is clear — SPARSER than R2's
-	# forest (the ref is a cave wearing growth, not a jungle: rock leads,
-	# green punctuates)
-	var x := WORLD_L + 350.0
-	while x < WORLD_R - 800.0:
-		if _ground_clear(x):
-			if _rng.randf() < 0.38:
-				_spawn_tree(x)
-			else:
-				_boulder_cluster(x, 3 if _rng.randf() < 0.6 else 4)
-		x += _rng.randf_range(430.0, 700.0)
-
-
-## one grounded tree: trunk rooted in the moss line, canopy slab on the
-## crown, hangers underneath (no twins), a rock at the base, a plant beside
-func _spawn_tree(x: float) -> void:
-	var depth := _rng.randf()   # 0 = far/dim/small, 1 = near/lit/tall
-	var b := lerpf(0.26, 0.58, depth)   # silhouettes against the haze (the ref)
-	var grp := Node2D.new()
-	grp.position = Vector2(x, FLOOR_Y + 18.0)
-	grp.z_index = 1 if depth < 0.5 else 2
-	add_child(grp)
-	var vt: Texture2D = _m_vines[_rng.randi() % _m_vines.size()]
-	var vsc := _rng.randf_range(0.42, 0.78) * lerpf(0.7, 1.0, depth)
-	var vh := vt.get_height() * vsc
-	# the crown stays under the roof line — a canopy scraping the curtain
-	# reads as growth into the dark, but beards from nothing are banned
-	const MAX_TREE_H := 640.0
-	if vh > MAX_TREE_H:
-		vsc *= MAX_TREE_H / vh
-		vh = MAX_TREE_H
-	var flip := _rng.randf() < 0.5
-	var trunk := Sprite2D.new()
-	trunk.texture = vt
-	trunk.scale = Vector2(vsc, vsc)
-	trunk.flip_h = flip
-	trunk.position = Vector2(0.0, -vh * 0.5 + 26.0)
-	trunk.modulate = Color(b, b, b)
-	grp.add_child(trunk)
-	# canopy: a moss slab resting ON the crown, fringe sunk into the trunk top
-	if _rng.randf() < 0.45:
-		var pt: Texture2D = _m_plats[_rng.randi() % _m_plats.size()]
-		var psc := _rng.randf_range(0.34, 0.48) * lerpf(0.75, 1.0, depth)
-		var ph := pt.get_height() * psc
-		var canopy := Sprite2D.new()
-		canopy.texture = pt
-		canopy.scale = Vector2(psc, psc)
-		canopy.flip_h = _rng.randf() < 0.5
-		canopy.position = Vector2(_rng.randf_range(-40.0, 40.0),
-				-vh + 26.0 + ph * 0.30)
-		canopy.modulate = Color(b, b, b)
-		grp.add_child(canopy)
-		# a mossy rock perched on the crown sometimes
-		if _rng.randf() < 0.4:
-			var prt: Texture2D = _m_rocks[_rng.randi() % _m_rocks.size()]
-			var prsc := _rng.randf_range(0.16, 0.26) * psc / 0.4
-			var prk := Sprite2D.new()
-			prk.texture = prt
-			prk.scale = Vector2(prsc, prsc)
-			prk.flip_h = _rng.randf() < 0.5
-			prk.position = canopy.position + Vector2(
-					_rng.randf_range(-pt.get_width() * psc * 0.25,
-					pt.get_width() * psc * 0.25),
-					-ph * 0.30 - prt.get_height() * prsc * 0.35)
-			prk.modulate = Color(b * 0.95, b * 0.95, b * 0.95)
-			grp.add_child(prk)
-		# hangers under the canopy fringe — no twins, halves split
-		var n_hang := 1 + (_rng.randi() % 2)
-		var pool: Array[Texture2D] = []
-		pool.append_array(_m_ferns)
-		pool.append_array(_m_beards)
-		for i in n_hang:
-			var pick := _rng.randi() % pool.size()
-			var ht: Texture2D = pool[pick]
-			pool.remove_at(pick)
-			var hsc := _rng.randf_range(0.30, 0.48) * psc / 0.4
-			var hg := Sprite2D.new()
-			hg.texture = ht
-			hg.centered = false
-			hg.offset = Vector2(-ht.get_width() * 0.5, -24.0)
-			hg.scale = Vector2(hsc, hsc)
-			hg.flip_h = _rng.randf() < 0.5
-			var span := pt.get_width() * psc * 0.32
-			var hx := _rng.randf_range(-span, -span * 0.2) if (n_hang == 2 and i == 0) \
-					else (_rng.randf_range(span * 0.2, span) if n_hang == 2 \
-					else _rng.randf_range(-span, span))
-			hg.position = canopy.position + Vector2(hx, ph * 0.24)
-			var hbr := b * _rng.randf_range(0.8, 1.05)
-			hg.modulate = Color(hbr, hbr, hbr)
-			grp.add_child(hg)
-	# a rock hugging the base — the CAVE pack's rock under the MOSS pack's
-	# tree: the two packs grown together
-	if _rng.randf() < 0.7:
-		var use_cave := _rng.randf() < 0.5
-		var rt: Texture2D = load(BASE + _tex("rock",
-				MED_ROCKS[_rng.randi() % MED_ROCKS.size()])) if use_cave \
-				else _m_rocks[_rng.randi() % _m_rocks.size()]
-		var rsc := _rng.randf_range(0.20, 0.34) * lerpf(0.75, 1.0, depth)
-		var rk := Sprite2D.new()
-		rk.texture = rt
-		rk.scale = Vector2(rsc, rsc)
-		rk.flip_h = _rng.randf() < 0.5
-		rk.position = Vector2((1.0 if flip else -1.0) * _rng.randf_range(40.0, 90.0),
-				-rt.get_height() * rsc * 0.30 + 8.0)
-		var rb := b * _rng.randf_range(0.85, 1.0)
-		rk.modulate = Color(rb, rb, rb)
-		grp.add_child(rk)
-	# an animated plant breathing at the roots
-	if _rng.randf() < 0.5:
-		var pdir: String = ["flower", "plant1", "plant_wind"][_rng.randi() % 3]
-		var plant := _plant(pdir, _rng.randf_range(7.0, 10.0),
-				_rng.randf_range(0.16, 0.26) * lerpf(0.75, 1.0, depth))
-		plant.position = Vector2(x + (-1.0 if flip else 1.0) * _rng.randf_range(50.0, 110.0),
-				FLOOR_Y + 12.0)
-		plant.z_index = grp.z_index
-		plant.modulate = Color(b, b, b)
-
-
-## a grand landmark: twin trunks, a grand ledge across the crowns, a dark
-## cascade off the lip, hangers, a perched rock
-func _spawn_grand(x: float) -> void:
-	if not _ground_clear(x):
-		return
-	var b := _rng.randf_range(0.48, 0.64)
-	var grp := Node2D.new()
-	grp.position = Vector2(x, FLOOR_Y + 18.0)
-	grp.z_index = 2
-	add_child(grp)
-	var vi := _rng.randi() % _m_vines.size()
-	var trunk_h := 0.0
-	for t in 2:
-		var vt: Texture2D = _m_vines[(vi + 1 + t) % _m_vines.size()]
-		var vsc := _rng.randf_range(0.50, 0.62)
-		var vh := vt.get_height() * vsc
-		if vh > 560.0:
-			vsc *= 560.0 / vh
-			vh = 560.0
-		trunk_h = maxf(trunk_h, vh)
-		var trunk := Sprite2D.new()
-		trunk.texture = vt
-		trunk.scale = Vector2(vsc, vsc)
-		trunk.flip_h = t == 1
-		trunk.position = Vector2(-70.0 + 140.0 * t, -vh * 0.5 + 26.0)
-		var tb := b * _rng.randf_range(0.85, 1.0)
-		trunk.modulate = Color(tb, tb, tb)
-		grp.add_child(trunk)
-	var lt: Texture2D = load(MBASE + ("platform_grand.png" if _rng.randf() < 0.6
-			else "platform_tall.png"))
-	var lsc := _rng.randf_range(0.40, 0.50)
-	var lh := lt.get_height() * lsc
-	var ledge := Sprite2D.new()
-	ledge.texture = lt
-	ledge.scale = Vector2(lsc, lsc)
-	ledge.flip_h = _rng.randf() < 0.5
-	ledge.position = Vector2(0.0, -trunk_h + 26.0 + lh * 0.28)
-	ledge.modulate = Color(b, b, b)
-	grp.add_child(ledge)
-	# the cascade: a moss-fall off the ledge lip, top buried in the fringe
-	var ct: Texture2D = load(MBASE + ("cascade_dark.png" if _rng.randf() < 0.7
-			else "cascade.png"))
-	var csc := _rng.randf_range(0.34, 0.44)
-	var ch := ct.get_height() * csc
-	var casc := Sprite2D.new()
-	casc.texture = ct
-	casc.scale = Vector2(csc, csc)
-	casc.flip_h = _rng.randf() < 0.5
-	casc.position = Vector2(_rng.randf_range(-lt.get_width() * lsc * 0.25,
-			lt.get_width() * lsc * 0.25),
-			ledge.position.y + lh * 0.20 + ch * 0.42)
-	var cb := b * _rng.randf_range(0.7, 0.85)
-	casc.modulate = Color(cb, cb, cb)
-	grp.add_child(casc)
-	# hangers off the ledge — no twins, halves split
-	var pool: Array[Texture2D] = []
-	pool.append_array(_m_ferns)
-	pool.append_array(_m_beards)
-	for i in 2:
-		var pick := _rng.randi() % pool.size()
-		var ht: Texture2D = pool[pick]
-		pool.remove_at(pick)
-		var hsc := _rng.randf_range(0.36, 0.52)
-		var hg := Sprite2D.new()
-		hg.texture = ht
-		hg.centered = false
-		hg.offset = Vector2(-ht.get_width() * 0.5, -24.0)
-		hg.scale = Vector2(hsc, hsc)
-		hg.flip_h = _rng.randf() < 0.5
-		var span := lt.get_width() * lsc * 0.34
-		var hx := _rng.randf_range(-span, -span * 0.25) if i == 0 \
-				else _rng.randf_range(span * 0.25, span)
-		hg.position = ledge.position + Vector2(hx, lh * 0.22)
-		var hbr := b * _rng.randf_range(0.8, 1.0)
-		hg.modulate = Color(hbr, hbr, hbr)
-		grp.add_child(hg)
-	# a rock perched on the ledge crown
-	var prt: Texture2D = _m_rocks[_rng.randi() % _m_rocks.size()]
-	var prsc := _rng.randf_range(0.20, 0.30)
-	var prk := Sprite2D.new()
-	prk.texture = prt
-	prk.scale = Vector2(prsc, prsc)
-	prk.flip_h = _rng.randf() < 0.5
-	prk.position = ledge.position + Vector2(
-			_rng.randf_range(-lt.get_width() * lsc * 0.2, lt.get_width() * lsc * 0.2),
-			-lh * 0.30 - prt.get_height() * prsc * 0.35)
-	prk.modulate = Color(b * 0.95, b * 0.95, b * 0.95)
-	grp.add_child(prk)
-
-
-## THE UNDERGROWTH CARPET — the R2 guarantee: a small tuft / mossy rock /
-## animated plant cluster every ~150px across the WHOLE map, deterministic,
-## so no stretch can ever roll bare
-func _build_undergrowth() -> void:
-	var ux := WORLD_L - 200.0
-	while ux < WORLD_R + 100.0:
-		var b := _rng.randf_range(0.35, 0.65)
-		var roll := _rng.randf()
-		if roll < 0.5:
-			var tt: Texture2D = _m_tufts[_rng.randi() % _m_tufts.size()]
-			var tsc := _rng.randf_range(0.16, 0.30)
-			var z := 3 if _rng.randf() < 0.6 else 6
-			if z == 6:
-				b *= 0.5
-			_tsprite(tt, Vector2(ux, FLOOR_Y + 16.0 - tt.get_height() * tsc * 0.38),
-					tsc, z, Color(b, b, b), _rng.randf() < 0.5)
-		elif roll < 0.75:
-			var rt: Texture2D = _m_rocks[_rng.randi() % _m_rocks.size()]
-			var rsc := _rng.randf_range(0.12, 0.22)
-			_tsprite(rt, Vector2(ux, FLOOR_Y + 14.0 - rt.get_height() * rsc * 0.30),
-					rsc, 3, Color(b, b, b), _rng.randf() < 0.5)
-		else:
-			var pdir: String = ["flower", "plant1", "plant_wind"][_rng.randi() % 3]
-			var plant := _plant(pdir, _rng.randf_range(7.0, 10.0),
-					_rng.randf_range(0.12, 0.20))
-			plant.position = Vector2(ux, FLOOR_Y + 8.0)
-			plant.z_index = 3
-			plant.modulate = Color(b, b, b)
-		ux += _rng.randf_range(120.0, 210.0)
+func _build_dressing() -> void:
+	# rotating floor motifs down the whole walk: dome + pebbles / spike
+	# pair / pebble field with a gold glint / rock pile + leaning shard.
+	# All in the BACK depths — the walk line stays open for enemies to read.
+	var dmx := WORLD_L + 550.0
+	var dmi := 0
+	while dmx < WORLD_R - 500.0:
+		match dmi % 4:
+			0:  # a rounded boulder mound (the promo's piles)
+				_boulder_mound(dmx, 3 if dmi % 2 == 0 else 4)
+			1:  # spike pair rising out of the scree
+				_prop(_tex("rock", STALAG[dmi % 4]), dmx, FLOOR_Y + 18.0,
+						_rng.randf_range(0.3, 0.4), 3, Color(0.40, 0.40, 0.37))
+				_prop(_tex("rock", STALAG[(dmi + 1) % 4]), dmx + 110.0,
+						FLOOR_Y + 16.0, _rng.randf_range(0.2, 0.26), 4,
+						Color(0.30, 0.30, 0.28), true)
+			2:  # pebble field with one faint gold glint
+				_prop(_tex("floor", PEBBLE_PILES[dmi % 4]), dmx,
+						FLOOR_Y + 28.0, _rng.randf_range(0.34, 0.44), 3,
+						Color(0.45, 0.45, 0.42), dmi % 2 == 1)
+				var gg := _prop(_tex("rock", PEBBLES[(dmi + 1) % 5]),
+						dmx + 130.0, FLOOR_Y + 14.0, 0.16, 4,
+						Color(0.7, 0.62, 0.45))
+				_glow_light(gg, GOLD, 0.20, 0.9)
+			3:  # rock pile + leaning shard silhouette
+				_prop(_tex("combo", ROCK_PILES[dmi % ROCK_PILES.size()]), dmx,
+						FLOOR_Y + 38.0, _rng.randf_range(0.4, 0.5), 3,
+						Color(0.42, 0.42, 0.40), dmi % 2 == 0)
+				_prop(_tex("rock", [10, 36][dmi % 2]), dmx + 190.0,
+						FLOOR_Y + 20.0, _rng.randf_range(0.26, 0.34), 4,
+						Color(0.30, 0.30, 0.28), dmi % 2 == 1)
+		dmx += _rng.randf_range(620.0, 900.0)
+		dmi += 1
 
 
 func _build_foreground() -> void:
-	# darkest silhouettes hugging the bottom frame — rock and growth cut by
-	# the frame, never floating
-	var fore := Color(0.10, 0.10, 0.10)
+	# darkest silhouettes hugging the bottom frame — stone cut by the frame
+	var fore := Color(0.075, 0.075, 0.070)
 	var fsx := WORLD_L + 250.0
 	var fsi := 0
 	while fsx < WORLD_R:
-		if fsi % 3 == 2:
-			var tt: Texture2D = _m_tufts[fsi % 3]
-			var tsc := _rng.randf_range(0.5, 0.68)
-			_tsprite(tt, Vector2(fsx, 850.0 - tt.get_height() * tsc * 0.5),
-					tsc, 8, fore, _rng.randf() < 0.5)
-		else:
-			var fs_id: int = [32, 23, 19, 24, 33, 12][fsi % 6]
-			var tex: Texture2D = load(BASE + _tex("rock", fs_id))
-			var sc := _rng.randf_range(0.6, 0.75)
-			_sprite(_tex("rock", fs_id),
-					Vector2(fsx, 840.0 - tex.get_height() * sc * 0.5),
-					sc, 8, fore, _rng.randf() < 0.5)
+		var fs_id: int = [32, 23, 19, 24, 33, 12][fsi % 6]
+		var tex: Texture2D = load(BASE + _tex("rock", fs_id))
+		var sc := _rng.randf_range(0.6, 0.75)
+		_sprite(_tex("rock", fs_id), Vector2(fsx, 840.0 - tex.get_height() * sc * 0.5),
+				sc, 8, fore, _rng.randf() < 0.5)
 		fsx += _rng.randf_range(700.0, 980.0)
 		fsi += 1
 	# continuous bottom anchor band
@@ -1168,18 +855,15 @@ func _build_foreground() -> void:
 
 var _fog_bands: Array = []
 func _build_fog_layers() -> void:
-	# THE GREEN HAZE (the ref's whole atmosphere): drifting cumulus masses
-	# of soft green filling the cavern air behind the gameplay, brighter than
-	# everything else — the rock reads as silhouette against them
-	for cfg: Array in [[-7, 0.10, 1.5, 5.0], [-5, 0.08, 1.1, 7.5], [7, 0.045, 1.8, 4.0]]:
+	# THE GLOOM: drifting cumulus masses of muted green behind the gameplay —
+	# subtle (Advika: dark green, not bright), the rock reads darker still
+	for cfg: Array in [[-7, 0.055, 1.5, 5.0], [-5, 0.045, 1.1, 7.5], [7, 0.025, 1.8, 4.0]]:
 		var band := Node2D.new()
 		band.z_index = int(cfg[0])
 		add_child(band)
 		var spacing := 780.0 * (cfg[2] as float)
 		var x := WORLD_L - 1400.0
 		while x < WORLD_R + 1400.0:
-			# each station is a small CLUSTER of overlapping puffs — cumulus,
-			# not a smooth wash
 			for p in 3:
 				var f := Sprite2D.new()
 				f.texture = _soft_glow_texture()
@@ -1192,8 +876,7 @@ func _build_fog_layers() -> void:
 				band.add_child(f)
 			x += spacing
 		_fog_bands.append([band, cfg[3] as float, spacing])
-	# LIGHT POOLS — the ref's glowing core: every stretch gets one bright
-	# green bloom high in the air, as if daylight leaks through the rock
+	# LIGHT POOLS — dim green blooms high in the air, sparse
 	var px := WORLD_L - 400.0
 	while px < WORLD_R + 400.0:
 		var pool := Sprite2D.new()
@@ -1203,29 +886,30 @@ func _build_fog_layers() -> void:
 		pool.scale = Vector2(_rng.randf_range(3.2, 4.6), _rng.randf_range(2.6, 3.8))
 		pool.z_index = -6
 		pool.modulate = Color(POOL_GREEN.r, POOL_GREEN.g, POOL_GREEN.b,
-				_rng.randf_range(0.10, 0.16))
+				_rng.randf_range(0.06, 0.10))
 		add_child(pool)
-		px += _rng.randf_range(1500.0, 2300.0)
+		px += _rng.randf_range(1800.0, 2600.0)
 
 
 var _fogs: Array[Sprite2D] = []
 func _build_atmosphere() -> void:
-	# local fog banks: neutral dark, faint
+	# local fog banks: generated soft glows, muted green, faint
 	var nfog := int((WORLD_R - WORLD_L + 1800.0) / 950.0) + 1
 	for i in nfog:
 		var f := Sprite2D.new()
-		f.texture = load(MOSS_FOG)
+		f.texture = _soft_glow_texture()
 		f.position = Vector2(WORLD_L - 900.0 + i * 950.0,
 				FLOOR_Y - _rng.randf_range(60.0, 280.0))
-		f.scale = Vector2(_rng.randf_range(2.8, 4.2), _rng.randf_range(2.0, 2.9))
-		f.modulate = Color(0.32, 0.32, 0.28, _rng.randf_range(0.09, 0.13))
+		f.scale = Vector2(_rng.randf_range(2.4, 3.6), _rng.randf_range(1.2, 1.8))
+		f.modulate = Color(HAZE_GREEN.r, HAZE_GREEN.g, HAZE_GREEN.b,
+				_rng.randf_range(0.05, 0.08))
 		f.z_index = -4 if i % 2 == 0 else 6
 		add_child(f)
 		_fogs.append(f)
-	# drifting spores — the cave's slow golden dust
+	# drifting dust motes — the cave's slow gold, sparse
 	var motes := CPUParticles2D.new()
-	motes.texture = load(MOSS_SPORE)
-	motes.amount = int((WORLD_R - WORLD_L) / 320.0)
+	motes.texture = _soft_glow_texture()
+	motes.amount = int((WORLD_R - WORLD_L) / 550.0)
 	motes.lifetime = 16.0
 	motes.preprocess = 16.0
 	motes.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
@@ -1233,40 +917,21 @@ func _build_atmosphere() -> void:
 	motes.direction = Vector2(1, -0.1)
 	motes.spread = 14.0
 	motes.gravity = Vector2.ZERO
-	motes.initial_velocity_min = 12.0
-	motes.initial_velocity_max = 30.0
-	motes.scale_amount_min = 0.5
-	motes.scale_amount_max = 1.1
-	motes.color = Color(1.0, 0.9, 0.6, 0.45)
+	motes.initial_velocity_min = 10.0
+	motes.initial_velocity_max = 26.0
+	motes.scale_amount_min = 0.02
+	motes.scale_amount_max = 0.05
+	motes.color = Color(1.0, 0.88, 0.6, 0.35)
 	motes.position = Vector2((WORLD_L + WORLD_R) * 0.5, FLOOR_Y - 260.0)
 	motes.z_index = 6
 	add_child(motes)
-	# FIREFLIES — Realm 2's living air, gold in the dark
-	var flies := CPUParticles2D.new()
-	flies.texture = load(MOSS_FIREFLY)
-	flies.amount = int((WORLD_R - WORLD_L) / 900.0)
-	flies.lifetime = 9.0
-	flies.preprocess = 9.0
-	flies.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	flies.emission_rect_extents = Vector2((WORLD_R - WORLD_L) * 0.5 + 300.0, 300.0)
-	flies.direction = Vector2(0, -1)
-	flies.spread = 180.0
-	flies.gravity = Vector2.ZERO
-	flies.initial_velocity_min = 6.0
-	flies.initial_velocity_max = 18.0
-	flies.scale_amount_min = 0.5
-	flies.scale_amount_max = 0.9
-	flies.color = Color(1.0, 0.85, 0.5, 0.8)
-	flies.position = Vector2((WORLD_L + WORLD_R) * 0.5, FLOOR_Y - 160.0)
-	flies.z_index = 7
-	add_child(flies)
 	# corner vignette — neutral black
 	var cl := CanvasLayer.new()
 	cl.layer = 15
 	add_child(cl)
 	var grad := Gradient.new()
 	grad.colors = PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0),
-			Color(0.0, 0.0, 0.0, 0.32)])
+			Color(0.0, 0.0, 0.0, 0.34)])
 	grad.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
 	var gt := GradientTexture2D.new()
 	gt.gradient = grad
@@ -1294,7 +959,6 @@ func _build_player() -> void:
 	_lives = LIVES_HUD.instantiate() as LivesHUD
 	_lives.eye_scale = 0.22
 	_lives.eye_spacing = 112.0
-	# eyes keep their own violet — original palettes everywhere today
 	add_child(_lives)
 	_lives.reset(STARTING_LIVES)
 	if _curi.has_signal("died") and not _curi.died.is_connected(_die):
@@ -1315,13 +979,15 @@ func _build_golems() -> void:
 		g.scale = Vector2(GOLEM_SCALE, GOLEM_SCALE)
 		g.detect_range = GOLEM_DETECT
 		g.position = Vector2(wx, FLOOR_Y - 60.0)
-		g.z_index = 5
+		# in front of the whole floor stack (through-row included) — a guard
+		# must never be masked by scenery (Advika)
+		g.z_index = 7
 		add_child(g)
 		if g.has_method("set_home"):
 			g.set_home(wx)
 
 
-# Jades ride the high path: each arc's mid + high block + slat, plus a few
+# Jades ride the high path: each arc's mid + high block + mover, plus a few
 # floor strays on the long gaps
 func _build_jades() -> void:
 	var spots: Array[Vector2] = [
@@ -1340,7 +1006,7 @@ func _build_jades() -> void:
 		var j: Area2D = JADE_SCENE.instantiate()
 		j.position = sp
 		j.piece_scale = 0.15
-		j.z_index = 5
+		j.z_index = 7
 		add_child(j)
 		j.collected.connect(_on_jade)
 
@@ -1410,9 +1076,9 @@ func _build_ui() -> void:
 	cl.layer = 20
 	add_child(cl)
 	var lbl := Label.new()
-	lbl.text = "R1 MOSSY CAVERN REBUILD — walk right →   (R restart · ESC hub)"
+	lbl.text = "R1 CAVERN REBUILD — walk right →   (R restart · ESC hub)"
 	lbl.position = Vector2(16, 12)
-	lbl.add_theme_color_override("font_color", Color(0.85, 0.90, 0.78, 0.6))
+	lbl.add_theme_color_override("font_color", Color(0.80, 0.86, 0.72, 0.6))
 	cl.add_child(lbl)
 	_jade_lbl = Label.new()
 	_jade_lbl.text = "0 / %d" % _jade_total
