@@ -7,6 +7,33 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 
 ---
 
+## 2026-07-19 — Realm 1 rebuild: four wrong levels, then the reset to one screen
+
+**Shipped (branch `feat/r1-cave-rebuild`, NOT merged, main untouched):**
+Maaot Cave pack landed — raw sheets at assets/environment/cave/, 100 clean
+slices at assets/realms/realm1_cavern/ (new tools/slice_cave_pack.gd:
+touch-merge + per-component masking for dense sheets); green-original moss
+at assets/realms/realm1_moss/ (tools/tint_moss_green.gd rotates the R2
+violet slices back, measured -147°); cave_fog + elliptical vignette
+shaders; reusable scripts/moving_platform.gd (spec-exact); her build-spec
+skeleton scenes/realms/realm1/Realm1Cave.tscn (A–G beats, paused); and the
+real deliverable — **CaveComposition.tscn**, ONE static frame matched to
+docs/reference/cave_ref_01.png: fog core samples exactly RGB(134,131,60),
+columns + teeth + masses-in-fog + pebble ground + moss-wrapped boundaries.
+
+**Didn't land (the lesson):** four full one-shot level builds — crimson
+grade, moss jungle, cave-only corridor, spec skeleton — each missed
+because generated-whole levels bury decisions she never approved, and
+"build it exactly like level 2" means the PROCESS (tiny loops, her verdict
+each round), never that level's design. Ended on the moss-boundary frame:
+still not her vision — she'll draw it on the screenshot next time.
+Old Realm 1 remains live and untouched.
+
+**Next 3:** 1) Advika draws the moss vision on comp_v5 → match it exactly;
+2) her verdict passes the frame → build Section A ONLY (landing + 2 jades),
+one loop; 3) grow B..G section by section, movers per her spec, golems +
+jades placed per beat.
+
 ## 2026-07-16/17 — The finale finds its shape: The Bloom, the book, the layered underworld
 
 **Shipped (main, pre no-commit rule):** R3 ref set-pieces (PR #170 — hanging
