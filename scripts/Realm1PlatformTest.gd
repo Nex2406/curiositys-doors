@@ -143,23 +143,31 @@ func _ground() -> void:
 	var base := ColorRect.new()
 	base.position = Vector2(-2600, 478)
 	base.size = Vector2(5200, 260)
-	base.color = Color(0.028, 0.026, 0.022)
+	base.color = Color(0.016, 0.013, 0.011)
 	g.add_child(base)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
-	# knobbly lip: small dark rocks shoulder to shoulder along the line
+	# the ref's COBBLE ROW: pebble pieces shoulder to shoulder along the
+	# line, tops catching the fog light faintly
 	var x := -2600.0
+	var i := 0
 	while x < 2600.0:
-		var piece: String = ["combo_09.png", "combo_04.png", "combo_05.png",
-				"combo_11.png"][rng.randi() % 4]
-		var sc := rng.randf_range(0.10, 0.20)
+		var piece: String = ["floor_22.png", "floor_23.png"][i % 2]
+		var sc := rng.randf_range(0.50, 0.58)
 		var tex := _tex(CUT, piece)
-		_p(g, piece, Vector2(x, 488.0 - tex.get_height() * sc * 0.30), sc,
-				Color(0.085, 0.078, 0.070), 1, rng.randf() < 0.5)
-		x += rng.randf_range(90.0, 170.0)
-	# washed pale mounds sitting in the ground mist
-	for m: Array in [[-1900.0, 0.30], [-1150.0, 0.26], [-420.0, 0.34],
-			[300.0, 0.28], [1050.0, 0.36], [1800.0, 0.27], [2400.0, 0.31]]:
+		var s0 := Sprite2D.new()
+		s0.texture = tex
+		s0.position = Vector2(x, 486.0 - tex.get_height() * sc * 0.30
+				+ rng.randf_range(-4.0, 4.0))
+		s0.scale = Vector2(-sc if rng.randf() < 0.5 else sc, sc)
+		s0.material = Realm1Bg.mass_mat(0.40, 0.60, Vector3(1.05, 0.92, 0.80))
+		s0.z_index = 1
+		g.add_child(s0)
+		x += tex.get_width() * sc * 0.80
+		i += 1
+	# washed pale mounds — occasional clusters, the line stays mostly clean
+	for m: Array in [[-1900.0, 0.30], [-420.0, 0.34], [1050.0, 0.36],
+			[2400.0, 0.28]]:
 		var piece2: String = ["combo_07.png", "combo_10.png", "combo_11.png"][
 				int(absf(m[0])) % 3]
 		var tex2 := _tex(CUT, piece2)
@@ -170,16 +178,14 @@ func _ground() -> void:
 		s.material = Realm1Bg.mass_mat(0.85, 0.5, Vector3(1.08, 0.95, 0.82))
 		s.z_index = 0
 		g.add_child(s)
-	# dark rock piles breaking the lip
-	for d: Array in [[-1500.0, 0.42], [-700.0, 0.36], [120.0, 0.45],
-			[820.0, 0.38], [1500.0, 0.44], [2200.0, 0.35]]:
+	# dark rock piles breaking the lip — sparse
+	for d: Array in [[-1500.0, 0.42], [120.0, 0.45], [1500.0, 0.40]]:
 		var piece3: String = ["combo_08.png", "combo_10.png"][int(absf(d[0])) % 2]
 		var tex3 := _tex(CUT, piece3)
 		_p(g, piece3, Vector2(d[0], 486.0 - tex3.get_height() * (d[1] as float) * 0.32),
 				d[1], Color(0.055, 0.050, 0.045), 2, int(d[0]) % 2 == 0)
-	# sparse black floor spikes
-	for sp: Array in [[-2100.0, 0.34], [-980.0, 0.28], [-80.0, 0.40],
-			[620.0, 0.26], [1300.0, 0.36], [2050.0, 0.30]]:
+	# black floor spikes — rare and small, like the ref
+	for sp: Array in [[-2100.0, 0.26], [-80.0, 0.30], [1300.0, 0.24]]:
 		var piece4: String = ["rock_29.png", "rock_31.png", "rock_33.png",
 				"rock_37.png"][int(absf(sp[0])) % 4]
 		var tex4 := _tex(CUT, piece4)
