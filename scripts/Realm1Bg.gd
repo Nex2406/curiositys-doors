@@ -13,11 +13,51 @@ const SPAN := 5200.0
 ## every fog-driven material registers here so the wandering light can
 ## move them all in lockstep (backdrop, bands, platforms)
 static var fog_mats: Array = []
+static var mist_mats: Array = []
+static var accents: Array = []   # shafts/motes/drips/pulse — hue follows palette
+
+## palette presets — muted, never loud (VIBE). Each: fog core/edge, a hue
+## shift for the rock art, and the mist tint.
+const PALETTES: Array = [
+	{"name": "GLOOM OLIVE", "core": Vector3(0.545, 0.553, 0.338),
+		"edge": Vector3(0.020, 0.024, 0.016), "tint": Vector3(1, 1, 1),
+		"mist": Vector3(0.40, 0.41, 0.21)},
+	{"name": "VIOLET HOLLOW", "core": Vector3(0.44, 0.36, 0.58),
+		"edge": Vector3(0.016, 0.012, 0.028), "tint": Vector3(0.95, 0.85, 1.15),
+		"mist": Vector3(0.33, 0.27, 0.44)},
+	{"name": "CRIMSON EMBER", "core": Vector3(0.60, 0.33, 0.22),
+		"edge": Vector3(0.030, 0.012, 0.010), "tint": Vector3(1.15, 0.90, 0.75),
+		"mist": Vector3(0.45, 0.25, 0.17)},
+	{"name": "COLD DEPTHS", "core": Vector3(0.36, 0.46, 0.55),
+		"edge": Vector3(0.012, 0.018, 0.026), "tint": Vector3(0.85, 0.95, 1.10),
+		"mist": Vector3(0.27, 0.34, 0.42)},
+	{"name": "PALE MOON", "core": Vector3(0.50, 0.52, 0.58),
+		"edge": Vector3(0.018, 0.019, 0.023), "tint": Vector3(0.92, 0.95, 1.05),
+		"mist": Vector3(0.37, 0.38, 0.43)},
+]
+
+
+static func apply_palette(idx: int) -> String:
+	var p: Dictionary = PALETTES[clampi(idx, 0, PALETTES.size() - 1)]
+	for m: ShaderMaterial in fog_mats:
+		m.set_shader_parameter("core", p["core"])
+		m.set_shader_parameter("edge", p["edge"])
+		m.set_shader_parameter("palette_tint", p["tint"])
+	for m: ShaderMaterial in mist_mats:
+		m.set_shader_parameter("tint", p["mist"])
+	var core: Vector3 = p["core"]
+	var mx: float = maxf(core.x, maxf(core.y, core.z))
+	var hue := core / maxf(mx, 0.001)
+	for n: CanvasItem in accents:
+		n.modulate = Color(hue.x, hue.y, hue.z, n.modulate.a)
+	return p["name"]
 
 
 static func build(host: Node2D) -> void:
 	var cache := {}
 	fog_mats.clear()
+	mist_mats.clear()
+	accents.clear()
 	RenderingServer.set_default_clear_color(Color(0.020, 0.024, 0.016))
 	# fog spill backdrop
 	var fog_layer := CanvasLayer.new()
@@ -128,10 +168,11 @@ static func _shafts(host: Node2D, pb: ParallaxBackground) -> void:
 		poly.polygon = PackedVector2Array([a, c,
 				c + dirv * (b[2] as float) + Vector2(90, 0),
 				a + dirv * (b[2] as float) - Vector2(30, 0)])
-		poly.color = Color(0.55, 0.55, 0.33, b[3])
+		poly.color = Color(0.62, 0.62, 0.62, b[3])
 		poly.material = add_mat
 		pl.add_child(poly)
 		beams.append(poly)
+		accents.append(poly)
 	# slow asynchronous breathing
 	var tw := host.create_tween().set_loops()
 	tw.tween_property(beams[0], "modulate:a", 0.45, 4.5) \
@@ -195,6 +236,7 @@ static func _glow_pulse(host: Node2D, pb: ParallaxBackground) -> void:
 	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	s.material = add_mat
 	pl.add_child(s)
+	accents.append(s)
 	var tw := host.create_tween().set_loops()
 	tw.tween_property(s, "modulate:a", 0.10, 4.2) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -262,6 +304,8 @@ static func _drips(pb: ParallaxBackground) -> void:
 	hero.process_material = hm
 	hero.position = Vector2(-450, -150)
 	pl.add_child(hero)
+	accents.append(p)
+	accents.append(hero)
 
 
 static func _noise() -> NoiseTexture2D:
@@ -293,4 +337,5 @@ static func _mist(pb: ParallaxBackground, noise: NoiseTexture2D, speed: float,
 	mat.set_shader_parameter("y_shift", y_shift)
 	r.material = mat
 	pl.add_child(r)
+	mist_mats.append(mat)
 	return r
