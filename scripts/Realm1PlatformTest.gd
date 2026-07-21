@@ -32,7 +32,7 @@ func _ready() -> void:
 	_fused("medium_a", Vector2(350, 180), Vector2(250, 170), 0.10, [
 			["Grass2_00000.png", 96.0, -60.0, 0.22, false]])
 	_fused("small_b", Vector2(540, -150), Vector2(170, 150), 0.10, [])
-	_fused("medium_b", Vector2(60, 380), Vector2(240, 190), 0.10, [
+	_fused("medium_b", Vector2(40, 290), Vector2(240, 190), 0.10, [
 			["Grass2_00000.png", -34.0, -66.0, 0.18, true]])
 	_fused("large_b", Vector2(830, 300), Vector2(250, 220), 0.10, [
 			["Grass2_00000.png", 84.0, -108.0, 0.2, true]])

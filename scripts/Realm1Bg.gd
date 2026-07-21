@@ -42,7 +42,6 @@ static func build(host: Node2D) -> void:
 	_mist(pb, noise, 0.020, 0.14, 0.0)
 	_strip(pb, cache, 0.60, "band_mid.png", 0.55, 0.60, Vector3(1.05, 0.90, 0.80))
 	_mist(pb, noise, -0.034, 0.10, 0.45)
-	_strip(pb, cache, 0.85, "band_near.png", 0.06, 0.25, Vector3(0.95, 0.85, 0.80))
 	_mist(pb, noise, 0.048, 0.07, 0.8)
 	# floor fog river: dense low mist rolling along the bottom
 	var river := _mist(pb, noise, 0.06, 0.17, 1.3)

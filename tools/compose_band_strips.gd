@@ -34,13 +34,14 @@ const TEETH_RAW: Array[String] = ["rock_13.png", "rock_14.png", "rock_20.png",
 
 
 func _init() -> void:
-	# recut pieces, near-zero blur — solid rock, not mush (Advika 2026-07-22)
+	# recut pieces, near-zero blur — solid rock, not mush (Advika 2026-07-22).
+	# Lower-third ORGANIZED (her call): floor is the near layer; mid sinks
+	# to a mound row peeking behind the cobbles; spike rows sparse, one
+	# clean depth line. No separate near-clutter band anymore.
 	_compose("far", 16, FAR_SOFT, 220.0, 0.85, 1.35, 260.0, true, 2, [3, 2])
-	_compose("spires", 36, SPIRE_CUT, 110.0, 0.35, 0.75, 400.0, false, 5, [2],
+	_compose("spires", 36, SPIRE_CUT, 180.0, 0.30, 0.65, 430.0, false, 5, [2],
 			[0.5, 0.9, 31])
-	_compose("mid", 32, MID_RAW, 120.0, 0.35, 0.7, 465.0, false, 7, [2])
-	_compose("near", 30, NEAR_RAW, 120.0, 0.35, 0.8, 525.0, false, 11, [],
-			[0.7, 1.2, 13])
+	_compose("mid", 32, MID_RAW, 200.0, 0.30, 0.60, 530.0, false, 7, [2])
 	quit()
 
 

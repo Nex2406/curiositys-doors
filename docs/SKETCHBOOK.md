@@ -9,6 +9,34 @@ Rules:
 
 ---
 
+## 2026-07-22 — R1 idea sweep ("needs to top realm 2"; golems + 45 jades exist)
+
+Advika asked for ideas that make R1 beat R2's spectacle. Constraint: reuse
+the existing golems + hand-placed jades. Pitched:
+
+1. **THE JADES ARE THE CAVE'S LIGHT.** Every jade taken visibly dims the
+   Hollow — fog core shrinks, glow pockets die one by one — until the last
+   stretch is lantern-only black and the exit door is the only glow. The
+   player CAUSES the darkness by succeeding. Jade motivation solved (the
+   leftover): forging the key steals a world's light. Melancholic,
+   unsettling, very Written-by-Silence.
+2. **Golems ARE the rock.** Camouflaged into the fused bands/boulder piles
+   (our own art pipeline = their disguise); they wake when lantern light or
+   a jade-grab disturbs them. Guardians of the light, not random mobs.
+3. **Lantern-only finale** (her beat F) — already in the A–G spec; now it's
+   the climax of the dimming arc, not just a dark corridor.
+4. **Glow pockets as sanctuaries** — motes cluster there, safe/checkpoint
+   feel; the spaces between get scarier as the cave dims.
+5. **Reactive world** — drips land with faint light-rings, cobbles puff
+   motes underfoot, platform cap stones glow while stood on.
+6. **The chasm ferry in the dark** (her beat C) — R1's answer to the island
+   ride: a slab crossing a black chasm, lantern the only light mid-crossing.
+7. **Far background eyes** that open rarely, HUGE and distant, inside the
+   fused bands (explicitly NOT the failed Sprite+PointLight eye-orbs —
+   different scale, different layer).
+
+Not yet promoted to realms/realm1.md — Advika picks what's canon.
+
 ## 2026-07-18
 
 - **Redo Realm 1 (Advika: "can we redo lvl 1?"):** dropped at the end of a
