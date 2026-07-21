@@ -95,8 +95,8 @@ func _fused(pname: String, pos: Vector2, origin: Vector2, lift: float,
 	for p: Array in plants:
 		_plant(a, p[0], Vector2(p[1], p[2]), p[3], p[4])
 	if pname != "wall_ledge":
-		var amp := randf_range(5.0, 9.0)
-		var dur := randf_range(2.6, 4.2)
+		var amp := randf_range(3.0, 5.5)
+		var dur := randf_range(3.2, 4.8)
 		var tw := create_tween().set_loops()
 		tw.tween_property(a, "position:y", pos.y - amp, dur) \
 				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)

@@ -50,24 +50,14 @@ static func build(host: Node2D) -> void:
 	_motes(pb)
 	_glow_pulse(host, pb)
 	_drips(pb)
-	# THE CAVE BREATHES: each band heaves vertically on its own long period,
-	# and the light itself wanders so shadows crawl across the rock
-	var bands := pb.get_children().filter(func(c: Node) -> bool:
-			return c is ParallaxLayer and c.motion_scale.x > 0.0)
-	var amps := [3.0, 5.0, 7.0, 9.0]
-	var periods := [11.0, 8.5, 7.0, 5.8]
-	for i in mini(bands.size(), 4):
-		var pl: ParallaxLayer = bands[i]
-		var tw := host.create_tween().set_loops()
-		tw.tween_property(pl, "position:y", -amps[i], periods[i]) \
-				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		tw.tween_property(pl, "position:y", amps[i], periods[i]) \
-				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# ROCK NEVER MOVES (lesson of 2026-07-22: heaving bands look silly).
+	# Motion belongs to fog, particles, plants — and the light, which
+	# wanders only a whisper so shadows creep without reading as a spotlight
 	var wander := host.create_tween().set_loops()
 	wander.tween_method(_set_fog_center, Vector2(0.20, 0.28),
-			Vector2(0.245, 0.315), 14.0) \
+			Vector2(0.218, 0.295), 14.0) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	wander.tween_method(_set_fog_center, Vector2(0.245, 0.315),
+	wander.tween_method(_set_fog_center, Vector2(0.218, 0.295),
 			Vector2(0.20, 0.28), 12.0) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
