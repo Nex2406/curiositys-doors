@@ -10,10 +10,9 @@
 ;   - Fog band, fireflies, door bob animation, door collision /
 ;     interaction wiring, and Curiosity / TouchControls instances are
 ;     unchanged.
-[gd_scene load_steps=24 format=3 uid="uid://b8h2u8b8b8h2u"]
+[gd_scene load_steps=23 format=3 uid="uid://b8h2u8b8b8h2u"]
 
 [ext_resource type="PackedScene" path="res://scenes/Curiosity.tscn" id="1_curiosity"]
-[ext_resource type="PackedScene" path="res://scenes/TouchControls.tscn" id="2_touch"]
 [ext_resource type="Script" path="res://scripts/Door.gd" id="3_door"]
 [ext_resource type="Texture2D" path="res://assets/scenes/hub/stone_floor.png" id="4_stone_floor"]
 [ext_resource type="Texture2D" path="res://assets/scenes/hub/door_arch.png" id="5_door_arch"]
@@ -299,4 +298,3 @@ texture = SubResource("GradientTexture2D_vignette")
 expand_mode = 1
 stretch_mode = 0
 
-[node name="TouchControls" parent="." instance=ExtResource("2_touch")]
