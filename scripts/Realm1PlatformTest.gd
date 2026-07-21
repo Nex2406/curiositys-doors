@@ -44,32 +44,11 @@ func _ready() -> void:
 	var cl := CanvasLayer.new()
 	cl.layer = 100
 	add_child(cl)
-	_label = Label.new()
-	_label.position = Vector2(24, 18)
-	_label.add_theme_font_size_override("font_size", 26)
-	_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.5))
-	cl.add_child(_label)
-	_set_palette(0)
-	if OS.get_environment("PALETTE") != "":
-		_set_palette(int(OS.get_environment("PALETTE")) - 1)
 	if OS.get_environment("PLAT_CAM_X") != "":
 		_cam.position.x = float(OS.get_environment("PLAT_CAM_X"))
 	if OS.get_environment("PLAT_SHOT") != "":
 		_shot(OS.get_environment("PLAT_SHOT"))
 
-
-var _label: Label
-func _set_palette(idx: int) -> void:
-	var pname := Realm1Bg.apply_palette(idx)
-	_label.text = "R1 PALETTE %d — %s      [1-5] switch   LEFT/RIGHT pan" \
-			% [clampi(idx, 0, 4) + 1, pname]
-
-
-func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo:
-		var k: int = event.keycode
-		if k >= KEY_1 and k <= KEY_5:
-			_set_palette(k - KEY_1)
 
 
 func _process(delta: float) -> void:

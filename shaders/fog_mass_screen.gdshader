@@ -14,7 +14,6 @@ uniform float falloff = 1.42;
 uniform float lift = 1.18;
 uniform float detail : hint_range(0.0, 1.0) = 0.12;
 uniform vec3 brighten = vec3(1.0, 1.2, 0.75);
-uniform vec3 palette_tint = vec3(1.0, 1.0, 1.0);  // palette hue shift on art
 
 void fragment() {
 	vec4 t = texture(TEXTURE, UV);
@@ -35,7 +34,6 @@ void fragment() {
 	// gate here repainted bases as flat fog = the translucent-slab bug).
 	// Only the 2px blur-edge falls back to pure silhouette.
 	float keep = smoothstep(0.55, 0.95, t.a);
-	vec3 col = mix(fog * lift,
-			t.rgb * brighten * palette_tint * fog_rel, detail * keep);
+	vec3 col = mix(fog * lift, t.rgb * brighten * fog_rel, detail * keep);
 	COLOR = vec4(col, t.a);
 }
