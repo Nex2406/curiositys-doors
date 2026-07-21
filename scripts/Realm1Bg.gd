@@ -64,6 +64,25 @@ static func build(host: Node2D) -> void:
 	wander.tween_method(_set_fog_center, Vector2(0.218, 0.295),
 			Vector2(0.20, 0.28), 12.0) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_vignette(host)
+
+
+## STEP 2/7 (Advika's spec): the vignette — hard elliptical falloff,
+## corners near-black, centre untouched. Anchored Full Rect so it tracks
+## viewport resizes.
+static func _vignette(host: Node2D) -> void:
+	var cl := CanvasLayer.new()
+	cl.name = "vignette_layer"
+	cl.layer = 100
+	host.add_child(cl)
+	var r := ColorRect.new()
+	r.name = "vignette"
+	r.set_anchors_preset(Control.PRESET_FULL_RECT)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/vignette_gold.gdshader")
+	r.material = mat
+	cl.add_child(r)
 
 
 ## STEP 1/7 (Advika's spec 2026-07-22): the painted gold backdrop —
