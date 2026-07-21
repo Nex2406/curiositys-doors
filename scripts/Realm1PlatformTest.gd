@@ -8,12 +8,9 @@ extends Node2D
 
 const Realm1Bg := preload("res://scripts/Realm1Bg.gd")
 const CUT := "res://assets/realms/realm1_cut/"
+const SOFT := "res://assets/realms/realm1_soft/"
 const PLANTS := "res://assets/realms/realm1_plants/"
 const CAM_SPEED := 700.0
-
-const BLOCK := Color(0.17, 0.15, 0.135)     # main platform body
-const BLOCK_DIM := Color(0.13, 0.115, 0.105)
-const UNDER := Color(0.07, 0.062, 0.058)    # undersides + teeth
 
 var _cache := {}
 var _cam: Camera2D
@@ -21,13 +18,23 @@ var _cam: Camera2D
 
 func _ready() -> void:
 	Realm1Bg.build(self)
-	# gallery layout, ref-frame-ish: L / S / M scattered like a route
-	_large_a(Vector2(-620, -60))
-	_small_a(Vector2(-140, 40))
-	_medium_a(Vector2(350, 180))
-	_small_b(Vector2(540, -150))
-	_medium_b(Vector2(60, 380))
-	_large_b(Vector2(830, 300))
+	# each platform is ONE fused texture (tools/compose_platforms.gd) —
+	# internal seams melted offline; plants ride on top as crisp accents
+	_fused("wall_ledge", Vector2(-900, 0), Vector2(240, 800), 0.10, [
+			["PlantSmall_00000.png", 380.0, -112.0, 0.24, false]])
+	var wall_back := ColorRect.new()
+	wall_back.position = Vector2(-980, -540)
+	wall_back.size = Vector2(150, 1080)
+	wall_back.color = Color(0.02, 0.019, 0.017)
+	wall_back.z_index = 4
+	add_child(wall_back)
+	_fused("small_a", Vector2(-140, 40), Vector2(180, 150), 0.10, [])
+	_fused("medium_a", Vector2(350, 180), Vector2(240, 170), 0.10, [
+			["Grass2_00000.png", 96.0, -60.0, 0.22, false]])
+	_fused("small_b", Vector2(540, -150), Vector2(150, 150), 0.10, [])
+	_fused("medium_b", Vector2(60, 380), Vector2(240, 180), 0.10, [])
+	_fused("large_b", Vector2(830, 300), Vector2(230, 220), 0.10, [
+			["Grass2_00000.png", 84.0, -108.0, 0.2, true]])
 	_cam = Camera2D.new()
 	_cam.position = Vector2.ZERO
 	add_child(_cam)
@@ -72,21 +79,20 @@ func _p(parent: Node2D, tex_name: String, pos: Vector2, sc: float,
 	return s
 
 
-## fog-lit cap stone (glows softly toward the light)
-func _cap(parent: Node2D, tex_name: String, pos: Vector2, sc: float,
-		fh := false) -> Sprite2D:
-	var s := _p(parent, tex_name, pos, sc, Color.WHITE, -1, fh)
-	s.material = Realm1Bg.mass_mat(0.95, 0.6, Vector3(1.08, 0.95, 0.82))
-	return s
-
-
-## platform body: dark but TEXTURED — fog-lit so the stone surface reads
-## and the block sits in the scene's light instead of flat black
-func _body(parent: Node2D, tex_name: String, pos: Vector2, sc: float,
-		z: int, fh := false, lift := 0.25) -> Sprite2D:
-	var s := _p(parent, tex_name, pos, sc, Color.WHITE, z, fh)
-	s.material = Realm1Bg.mass_mat(lift, 0.70, Vector3(1.05, 0.90, 0.80))
-	return s
+## one fused platform: the pre-composed texture, art lit by the local fog
+## (detail 1.0 — shading is baked into the texture), plants on top
+func _fused(pname: String, pos: Vector2, origin: Vector2, lift: float,
+		plants: Array) -> void:
+	var a := _assembly(pos)
+	var s := Sprite2D.new()
+	s.texture = _tex(SOFT, "plat_%s.png" % pname)
+	s.centered = false
+	s.position = -origin
+	s.material = Realm1Bg.mass_mat(lift, 1.0, Vector3(1.30, 1.12, 1.0))
+	a.add_child(s)
+	for p: Array in plants:
+		_p(a, p[0], Vector2(p[1], p[2]), p[3], Color(0.15, 0.16, 0.10), 1,
+				p[4], PLANTS)
 
 
 func _assembly(pos: Vector2) -> Node2D:
@@ -95,64 +101,6 @@ func _assembly(pos: Vector2) -> Node2D:
 	a.z_index = 5
 	add_child(a)
 	return a
-
-
-# ---------- SMALL: one chunky block ----------
-
-func _small_a(pos: Vector2) -> void:
-	var a := _assembly(pos)
-	_cap(a, "combo_04.png", Vector2(6, -58), 0.16)
-	_body(a, "plat_02.png", Vector2.ZERO, 0.50, 0)
-	_p(a, "rock_14.png", Vector2(34, 48), 0.14, UNDER, 1)
-
-
-func _small_b(pos: Vector2) -> void:
-	var a := _assembly(pos)
-	_cap(a, "bigrock_08.png", Vector2(-8, -44), 0.13, true)
-	_body(a, "plat_05.png", Vector2.ZERO, 0.34, 0, false, 0.22)
-
-
-# ---------- MEDIUM: slab + under-block ----------
-
-func _medium_a(pos: Vector2) -> void:
-	var a := _assembly(pos)
-	_cap(a, "combo_05.png", Vector2(-52, -54), 0.20)
-	_body(a, "plat_08.png", Vector2(0, -34), 0.75, 0)
-	_body(a, "plat_02.png", Vector2(12, 30), 0.55, -1, false, 0.18)
-	_p(a, "rock_13.png", Vector2(66, 74), 0.17, UNDER, 1)
-	_p(a, "Grass2_00000.png", Vector2(96, -60), 0.22, Color(0.16, 0.17, 0.11), 1,
-			false, PLANTS)
-
-
-func _medium_b(pos: Vector2) -> void:
-	var a := _assembly(pos)
-	_cap(a, "combo_07.png", Vector2(-14, -62), 0.20, true)
-	_body(a, "plat_02.png", Vector2(-40, 0), 0.62, 0)
-	_body(a, "plat_02.png", Vector2(84, 44), 0.44, -1, true, 0.18)
-	_p(a, "rock_14.png", Vector2(-70, 56), 0.15, UNDER, 1)
-
-
-# ---------- LARGE: ledge island / column isle ----------
-
-func _large_a(pos: Vector2) -> void:
-	var a := _assembly(pos)
-	_cap(a, "combo_10.png", Vector2(-20, -64), 0.26)
-	_body(a, "plat_08.png", Vector2(0, -30), 1.0, 0, false, 0.28)
-	_body(a, "floor_07.png", Vector2(-96, 46), 0.80, -1, false, 0.18)
-	_body(a, "plat_02.png", Vector2(96, 42), 0.62, -1, false, 0.18)
-	_p(a, "rock_20.png", Vector2(-20, 96), 0.40, UNDER, 1)
-	_p(a, "PlantSmall_00000.png", Vector2(158, -58), 0.24, Color(0.14, 0.15, 0.10),
-			1, false, PLANTS)
-
-
-func _large_b(pos: Vector2) -> void:
-	var a := _assembly(pos)
-	_cap(a, "combo_04.png", Vector2(-30, -104), 0.22, true)
-	_body(a, "plat_08.png", Vector2(0, -76), 0.8, 0, false, 0.28)
-	_body(a, "floor_08.png", Vector2(0, 44), 0.80, -1, false, 0.16)
-	_p(a, "rock_13.png", Vector2(-88, -18), 0.18, UNDER, 1)
-	_p(a, "Grass2_00000.png", Vector2(84, -108), 0.2, Color(0.15, 0.16, 0.10), 1,
-			true, PLANTS)
 
 
 func _shot(path: String) -> void:
