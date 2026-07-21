@@ -82,7 +82,8 @@ func _p(parent: Node2D, tex_name: String, pos: Vector2, sc: float,
 
 
 ## one fused platform: the pre-composed texture, art lit by the local fog
-## (detail 1.0 — shading is baked into the texture), plants on top
+## (detail 1.0 — shading is baked into the texture), SWAYING plants on top,
+## and a slow bob (floating platforms breathe; the wall ledge stays rooted)
 func _fused(pname: String, pos: Vector2, origin: Vector2, lift: float,
 		plants: Array) -> void:
 	var a := _assembly(pos)
@@ -93,8 +94,43 @@ func _fused(pname: String, pos: Vector2, origin: Vector2, lift: float,
 	s.material = Realm1Bg.mass_mat(lift, 1.0, Vector3(1.30, 1.12, 1.0))
 	a.add_child(s)
 	for p: Array in plants:
-		_p(a, p[0], Vector2(p[1], p[2]), p[3], Color(0.15, 0.16, 0.10), 1,
-				p[4], PLANTS)
+		_plant(a, p[0], Vector2(p[1], p[2]), p[3], p[4])
+	if pname != "wall_ledge":
+		var amp := randf_range(5.0, 9.0)
+		var dur := randf_range(2.6, 4.2)
+		var tw := create_tween().set_loops()
+		tw.tween_property(a, "position:y", pos.y - amp, dur) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(a, "position:y", pos.y + amp, dur) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+## a plant playing its pack animation — the wind lives in the frames
+const PLANT_DIRS := {"PlantSmall_00000.png": ["plantsmall/PlantSmall_%05d.png", 30],
+		"Grass2_00000.png": ["grass2/Grass2_%05d.png", 30],
+		"GroupPlants_00000.png": ["groupplants/GroupPlants_%05d.png", 45]}
+var _frames_cache := {}
+func _plant(parent: Node2D, key: String, pos: Vector2, sc: float,
+		fh: bool) -> void:
+	var spec: Array = PLANT_DIRS[key]
+	if not _frames_cache.has(key):
+		var sf := SpriteFrames.new()
+		sf.set_animation_loop("default", true)
+		sf.set_animation_speed("default", 15.0)
+		for i in range(spec[1]):
+			var img := Image.load_from_file(ProjectSettings.globalize_path(
+					PLANTS + spec[0] % i))
+			sf.add_frame("default", ImageTexture.create_from_image(img))
+		_frames_cache[key] = sf
+	var an := AnimatedSprite2D.new()
+	an.sprite_frames = _frames_cache[key]
+	an.position = pos
+	an.scale = Vector2(-sc if fh else sc, sc)
+	an.modulate = Color(0.15, 0.16, 0.10)
+	an.z_index = 1
+	an.play("default")
+	an.frame = randi() % int(spec[1])
+	parent.add_child(an)
 
 
 func _assembly(pos: Vector2) -> Node2D:
