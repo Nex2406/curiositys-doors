@@ -1,6 +1,13 @@
 # Realm 1 — The Crimson Hollow
 
-> Living spec. Last updated: 2026-05-17. Built in code as "The Crimson Hollow" (cave platformer).
+> Living spec. Last updated: 2026-07-22. Built in code as "The Crimson Hollow" (cave platformer).
+
+## Look target (Advika, 2026-07-22 — the rebuild's north star)
+"An underground dark cave with a very mysterious kinda feel and aura."
+Darkness dominates; the olive fog glow is scarce and precious, light leaking
+in from somewhere unseen. Background = parallax + depth + chaos, bands fused
+into flowing masses (no per-asset boundaries — see the scene-dressing law).
+Working rig: `scenes/realms/realm1/Realm1BgTest.tscn`.
 
 ---
 

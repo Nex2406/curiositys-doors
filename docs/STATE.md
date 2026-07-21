@@ -1,5 +1,31 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-07-19_
+_Last updated: 2026-07-22_
+
+## 2026-07-22 — R1 BACKGROUND locked-ish (`feat/r1-cave-rebuild`, NOT merged)
+Advika's vision (now in docs/realms/realm1.md): dark underground cave,
+mysterious aura; parallax + depth + chaos; NOTHING faded. After a brutal
+iteration day the pipeline that survived her eye:
+- **`tools/recut_slices.gd`** — outline strokes physically removed from 31
+  Maaot slices (edge ring shaved, interior strokes inpainted), output
+  `assets/realms/realm1_cut/`, fully opaque. HER LAW: never fade/alpha-trick
+  an outline away; recut the art. (scene-dressing law #7 in memory.)
+- **`tools/compose_band_strips.gd`** — each parallax band pre-composed into
+  ONE fused 5200px strip (union-solidified w/ undulating fill line, wrap-
+  seamless, near-zero blur), so no per-asset boundaries/lips/seams exist.
+- **`shaders/fog_mass_screen.gdshader`** — pieces lit BY the fog: art color ×
+  local fog brightness (diagonal spill, calibrated to
+  docs/reference/cave_ref_04.png samples — the Maaot promo, saved as canon
+  with cave_ref_03). NO luminance gates (they read as translucent slabs).
+- **`scenes/realms/realm1/Realm1BgTest.tscn`** — the live rig: 4 band strips
+  (far billows / warm spire forest / mid rocks / near-black row + 2 ceiling
+  curtains baked in), 3 drifting `cave_mist.gdshader` sheets, ←/→ pan,
+  BG_SHOT/BG_CAM_X harness prints render-vs-ref anchor samples.
+Verdict: "ok...im not too happy but lets just move on" — good enough to
+build on, not sacred. CaveRefRecreate.tscn holds a hand-copy attempt of
+ref_04 (paused mid-polish). Contact sheets: tools/AssetContactSheet.tscn.
+PlantsAnimated pack staged (3 pieces in assets/realms/realm1_plants/).
+PROCESS LAWS from today: ask when confused (don't guess), don't pop Godot
+windows over her work, background only until she says otherwise.
 
 ## 2026-07-19 — Realm 1 rebuild in progress on `feat/r1-cave-rebuild` (NOT merged)
 The old Realm 1 stays live on main. The rebuild uses the Maaot Cave pack as a

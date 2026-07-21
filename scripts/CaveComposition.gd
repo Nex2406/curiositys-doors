@@ -12,6 +12,7 @@ const SHEET_PLATFORMS := CAVE + "Cave - Platforms.png"
 const SHEET_FLOOR := CAVE + "Cave - Floor.png"
 const SHEET_COMBOS := CAVE + "Cave - RockCombinations1.png"
 const SHEET_SMALLROCKS := CAVE + "Cave - SmallRocks.png"
+const SHEET_BIGROCKS := CAVE + "Cave - BigRocks1.png"
 
 # region atlas (Advika's build spec)
 const R_COL_LARGE := Rect2(28, 225, 562, 363)
@@ -30,6 +31,18 @@ const R_STALACT_B := Rect2(1867, 859, 124, 378)
 const R_MASS_TALL := Rect2(44, 1234, 574, 597)
 const R_MASS_MED := Rect2(989, 77, 470, 357)
 const R_MASS_WIDE := Rect2(1310, 748, 693, 372)
+
+# BigRocks1 — the pack's background sheet: big soft masses whose bases fade
+# to black, made to sink into the fog. Regions eyeballed off the 2048x1024.
+const B_DOME_HUGE := Rect2(30, 5, 725, 600)      # broad dome, the skyline hero
+const B_DOME_SMALL := Rect2(770, 60, 380, 220)   # low hill
+const B_ROCK_WIDE := Rect2(815, 295, 560, 285)   # long low boulder
+const B_BOULDER_TALL := Rect2(1410, 55, 310, 530) # upright slab
+const B_PEAK_SMALL := Rect2(1762, 5, 242, 210)   # little crest
+const B_SPIRE := Rect2(1782, 255, 210, 765)      # thin standing spire
+const B_PEAK_NARROW := Rect2(25, 625, 340, 395)  # narrow peak
+const B_DOME_WIDE := Rect2(405, 620, 680, 400)   # wide dome
+const B_MOUND_WIDE := Rect2(1115, 650, 575, 370) # broad mound
 
 # the art's own painted values do the black-core/pale-rim split — the
 # modulate just seats it under the wash (ref columns: rims ~90, cores ~15)
@@ -52,13 +65,17 @@ const SPIKES: Array[String] = ["rock_29.png", "rock_31.png", "rock_33.png",
 
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(Color(0.020, 0.024, 0.016))
+	# COMP_BG_ONLY=1: render just the background plane (fog + BigRocks masses
+	# + wash) — the piece-by-piece loop looks at one layer at a time
+	var bg_only := OS.get_environment("COMP_BG_ONLY") != ""
 	_build_fog()
 	_build_mid_masses()
-	_build_columns()
-	_build_ceiling()
-	_build_ground()
-	_build_moss()
-	_build_foreground()
+	if not bg_only:
+		_build_columns()
+		_build_ceiling()
+		_build_ground()
+		_build_moss()
+		_build_foreground()
 	_build_lighting()
 	var cam := Camera2D.new()
 	cam.position = Vector2.ZERO
@@ -112,25 +129,44 @@ func _build_fog() -> void:
 
 
 func _build_mid_masses() -> void:
-	# the ref: soft dimmer rock planes peeking BEHIND and BETWEEN the columns
+	# the BACKGROUND, from the pack's own background sheet (BigRocks1): two
+	# receding planes of big soft masses standing IN the fog. Farther = closer
+	# to the fog's value (washed, low contrast), nearer = a step darker. Their
+	# painted bases fade to black, so every mass is seated to the ground line
+	# and sinks into the floor darkness — nothing floats.
+	# the pack's rocks are warm brown; the ref's background plane is olive-grey
+	# — so the tint trades red for green to seat them in the fog's hue
+	var far := Node2D.new()
+	far.modulate = Color(1.10, 1.45, 0.85)
+	far.z_index = -3
+	add_child(far)
+	for f: Array in [
+			[B_DOME_HUGE, -620.0, 285.0, 0.9, false],    # skyline hero, left of gap
+			[B_SPIRE, 480.0, 300.0, 0.65, false],        # tip peeking between columns
+			[B_PEAK_NARROW, -70.0, 368.0, 0.9, true],    # crest right of the maw
+			[B_DOME_WIDE, 850.0, 345.0, 1.0, false]]:    # dome sinking right
+		_bigrock(far, f)
 	var mid := Node2D.new()
-	mid.modulate = MOD_MID
+	mid.modulate = Color(0.92, 1.22, 0.72)
 	mid.z_index = -2
 	add_child(mid)
 	for m: Array in [
-			[R_MASS_TALL, -180.0, -40.0, 0.85, false],   # behind left column's crown
-			[R_MASS_MED, 210.0, 330.0, 0.7, true],       # soft toothed mass, low + right
-			[R_MASS_WIDE, 700.0, 260.0, 0.95, false],    # behind right column
-			[R_MASS_TALL, -820.0, 120.0, 0.8, true]]:    # behind the left wall
-		var r: Rect2 = m[0]
-		var s := Sprite2D.new()
-		s.texture = load(SHEET_COMBOS)
-		s.region_enabled = true
-		s.region_rect = r
-		s.position = Vector2(m[1], m[2])
-		var sc: float = m[3]
-		s.scale = Vector2(-sc if m[4] else sc, sc)
-		mid.add_child(s)
+			[B_BOULDER_TALL, 700.0, 260.0, 0.85, false], # upright, behind right column
+			[B_MOUND_WIDE, 280.0, 415.0, 0.8, true],     # low mound under the gap
+			[B_DOME_SMALL, -680.0, 462.0, 0.9, false],   # hill against the left wall
+			[B_SPIRE, 935.0, 175.0, 0.9, true]]:         # spire at the frame edge
+		_bigrock(mid, m)
+
+
+func _bigrock(parent: Node2D, m: Array) -> void:
+	var s := Sprite2D.new()
+	s.texture = load(SHEET_BIGROCKS)
+	s.region_enabled = true
+	s.region_rect = m[0]
+	s.position = Vector2(m[1], m[2])
+	var sc: float = m[3]
+	s.scale = Vector2(-sc if m[4] else sc, sc)
+	parent.add_child(s)
 
 
 func _build_columns() -> void:
