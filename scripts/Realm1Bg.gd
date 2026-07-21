@@ -75,6 +75,7 @@ static func build(host: Node2D) -> void:
 	var pb := ParallaxBackground.new()
 	pb.layer = -50
 	host.add_child(pb)
+	_backdrop(pb)
 	_strip(pb, cache, 0.15, "band_far.png", 1.03, 0.12, Vector3(1.0, 1.2, 0.75))
 	_strip(pb, cache, 0.35, "band_spires.png", 0.85, 0.65, Vector3(1.10, 0.95, 0.80))
 	_shafts(host, pb)
@@ -99,6 +100,28 @@ static func build(host: Node2D) -> void:
 	wander.tween_method(_set_fog_center, Vector2(0.218, 0.295),
 			Vector2(0.20, 0.28), 12.0) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+## STEP 1/7 (Advika's spec 2026-07-22): the painted gold backdrop —
+## Tunnel 11 raw, her grade shader does all colour work. Furthest layer,
+## NO tiling/mirroring (baked vanishing point; a repeat seam would show).
+## Position: the painting's lower third sits on the level's horizon line.
+## NOTE for the real level: clamp this layer at both level ends (the spec's
+## ~2900px of covered camera travel) — the gallery has no ends yet.
+static func _backdrop(pb: ParallaxBackground) -> void:
+	var pl := ParallaxLayer.new()
+	pl.name = "bg_backdrop"
+	pl.motion_scale = Vector2(0.08, 0.04)
+	pb.add_child(pl)
+	var s := Sprite2D.new()
+	s.texture = load("res://assets/realms/realm1_backdrop/tunnel_11.png")
+	s.centered = false
+	s.position = Vector2(-1344, -546)
+	s.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/backdrop_gold.gdshader")
+	s.material = mat
+	pl.add_child(s)
 
 
 static func _set_fog_center(v: Vector2) -> void:
