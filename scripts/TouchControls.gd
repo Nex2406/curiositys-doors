@@ -10,6 +10,8 @@ const BUTTON_GAP: float = 30.0
 @onready var _left: TouchScreenButton = $LeftButton
 @onready var _right: TouchScreenButton = $RightButton
 @onready var _jump: TouchScreenButton = $JumpButton
+@onready var _attack: TouchScreenButton = $AttackButton
+@onready var _dash: TouchScreenButton = $DashButton
 @onready var _interact: TouchScreenButton = $InteractButton
 
 var _tweens: Dictionary = {}
@@ -19,16 +21,15 @@ func _ready() -> void:
 	visible = _should_show_touch_ui()
 	if not visible:
 		return
-	_wire_button(_left)
-	_wire_button(_right)
-	_wire_button(_jump)
-	_wire_button(_interact)
+	for btn: TouchScreenButton in [_left, _right, _jump, _attack, _dash, _interact]:
+		_wire_button(btn)
 	get_viewport().size_changed.connect(_layout_buttons)
 	_layout_buttons()
 
 
 func _should_show_touch_ui() -> bool:
-	return DisplayServer.is_touchscreen_available() or OS.has_feature("mobile")
+	return DisplayServer.is_touchscreen_available() or OS.has_feature("mobile") \
+			or OS.get_environment("FORCE_TOUCH") != ""
 
 
 func _wire_button(btn: TouchScreenButton) -> void:
@@ -61,8 +62,11 @@ func _layout_buttons() -> void:
 	var stacked_y: float = bottom_y - button_size - BUTTON_GAP
 	_left.position = Vector2(EDGE_PADDING, bottom_y)
 	_right.position = Vector2(EDGE_PADDING + button_size + BUTTON_GAP, bottom_y)
-	# Right cluster: jump on top, interact directly below so a thumb at rest
-	# sits on Enter and reaches up for jump.
+	# Right cluster, 2x2 for the thumb: jump top-right, attack left of it,
+	# interact bottom-right (rest position), dash left of interact.
 	var right_x: float = size.x - EDGE_PADDING - button_size
+	var inner_x: float = right_x - button_size - BUTTON_GAP
 	_jump.position = Vector2(right_x, stacked_y)
+	_attack.position = Vector2(inner_x, stacked_y)
 	_interact.position = Vector2(right_x, bottom_y)
+	_dash.position = Vector2(inner_x, bottom_y)

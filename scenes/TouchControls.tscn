@@ -54,6 +54,33 @@ position = Vector2(70, 70)
 color = Color(0.961, 0.722, 0.439, 0.95)
 polygon = PackedVector2Array(0, -18, -16, 12, 16, 12)
 
+[node name="AttackButton" type="TouchScreenButton" parent="."]
+texture_normal = SubResource("GradientTexture2D_glow")
+shape = SubResource("CircleShape2D_button")
+shape_visible = false
+action = &"attack"
+
+[node name="AttackStar" type="Polygon2D" parent="AttackButton"]
+position = Vector2(70, 70)
+color = Color(0.961, 0.722, 0.439, 0.95)
+polygon = PackedVector2Array(0, -18, 5, -5, 18, 0, 5, 5, 0, 18, -5, 5, -18, 0, -5, -5)
+
+[node name="DashButton" type="TouchScreenButton" parent="."]
+texture_normal = SubResource("GradientTexture2D_glow")
+shape = SubResource("CircleShape2D_button")
+shape_visible = false
+action = &"dash"
+
+[node name="DashChevrons" type="Polygon2D" parent="DashButton"]
+position = Vector2(70, 70)
+color = Color(0.961, 0.722, 0.439, 0.95)
+polygon = PackedVector2Array(-16, -14, -4, 0, -16, 14, -8, 14, 4, 0, -8, -14)
+
+[node name="DashChevron2" type="Polygon2D" parent="DashButton"]
+position = Vector2(82, 70)
+color = Color(0.961, 0.722, 0.439, 0.95)
+polygon = PackedVector2Array(-16, -14, -4, 0, -16, 14, -8, 14, 4, 0, -8, -14)
+
 [node name="InteractButton" type="TouchScreenButton" parent="."]
 texture_normal = SubResource("GradientTexture2D_glow")
 shape = SubResource("CircleShape2D_button")
