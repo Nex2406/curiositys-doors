@@ -21,7 +21,8 @@ func _ready() -> void:
 	# each platform is ONE fused texture (tools/compose_platforms.gd) —
 	# internal seams melted offline; plants ride on top as crisp accents
 	_fused("wall_ledge", Vector2(-900, 0), Vector2(240, 800), 0.10, [
-			["PlantSmall_00000.png", 380.0, -112.0, 0.24, false]])
+			["PlantSmall_00000.png", 380.0, -112.0, 0.24, false],
+			["GroupPlants_00000.png", 95.0, 205.0, 0.28, false]])
 	var wall_back := ColorRect.new()
 	wall_back.position = Vector2(-980, -540)
 	wall_back.size = Vector2(150, 1080)
@@ -29,11 +30,12 @@ func _ready() -> void:
 	wall_back.z_index = 4
 	add_child(wall_back)
 	_fused("small_a", Vector2(-140, 40), Vector2(180, 150), 0.10, [])
-	_fused("medium_a", Vector2(350, 180), Vector2(240, 170), 0.10, [
+	_fused("medium_a", Vector2(350, 180), Vector2(250, 170), 0.10, [
 			["Grass2_00000.png", 96.0, -60.0, 0.22, false]])
-	_fused("small_b", Vector2(540, -150), Vector2(150, 150), 0.10, [])
-	_fused("medium_b", Vector2(60, 380), Vector2(240, 180), 0.10, [])
-	_fused("large_b", Vector2(830, 300), Vector2(230, 220), 0.10, [
+	_fused("small_b", Vector2(540, -150), Vector2(170, 150), 0.10, [])
+	_fused("medium_b", Vector2(60, 380), Vector2(240, 190), 0.10, [
+			["Grass2_00000.png", -34.0, -66.0, 0.18, true]])
+	_fused("large_b", Vector2(830, 300), Vector2(250, 220), 0.10, [
 			["Grass2_00000.png", 84.0, -108.0, 0.2, true]])
 	_cam = Camera2D.new()
 	_cam.position = Vector2.ZERO

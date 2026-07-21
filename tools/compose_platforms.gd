@@ -15,27 +15,43 @@ var _cache := {}
 
 func _init() -> void:
 	_compose("wall_ledge", Vector2i(800, 1600), Vector2(240, 800), _wall_pieces())
+	# SMALL A "capstone step": stepped top-right corner, twin caps, two drips
 	_compose("small_a", Vector2i(360, 300), Vector2(180, 150), [
 		["combo_04.png", 6.0, -58.0, 0.16, false, 0.95],
+		["combo_09.png", 52.0, -46.0, 0.10, false, 0.80],
+		["plat_02.png", 58.0, -38.0, 0.20, false, 0.48],
 		["plat_02.png", 0.0, 0.0, 0.50, false, 0.42],
-		["rock_14.png", 34.0, 48.0, 0.14, false, 0.13]])
-	_compose("small_b", Vector2i(300, 300), Vector2(150, 150), [
-		["bigrock_08.png", -8.0, -44.0, 0.13, true, 0.95],
-		["plat_05.png", 0.0, 0.0, 0.34, false, 0.34]])
-	_compose("medium_a", Vector2i(480, 340), Vector2(240, 170), [
+		["rock_14.png", 34.0, 48.0, 0.14, false, 0.13],
+		["rock_31.png", -30.0, 52.0, 0.10, false, 0.13]])
+	# SMALL B "hook": short log with an unsupported lip, drip at the tip
+	_compose("small_b", Vector2i(340, 300), Vector2(170, 150), [
+		["bigrock_08.png", -30.0, -50.0, 0.13, true, 0.95],
+		["plat_08.png", 0.0, -20.0, 0.55, false, 0.42],
+		["plat_02.png", -45.0, 28.0, 0.35, false, 0.30],
+		["rock_14.png", 85.0, 18.0, 0.16, false, 0.13]])
+	# MEDIUM A "terrace": second lower log step on the right
+	_compose("medium_a", Vector2i(500, 340), Vector2(250, 170), [
 		["combo_05.png", -52.0, -54.0, 0.20, false, 0.95],
 		["plat_02.png", 12.0, 30.0, 0.55, false, 0.30],
 		["plat_08.png", 0.0, -34.0, 0.75, false, 0.42],
+		["plat_08.png", 152.0, 14.0, 0.50, false, 0.36],
 		["rock_13.png", 66.0, 74.0, 0.17, false, 0.13]])
-	_compose("medium_b", Vector2i(480, 360), Vector2(240, 180), [
+	# MEDIUM B "twin step": clear stair of two blocks, cap on each level
+	_compose("medium_b", Vector2i(480, 380), Vector2(240, 190), [
 		["combo_07.png", -14.0, -62.0, 0.20, true, 0.95],
-		["plat_02.png", 84.0, 44.0, 0.44, true, 0.30],
+		["combo_09.png", 92.0, 8.0, 0.11, false, 0.85],
+		["plat_02.png", 98.0, 62.0, 0.44, true, 0.30],
 		["plat_02.png", -40.0, 0.0, 0.62, false, 0.42],
+		["combo_09.png", 24.0, 16.0, 0.12, false, 0.38],
 		["rock_14.png", -70.0, 56.0, 0.15, false, 0.13]])
-	_compose("large_b", Vector2i(460, 440), Vector2(230, 220), [
+	# LARGE B "column isle": spike cluster hugging the left flank, twin caps
+	_compose("large_b", Vector2i(500, 440), Vector2(250, 220), [
 		["combo_04.png", -30.0, -104.0, 0.22, true, 0.95],
+		["combo_09.png", 34.0, -118.0, 0.12, false, 0.85],
 		["floor_08.png", 0.0, 44.0, 0.80, false, 0.30],
+		["combo_13.png", -142.0, 36.0, 0.28, false, 0.30],
 		["plat_08.png", 0.0, -76.0, 0.80, false, 0.42],
+		["combo_08.png", 14.0, 148.0, 0.28, false, 0.24],
 		["rock_13.png", -88.0, -18.0, 0.18, false, 0.13]])
 	quit()
 
@@ -58,6 +74,9 @@ func _wall_pieces() -> Array:
 	pieces.append(["plat_08.png", 195.0, -85.0, 1.0, false, 0.42])
 	pieces.append(["rock_20.png", 105.0, 20.0, 0.42, false, 0.13])
 	pieces.append(["rock_14.png", 120.0, 320.0, 0.16, false, 0.13])
+	# upper small shelf higher on the wall + its cap stone
+	pieces.append(["combo_09.png", 62.0, -388.0, 0.12, false, 0.85])
+	pieces.append(["plat_02.png", 66.0, -330.0, 0.45, true, 0.38])
 	return pieces
 
 
