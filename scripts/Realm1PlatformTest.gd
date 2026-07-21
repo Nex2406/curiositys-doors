@@ -36,6 +36,7 @@ func _ready() -> void:
 			["Grass2_00000.png", -34.0, -66.0, 0.18, true]])
 	_fused("large_b", Vector2(830, 300), Vector2(250, 220), 0.10, [
 			["Grass2_00000.png", 84.0, -108.0, 0.2, true]])
+	_ground()
 	_cam = Camera2D.new()
 	_cam.position = Vector2.ZERO
 	add_child(_cam)
@@ -130,6 +131,77 @@ func _plant(parent: Node2D, key: String, pos: Vector2, sc: float,
 	an.play("default")
 	an.frame = randi() % int(spec[1])
 	parent.add_child(an)
+
+
+## the FLOOR (cave_ref_04's bottom grammar): a solid near-black ground
+## band, knobbly rock lip, washed mounds sitting ON it, dark piles, sparse
+## black spikes, and the plants growing FROM the line — spike forest rises
+## behind it
+func _ground() -> void:
+	var g := _assembly(Vector2.ZERO)
+	g.z_index = 6
+	var base := ColorRect.new()
+	base.position = Vector2(-2600, 478)
+	base.size = Vector2(5200, 260)
+	base.color = Color(0.028, 0.026, 0.022)
+	g.add_child(base)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 42
+	# knobbly lip: small dark rocks shoulder to shoulder along the line
+	var x := -2600.0
+	while x < 2600.0:
+		var piece: String = ["combo_09.png", "combo_04.png", "combo_05.png",
+				"combo_11.png"][rng.randi() % 4]
+		var sc := rng.randf_range(0.10, 0.20)
+		var tex := _tex(CUT, piece)
+		_p(g, piece, Vector2(x, 488.0 - tex.get_height() * sc * 0.30), sc,
+				Color(0.085, 0.078, 0.070), 1, rng.randf() < 0.5)
+		x += rng.randf_range(90.0, 170.0)
+	# washed pale mounds sitting in the ground mist
+	for m: Array in [[-1900.0, 0.30], [-1150.0, 0.26], [-420.0, 0.34],
+			[300.0, 0.28], [1050.0, 0.36], [1800.0, 0.27], [2400.0, 0.31]]:
+		var piece2: String = ["combo_07.png", "combo_10.png", "combo_11.png"][
+				int(absf(m[0])) % 3]
+		var tex2 := _tex(CUT, piece2)
+		var s := Sprite2D.new()
+		s.texture = tex2
+		s.position = Vector2(m[0], 470.0 - tex2.get_height() * (m[1] as float) * 0.34)
+		s.scale = Vector2(m[1], m[1])
+		s.material = Realm1Bg.mass_mat(0.85, 0.5, Vector3(1.08, 0.95, 0.82))
+		s.z_index = 0
+		g.add_child(s)
+	# dark rock piles breaking the lip
+	for d: Array in [[-1500.0, 0.42], [-700.0, 0.36], [120.0, 0.45],
+			[820.0, 0.38], [1500.0, 0.44], [2200.0, 0.35]]:
+		var piece3: String = ["combo_08.png", "combo_10.png"][int(absf(d[0])) % 2]
+		var tex3 := _tex(CUT, piece3)
+		_p(g, piece3, Vector2(d[0], 486.0 - tex3.get_height() * (d[1] as float) * 0.32),
+				d[1], Color(0.055, 0.050, 0.045), 2, int(d[0]) % 2 == 0)
+	# sparse black floor spikes
+	for sp: Array in [[-2100.0, 0.34], [-980.0, 0.28], [-80.0, 0.40],
+			[620.0, 0.26], [1300.0, 0.36], [2050.0, 0.30]]:
+		var piece4: String = ["rock_29.png", "rock_31.png", "rock_33.png",
+				"rock_37.png"][int(absf(sp[0])) % 4]
+		var tex4 := _tex(CUT, piece4)
+		_p(g, piece4, Vector2(sp[0], 492.0 - tex4.get_height() * (sp[1] as float) * 0.42),
+				sp[1], Color(0.04, 0.037, 0.033), 3)
+	# plants grow FROM the line — curls at last in their rightful home
+	for pl: Array in [["PlantSmall_00000.png", -1320.0, 0.26, false],
+			["Grass2_00000.png", -550.0, 0.24, false],
+			["PlantSmall_00000.png", 480.0, 0.22, true],
+			["GroupPlants_00000.png", 960.0, 0.30, false],
+			["Grass2_00000.png", 1680.0, 0.22, true],
+			["PlantSmall_00000.png", 2350.0, 0.25, false]]:
+		_plant(g, pl[0], Vector2(pl[1], 452.0), pl[2], pl[3])
+	# the ref's one lit tuft — a single green-glowing grass by the light
+	var lit := AnimatedSprite2D.new()
+	lit.sprite_frames = _frames_cache["Grass2_00000.png"]
+	lit.position = Vector2(-680, 452)
+	lit.scale = Vector2(0.26, 0.26)
+	lit.modulate = Color(0.30, 0.52, 0.16)
+	lit.z_index = 4
+	lit.play("default")
+	g.add_child(lit)
 
 
 func _assembly(pos: Vector2) -> Node2D:
