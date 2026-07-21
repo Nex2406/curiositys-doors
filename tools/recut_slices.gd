@@ -20,6 +20,10 @@ const PIECES: Array[String] = [
 	"bigrock_08.png",
 	"rock_13.png", "rock_14.png", "rock_20.png", "rock_21.png", "rock_22.png",
 	"rock_29.png", "rock_31.png", "rock_33.png", "rock_35.png", "rock_37.png",
+	# platform assembly pieces
+	"plat_00.png", "plat_01.png", "plat_02.png", "plat_03.png", "plat_04.png",
+	"plat_05.png", "plat_06.png", "plat_07.png", "plat_08.png", "plat_09.png",
+	"plat_10.png", "floor_07.png", "floor_08.png", "bigrock_00.png",
 ]
 const STROKE_LUM := 0.085   # below this = a drawn contour stroke
 const ERODE_CUT := 0.72     # mask-blur threshold; higher shaves deeper
