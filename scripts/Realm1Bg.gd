@@ -39,6 +39,8 @@ static func build(host: Node2D) -> void:
 	_strip(pb, cache, 0.85, "band_near.png", 0.06, 0.25, Vector3(0.95, 0.85, 0.80))
 	_mist(pb, noise, 0.028, 0.07, 0.8)
 	_motes(pb)
+	_glow_pulse(host, pb)
+	_drips(pb)
 
 
 static func mass_mat(lift: float, detail: float,
@@ -153,6 +155,89 @@ static func _motes(pb: ParallaxBackground) -> void:
 	m.color_ramp = ramp_tex
 	p.process_material = m
 	pl.add_child(p)
+
+
+## the glow pocket itself breathes — a soft additive pulse over the core
+static func _glow_pulse(host: Node2D, pb: ParallaxBackground) -> void:
+	var pl := ParallaxLayer.new()
+	pl.motion_scale = Vector2.ZERO
+	pb.add_child(pl)
+	var s := Sprite2D.new()
+	s.texture = _glow_tex()
+	s.position = Vector2(-576, -238)
+	s.scale = Vector2(16, 13)
+	s.modulate = Color(0.75, 0.75, 0.45, 0.05)
+	var add_mat := CanvasItemMaterial.new()
+	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	s.material = add_mat
+	pl.add_child(s)
+	var tw := host.create_tween().set_loops()
+	tw.tween_property(s, "modulate:a", 0.10, 4.2) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(s, "modulate:a", 0.025, 3.8) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+## occasional glinting drips falling from the lit stretch of ceiling
+static func _drips(pb: ParallaxBackground) -> void:
+	var pl := ParallaxLayer.new()
+	pl.motion_scale = Vector2.ZERO
+	pb.add_child(pl)
+	var p := GPUParticles2D.new()
+	p.amount = 5
+	p.lifetime = 1.5
+	p.preprocess = 3.0
+	p.texture = _glow_tex()
+	var add_mat := CanvasItemMaterial.new()
+	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	p.material = add_mat
+	var m := ParticleProcessMaterial.new()
+	m.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	m.emission_box_extents = Vector3(550, 8, 1)
+	m.gravity = Vector3(0, 900, 0)
+	m.initial_velocity_min = 0.0
+	m.initial_velocity_max = 0.0
+	m.scale_min = 0.05
+	m.scale_max = 0.09
+	m.color = Color(0.85, 0.9, 0.6, 1.0)
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.15, 0.85, 1.0])
+	ramp.colors = PackedColorArray([Color(1, 1, 1, 0.0), Color(1, 1, 1, 0.55),
+			Color(1, 1, 1, 0.45), Color(1, 1, 1, 0.0)])
+	var ramp_tex := GradientTexture1D.new()
+	ramp_tex.gradient = ramp
+	m.color_ramp = ramp_tex
+	p.process_material = m
+	p.position = Vector2(-250, -430)
+	pl.add_child(p)
+	# hero motes: a few bigger, slower, brighter drifters in the light pocket
+	var hero := GPUParticles2D.new()
+	hero.amount = 8
+	hero.lifetime = 20.0
+	hero.preprocess = 20.0
+	hero.texture = _glow_tex()
+	hero.material = add_mat
+	var hm := ParticleProcessMaterial.new()
+	hm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	hm.emission_box_extents = Vector3(450, 300, 1)
+	hm.gravity = Vector3.ZERO
+	hm.initial_velocity_min = 2.0
+	hm.initial_velocity_max = 8.0
+	hm.spread = 180.0
+	hm.direction = Vector3(0.7, -0.3, 0)
+	hm.scale_min = 0.40
+	hm.scale_max = 0.80
+	hm.color = Color(0.85, 0.85, 0.55, 1.0)
+	var hramp := Gradient.new()
+	hramp.offsets = PackedFloat32Array([0.0, 0.25, 0.75, 1.0])
+	hramp.colors = PackedColorArray([Color(1, 1, 1, 0.0), Color(1, 1, 1, 0.5),
+			Color(1, 1, 1, 0.5), Color(1, 1, 1, 0.0)])
+	var hramp_tex := GradientTexture1D.new()
+	hramp_tex.gradient = hramp
+	hm.color_ramp = hramp_tex
+	hero.process_material = hm
+	hero.position = Vector2(-450, -150)
+	pl.add_child(hero)
 
 
 static func _noise() -> NoiseTexture2D:
