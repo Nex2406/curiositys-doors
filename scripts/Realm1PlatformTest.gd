@@ -21,7 +21,6 @@ func _ready() -> void:
 	# each platform is ONE fused texture (tools/compose_platforms.gd) —
 	# internal seams melted offline; plants ride on top as crisp accents
 	_fused("wall_ledge", Vector2(-900, 0), Vector2(240, 800), 0.10, [
-			["PlantSmall_00000.png", 380.0, -112.0, 0.24, false],
 			["GroupPlants_00000.png", 95.0, 205.0, 0.28, false]])
 	var wall_back := ColorRect.new()
 	wall_back.position = Vector2(-980, -540)

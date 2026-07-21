@@ -10,9 +10,14 @@ const CUT := "res://assets/realms/realm1_cut/"
 const SOFT := "res://assets/realms/realm1_soft/"
 const SPAN := 5200.0
 
+## every fog-driven material registers here so the wandering light can
+## move them all in lockstep (backdrop, bands, platforms)
+static var fog_mats: Array = []
+
 
 static func build(host: Node2D) -> void:
 	var cache := {}
+	fog_mats.clear()
 	RenderingServer.set_default_clear_color(Color(0.020, 0.024, 0.016))
 	# fog spill backdrop
 	var fog_layer := CanvasLayer.new()
@@ -25,6 +30,7 @@ static func build(host: Node2D) -> void:
 	fmat.shader = load("res://shaders/cave_fog_spill.gdshader")
 	fog.material = fmat
 	fog_layer.add_child(fog)
+	fog_mats.append(fmat)
 	# band strips
 	var pb := ParallaxBackground.new()
 	pb.layer = -50
@@ -38,9 +44,37 @@ static func build(host: Node2D) -> void:
 	_mist(pb, noise, -0.034, 0.10, 0.45)
 	_strip(pb, cache, 0.85, "band_near.png", 0.06, 0.25, Vector3(0.95, 0.85, 0.80))
 	_mist(pb, noise, 0.048, 0.07, 0.8)
+	# floor fog river: dense low mist rolling along the bottom
+	var river := _mist(pb, noise, 0.06, 0.17, 1.3)
+	river.material.set_shader_parameter("band_zone", Vector4(0.55, 0.82, 1.2, 1.0))
 	_motes(pb)
 	_glow_pulse(host, pb)
 	_drips(pb)
+	# THE CAVE BREATHES: each band heaves vertically on its own long period,
+	# and the light itself wanders so shadows crawl across the rock
+	var bands := pb.get_children().filter(func(c: Node) -> bool:
+			return c is ParallaxLayer and c.motion_scale.x > 0.0)
+	var amps := [3.0, 5.0, 7.0, 9.0]
+	var periods := [11.0, 8.5, 7.0, 5.8]
+	for i in mini(bands.size(), 4):
+		var pl: ParallaxLayer = bands[i]
+		var tw := host.create_tween().set_loops()
+		tw.tween_property(pl, "position:y", -amps[i], periods[i]) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(pl, "position:y", amps[i], periods[i]) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var wander := host.create_tween().set_loops()
+	wander.tween_method(_set_fog_center, Vector2(0.20, 0.28),
+			Vector2(0.245, 0.315), 14.0) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	wander.tween_method(_set_fog_center, Vector2(0.245, 0.315),
+			Vector2(0.20, 0.28), 12.0) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+static func _set_fog_center(v: Vector2) -> void:
+	for m: ShaderMaterial in fog_mats:
+		m.set_shader_parameter("center", v)
 
 
 static func mass_mat(lift: float, detail: float,
@@ -50,6 +84,7 @@ static func mass_mat(lift: float, detail: float,
 	mat.set_shader_parameter("lift", lift)
 	mat.set_shader_parameter("detail", detail)
 	mat.set_shader_parameter("brighten", brighten)
+	fog_mats.append(mat)
 	return mat
 
 
@@ -253,7 +288,7 @@ static func _noise() -> NoiseTexture2D:
 
 
 static func _mist(pb: ParallaxBackground, noise: NoiseTexture2D, speed: float,
-		strength: float, y_shift: float) -> void:
+		strength: float, y_shift: float) -> ColorRect:
 	var pl := ParallaxLayer.new()
 	pl.motion_scale = Vector2.ZERO
 	pb.add_child(pl)
@@ -269,3 +304,4 @@ static func _mist(pb: ParallaxBackground, noise: NoiseTexture2D, speed: float,
 	mat.set_shader_parameter("y_shift", y_shift)
 	r.material = mat
 	pl.add_child(r)
+	return r
