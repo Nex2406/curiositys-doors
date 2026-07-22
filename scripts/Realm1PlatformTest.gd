@@ -13,7 +13,7 @@ const PLANTS := "res://assets/realms/realm1_plants/"
 const CAM_SPEED := 700.0
 ## level bounds (step 6b): the camera may never outrun the built world
 const CAM_MIN := 0.0
-const CAM_MAX := 1640.0
+const CAM_MAX := 5000.0
 
 var _cache := {}
 var _cam: Camera2D
@@ -53,17 +53,32 @@ func _ready() -> void:
 			["Grass2_00000.png", -34.0, -66.0, 0.18, true]])
 	_fused("large_b", Vector2(830, 300), Vector2(250, 220), 0.10, [
 			["Grass2_00000.png", 84.0, -108.0, 0.2, true]])
+	# THE ROUTE (Advika: longer level, more platforms, some moving) —
+	# old Realm 1 traversal in the new skin
+	_fused("small_a", Vector2(1250, 120), Vector2(180, 150), 0.10, [], "updown")
+	_fused("medium_b", Vector2(1650, 260), Vector2(240, 190), 0.10, [], "static")
+	_fused("small_b", Vector2(2100, 40), Vector2(170, 150), 0.10, [], "side")
+	_fused("medium_a", Vector2(2550, 180), Vector2(250, 170), 0.10, [
+			["Grass2_00000.png", 96.0, -60.0, 0.22, false]])
+	_fused("small_a", Vector2(3000, -60), Vector2(180, 150), 0.10, [], "updown")
+	_fused("large_b", Vector2(3350, 250), Vector2(250, 220), 0.10, [
+			["Grass2_00000.png", 84.0, -108.0, 0.2, true]])
+	_fused("medium_b", Vector2(3800, 90), Vector2(240, 190), 0.10, [], "static")
+	_fused("small_b", Vector2(4200, -120), Vector2(170, 150), 0.10, [], "side")
+	_fused("medium_a", Vector2(4650, 200), Vector2(250, 170), 0.10, [])
+	_fused("small_a", Vector2(5100, 40), Vector2(180, 150), 0.10, [], "updown")
+	_fused("large_b", Vector2(5450, 260), Vector2(250, 220), 0.10, [])
 	# right level-end wall: the left wall's mirror, world-space (step 6b)
 	var wr := Sprite2D.new()
 	wr.texture = _tex(SOFT, "plat_wall_ledge.png")
 	wr.centered = false
 	wr.scale = Vector2(-1, 1)
-	wr.position = Vector2(2620, -800)
+	wr.position = Vector2(5980, -800)
 	wr.material = _plat_ramp
 	wr.z_index = 5
 	add_child(wr)
 	var wall_back_r := ColorRect.new()
-	wall_back_r.position = Vector2(2620, -540)
+	wall_back_r.position = Vector2(5980, -540)
 	wall_back_r.size = Vector2(150, 1080)
 	wall_back_r.color = Color(0.02, 0.019, 0.017)
 	wall_back_r.z_index = 4
@@ -124,7 +139,7 @@ func _p(parent: Node2D, tex_name: String, pos: Vector2, sc: float,
 ## (detail 1.0 — shading is baked into the texture), SWAYING plants on top,
 ## and a slow bob (floating platforms breathe; the wall ledge stays rooted)
 func _fused(pname: String, pos: Vector2, origin: Vector2, lift: float,
-		plants: Array) -> void:
+		plants: Array, motion: String = "bob") -> void:
 	var a := _assembly(pos)
 	if _plat_ramp == null:
 		_plat_ramp = ShaderMaterial.new()
@@ -138,7 +153,25 @@ func _fused(pname: String, pos: Vector2, origin: Vector2, lift: float,
 	_platform_treatment(a, pname)
 	for p: Array in plants:
 		_plant(a, p[0], Vector2(p[1], p[2]), p[3], p[4])
-	if pname != "wall_ledge":
+	if pname == "wall_ledge" or motion == "static":
+		return
+	if motion == "updown":
+		var ampv := randf_range(90.0, 140.0)
+		var durv := randf_range(3.0, 4.2)
+		var twv := create_tween().set_loops()
+		twv.tween_property(a, "position:y", pos.y - ampv, durv) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		twv.tween_property(a, "position:y", pos.y + ampv, durv) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	elif motion == "side":
+		var amph := randf_range(130.0, 180.0)
+		var durh := randf_range(3.4, 4.6)
+		var twh := create_tween().set_loops()
+		twh.tween_property(a, "position:x", pos.x - amph, durh) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		twh.tween_property(a, "position:x", pos.x + amph, durh) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	else:
 		var amp := randf_range(3.0, 5.5)
 		var dur := randf_range(3.2, 4.8)
 		var tw := create_tween().set_loops()
@@ -229,7 +262,7 @@ func _ground() -> void:
 	g.z_index = 6
 	var base := ColorRect.new()
 	base.position = Vector2(-2600, 478)
-	base.size = Vector2(5200, 260)
+	base.size = Vector2(8800, 260)
 	base.color = Color(0.016, 0.013, 0.011)
 	g.add_child(base)
 	var rng := RandomNumberGenerator.new()
@@ -238,7 +271,7 @@ func _ground() -> void:
 	# line, tops catching the fog light faintly
 	var x := -2600.0
 	var i := 0
-	while x < 2600.0:
+	while x < 6200.0:
 		var piece: String = ["floor_22.png", "floor_23.png"][i % 2]
 		var sc := rng.randf_range(0.50, 0.58)
 		var tex := _tex(CUT, piece)
@@ -254,7 +287,8 @@ func _ground() -> void:
 		i += 1
 	# washed pale mounds — occasional clusters, the line stays mostly clean
 	for m: Array in [[-1900.0, 0.30], [-420.0, 0.34], [1050.0, 0.36],
-			[2400.0, 0.28]]:
+			[2400.0, 0.28], [3200.0, 0.33], [4100.0, 0.29], [5000.0, 0.35],
+			[5900.0, 0.30]]:
 		var piece2: String = ["combo_07.png", "combo_10.png", "combo_11.png"][
 				int(absf(m[0])) % 3]
 		var tex2 := _tex(CUT, piece2)
@@ -266,13 +300,15 @@ func _ground() -> void:
 		s.z_index = 0
 		g.add_child(s)
 	# dark rock piles breaking the lip — sparse
-	for d: Array in [[-1500.0, 0.42], [120.0, 0.45], [1500.0, 0.40]]:
+	for d: Array in [[-1500.0, 0.42], [120.0, 0.45], [1500.0, 0.40],
+			[2700.0, 0.43], [3900.0, 0.39], [5100.0, 0.44]]:
 		var piece3: String = ["combo_08.png", "combo_10.png"][int(absf(d[0])) % 2]
 		var tex3 := _tex(CUT, piece3)
 		_p(g, piece3, Vector2(d[0], 486.0 - tex3.get_height() * (d[1] as float) * 0.32),
 				d[1], Color(0.055, 0.050, 0.045), 2, int(d[0]) % 2 == 0)
 	# black floor spikes — rare and small, like the ref
-	for sp: Array in [[-2100.0, 0.26], [-80.0, 0.30], [1300.0, 0.24]]:
+	for sp: Array in [[-2100.0, 0.26], [-80.0, 0.30], [1300.0, 0.24],
+			[2500.0, 0.28], [3600.0, 0.25], [4700.0, 0.29], [5800.0, 0.26]]:
 		var piece4: String = ["rock_29.png", "rock_31.png", "rock_33.png",
 				"rock_37.png"][int(absf(sp[0])) % 4]
 		var tex4 := _tex(CUT, piece4)
@@ -283,6 +319,11 @@ func _ground() -> void:
 	for pl: Array in [["PlantSmall_00000.png", -1320.0, 0.26, false],
 			["Grass2_00000.png", -550.0, 0.24, false],
 			["PlantSmall_00000.png", 480.0, 0.22, true],
+			["Grass2_00000.png", 2800.0, 0.24, false],
+			["PlantSmall_00000.png", 3500.0, 0.24, false],
+			["GroupPlants_00000.png", 4300.0, 0.28, true],
+			["Grass2_00000.png", 5000.0, 0.22, true],
+			["PlantSmall_00000.png", 5700.0, 0.25, false],
 			["GroupPlants_00000.png", 960.0, 0.30, false],
 			["Grass2_00000.png", 1680.0, 0.22, true],
 			["PlantSmall_00000.png", 2350.0, 0.25, false]]:

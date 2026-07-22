@@ -89,6 +89,30 @@ func _init() -> void:
 			var cp := img.get_pixel(cx, y)
 			line += "%d:%d " % [y, int((0.3 * cp.r + 0.59 * cp.g + 0.11 * cp.b) * 255.0)]
 		print(line)
+	# DARKFRAC=1: fraction of pixels under luma 15 (silhouette coverage),
+	# whole frame + top 25% strip + side 15% columns
+	if OS.get_environment("DARKFRAC") != "":
+		var tot := 0
+		var dk := 0
+		var top_tot := 0
+		var top_dk := 0
+		var side_tot := 0
+		var side_dk := 0
+		for y in range(0, h, 2):
+			for x in range(0, w, 2):
+				var cd := img.get_pixel(x, y)
+				var ld := (0.3 * cd.r + 0.59 * cd.g + 0.11 * cd.b) * 255.0
+				tot += 1
+				var isdk := 1 if ld < 15.0 else 0
+				dk += isdk
+				if y < int(h * 0.25):
+					top_tot += 1
+					top_dk += isdk
+				if x < int(w * 0.15) or x >= w - int(w * 0.15):
+					side_tot += 1
+					side_dk += isdk
+		print("darkfrac all %.3f top %.3f sides %.3f" % [float(dk) / tot,
+				float(top_dk) / top_tot, float(side_dk) / side_tot])
 	var step := 4
 	var sum := 0.0
 	var n := 0

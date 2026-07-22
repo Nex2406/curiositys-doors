@@ -79,6 +79,7 @@ static func _bg_near(host: Node2D, pb: ParallaxBackground) -> void:
 	var pl := ParallaxLayer.new()
 	pl.name = "bg_near"
 	pl.motion_scale = Vector2(0.68, 0.55)
+	pl.motion_mirroring = Vector2(5200, 0)
 	pb.add_child(pl)
 	var grp := Node2D.new()
 	grp.position = -Vector2(vs.x * 0.5 * 0.68, vs.y * 0.5 * 0.55)
@@ -139,7 +140,7 @@ static func _bg_near(host: Node2D, pb: ParallaxBackground) -> void:
 	# the band's own whisper of haze — this layer only
 	var fogr := ColorRect.new()
 	fogr.position = Vector2(-2600, -220)
-	fogr.size = Vector2(7120, 1520)
+	fogr.size = Vector2(5200, 1520)
 	fogr.color = Color(0.114, 0.075, 0.035, 0.07)   # #1d1309 @ 0.07, Mix
 	grp.add_child(fogr)
 
@@ -177,13 +178,13 @@ static func _frame(host: Node2D) -> void:
 	# ceiling: solid band across the top 6% (over-extended for parallax)
 	var band := ColorRect.new()
 	band.position = Vector2(-3600, -220)
-	band.size = Vector2(vs.x + 7200, 220.0 + vs.y * 0.13)  # STEP 3d: solid top, roots buried
+	band.size = Vector2(vs.x + 7200, 220.0 + vs.y * 0.045)  # STEP 6b: thin solid top
 	band.color = Color.WHITE            # layer modulate blackens
 	grp.add_child(band)
 	# STEP 3c: CHAOTIC ceiling — big flipped rock clumps with wild-size
 	# spikes jammed between and beneath. Edge-heavy, ragged, no row, no
 	# grid; centre-top third stays clearer so one arch reads through.
-	var band_b := vs.y * 0.095
+	var band_b := vs.y * 0.03
 	var clump_pool: Array[String] = ["combo_00.png", "combo_01.png",
 			"combo_03.png", "combo_04.png", "combo_05.png", "combo_06.png",
 			"combo_07.png", "combo_08.png", "combo_09.png", "combo_10.png",
@@ -196,13 +197,13 @@ static func _frame(host: Node2D) -> void:
 		var h: float
 		if i >= 12:
 			cx = vs.x * 0.5 + rng.randf_range(-vs.x * 0.10, vs.x * 0.10)
-			h = rng.randf_range(120.0, 170.0)
+			h = rng.randf_range(70.0, 100.0)
 		elif i % 2 == 0:
-			cx = rng.randf_range(-680.0, vs.x * 0.36)
-			h = rng.randf_range(180.0, 280.0)
+			cx = rng.randf_range(-740.0, vs.x * 0.40)
+			h = rng.randf_range(90.0, 150.0)
 		else:
-			cx = rng.randf_range(vs.x * 0.64, vs.x + 680.0)
-			h = rng.randf_range(180.0, 280.0)
+			cx = rng.randf_range(vs.x * 0.60, vs.x + 1900.0)
+			h = rng.randf_range(90.0, 150.0)
 		var tex := _frame_tex(cache, clump_pool[rng.randi() % clump_pool.size()])
 		var sc := h / float(tex.get_height())
 		var s := Sprite2D.new()
@@ -210,7 +211,7 @@ static func _frame(host: Node2D) -> void:
 		s.flip_v = true
 		s.flip_h = rng.randf() < 0.5
 		s.scale = Vector2(sc * rng.randf_range(0.85, 1.35), sc)
-		var cy := band_b + h * 0.5 - rng.randf_range(35.0, 90.0)
+		var cy := band_b + h * 0.5 - rng.randf_range(50.0, 85.0)
 		s.position = Vector2(cx, cy)
 		s.material = blur_mat
 		grp.add_child(s)
@@ -220,7 +221,7 @@ static func _frame(host: Node2D) -> void:
 	for i in range(13):
 		var base: Vector3 = clump_spots[rng.randi() % clump_spots.size()]
 		var mid_is_clump := rng.randf() < 0.45
-		var h2 := rng.randf_range(60.0, 160.0)
+		var h2 := rng.randf_range(40.0, 90.0)
 		var tex2: Texture2D
 		if mid_is_clump:
 			tex2 = _frame_tex(cache, clump_pool[rng.randi() % clump_pool.size()])
@@ -233,13 +234,13 @@ static func _frame(host: Node2D) -> void:
 		s2.flip_h = rng.randf() < 0.5
 		s2.scale = Vector2(sc2 * rng.randf_range(0.8, 1.3), sc2)
 		s2.position = Vector2(base.x + rng.randf_range(-160.0, 160.0),
-				band_b + h2 * 0.5 - rng.randf_range(28.0, 75.0))
+				band_b + h2 * 0.5 - rng.randf_range(42.0, 70.0))
 		s2.material = blur_mat
 		grp.add_child(s2)
 		ceiling_count += 1
 	# 14 tiny shards (25-60px) — under clump bellies and along the band
 	for i in range(14):
-		var h3 := rng.randf_range(25.0, 60.0)
+		var h3 := rng.randf_range(18.0, 40.0)
 		var tex3 := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
 		var sc3 := h3 / float(tex3.get_height())
 		var s3 := Sprite2D.new()
@@ -251,25 +252,25 @@ static func _frame(host: Node2D) -> void:
 			# STEP 3d: tight anchor — shard stays inside its parent's body
 			# (x within ~quarter of parent size, top buried in the clump)
 			var b2: Vector3 = clump_spots[rng.randi() % clump_spots.size()]
-			s3.position = Vector2(b2.x + rng.randf_range(-b2.z * 0.22, b2.z * 0.22),
-					b2.y + b2.z * rng.randf_range(0.05, 0.30) + h3 * 0.4)
+			s3.position = Vector2(b2.x + rng.randf_range(-b2.z * 0.15, b2.z * 0.15),
+					b2.y + b2.z * rng.randf_range(0.0, 0.15) + h3 * 0.4)
 		else:
-			s3.position = Vector2(rng.randf_range(-660.0, vs.x + 660.0),
-					band_b + h3 * 0.5 - rng.randf_range(18.0, 38.0))
+			s3.position = Vector2(rng.randf_range(-740.0, vs.x + 1900.0),
+					band_b + h3 * 0.5 - rng.randf_range(34.0, 48.0))
 		s3.material = blur_mat
 		grp.add_child(s3)
 		ceiling_count += 1
 	# STEP 3d: bridge clumps over the two reported holes (x ~30%, ~75%)
 	for gx: float in [0.30, 0.75]:
 		var texg := _frame_tex(cache, clump_pool[rng.randi() % clump_pool.size()])
-		var hg := rng.randf_range(140.0, 200.0)
+		var hg := rng.randf_range(70.0, 110.0)
 		var scg := hg / float(texg.get_height())
 		var sg := Sprite2D.new()
 		sg.texture = texg
 		sg.flip_v = true
 		sg.flip_h = rng.randf() < 0.5
 		sg.scale = Vector2(scg * 1.3, scg)
-		sg.position = Vector2(vs.x * gx, band_b + hg * 0.5 - rng.randf_range(40.0, 75.0))
+		sg.position = Vector2(vs.x * gx, band_b + hg * 0.5 - rng.randf_range(48.0, 72.0))
 		sg.material = blur_mat
 		grp.add_child(sg)
 		ceiling_count += 1
@@ -281,12 +282,12 @@ static func _frame(host: Node2D) -> void:
 	# bottom: 9 stalagmites on the floor line + 4 large plant silhouettes
 	for i in range(9):
 		var tex3 := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
-		var h3 := rng.randf_range(70.0, 170.0)
+		var h3 := rng.randf_range(70.0, 130.0)
 		var sc3 := h3 / float(tex3.get_height())
 		var s3 := Sprite2D.new()
 		s3.texture = tex3
 		s3.scale = Vector2(sc3 * rng.randf_range(0.8, 1.2), sc3)
-		s3.position = Vector2(-660.0 + (vs.x + 1320.0) * float(i) / 8.0
+		s3.position = Vector2(-700.0 + (vs.x + 2600.0) * float(i) / 8.0
 				+ rng.randf_range(-30.0, 30.0), vs.y * 0.5 + 478.0 - h3 * 0.35)
 		s3.material = blur_mat
 		grp.add_child(s3)
@@ -309,7 +310,7 @@ static func _frame(host: Node2D) -> void:
 		var native_h := float(sf.get_frame_texture("default", 0).get_height())
 		var sc4 := (spec[2] as float) / native_h
 		an.scale = Vector2(sc4, sc4)
-		an.position = Vector2(-300.0 + (vs.x + 600.0) * float(i) / 3.0
+		an.position = Vector2(-300.0 + (vs.x + 1800.0) * float(i) / 3.0
 				+ rng.randf_range(-60.0, 60.0),
 				vs.y * 0.5 + 495.0 - (spec[2] as float) * 0.4)
 		an.play("default")
