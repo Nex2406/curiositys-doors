@@ -27,7 +27,6 @@ const PLAT_META := {
 }
 var _plat_ramp: ShaderMaterial
 var _floor_ramp: ShaderMaterial
-var _shadow_tex: GradientTexture2D
 
 
 func _ready() -> void:
@@ -128,7 +127,7 @@ func _fused(pname: String, pos: Vector2, origin: Vector2, lift: float,
 				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
-## STEP 5: underside rocks (#040302), contact shadow, lit top rim —
+## STEP 5/5b: underside rocks (#040302) + lit top rim (shadows removed —
 ## platforms read rooted and heavy, not floating stickers
 func _platform_treatment(a: Node2D, pname: String) -> void:
 	var meta: Array = PLAT_META[pname]
@@ -158,26 +157,6 @@ func _platform_treatment(a: Node2D, pname: String) -> void:
 		r.modulate = Color("040302")
 		r.z_index = -1
 		a.add_child(r)
-	# contact shadow: soft black ellipse 8px below
-	if _shadow_tex == null:
-		var grad := Gradient.new()
-		grad.offsets = PackedFloat32Array([0.0, 0.62, 1.0])
-		grad.colors = PackedColorArray([Color(0, 0, 0, 1), Color(0, 0, 0, 0.85),
-				Color(0, 0, 0, 0)])
-		_shadow_tex = GradientTexture2D.new()
-		_shadow_tex.gradient = grad
-		_shadow_tex.fill = GradientTexture2D.FILL_RADIAL
-		_shadow_tex.fill_from = Vector2(0.5, 0.5)
-		_shadow_tex.fill_to = Vector2(0.5, 0.0)
-		_shadow_tex.width = 256
-		_shadow_tex.height = 256
-	var sh := Sprite2D.new()
-	sh.texture = _shadow_tex
-	sh.scale = Vector2(width * 0.76 / 256.0, 34.0 / 256.0)
-	sh.position = Vector2((rim_x0 + rim_x1) * 0.5, bottom + 8.0 + 17.0)
-	sh.modulate = Color(0, 0, 0, 0.59)
-	sh.z_index = -2
-	a.add_child(sh)
 	# lit top rim: 3px line inset 9px, 7px below the top edge
 	var rim := Line2D.new()
 	rim.points = PackedVector2Array([Vector2(rim_x0, rim_y), Vector2(rim_x1, rim_y)])
