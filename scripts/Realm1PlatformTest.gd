@@ -15,6 +15,20 @@ const CAM_SPEED := 700.0
 var _cache := {}
 var _cam: Camera2D
 
+## STEP 5: per-platform geometry for rim / underside rocks / shadow
+## (assembly-local): rim y (top edge), rim x0..x1, bottom y, width
+const PLAT_META := {
+	"wall_ledge": [-145.0, 20.0, 390.0, 160.0, 400.0],
+	"small_a": [-50.0, -95.0, 95.0, 75.0, 240.0],
+	"small_b": [-42.0, -100.0, 85.0, 55.0, 240.0],
+	"medium_a": [-72.0, -140.0, 140.0, 95.0, 340.0],
+	"medium_b": [-64.0, -160.0, 80.0, 110.0, 300.0],
+	"large_b": [-117.0, -150.0, 150.0, 170.0, 340.0],
+}
+var _plat_ramp: ShaderMaterial
+var _floor_ramp: ShaderMaterial
+var _shadow_tex: GradientTexture2D
+
 
 func _ready() -> void:
 	Realm1Bg.build(self)
@@ -92,12 +106,16 @@ func _p(parent: Node2D, tex_name: String, pos: Vector2, sc: float,
 func _fused(pname: String, pos: Vector2, origin: Vector2, lift: float,
 		plants: Array) -> void:
 	var a := _assembly(pos)
+	if _plat_ramp == null:
+		_plat_ramp = ShaderMaterial.new()
+		_plat_ramp.shader = load("res://shaders/plat_ramp.gdshader")
 	var s := Sprite2D.new()
 	s.texture = _tex(SOFT, "plat_%s.png" % pname)
 	s.centered = false
 	s.position = -origin
-	s.material = Realm1Bg.mass_mat(lift, 1.0, Vector3(1.30, 1.12, 1.0))
+	s.material = _plat_ramp
 	a.add_child(s)
+	_platform_treatment(a, pname)
 	for p: Array in plants:
 		_plant(a, p[0], Vector2(p[1], p[2]), p[3], p[4])
 	if pname != "wall_ledge":
@@ -108,6 +126,66 @@ func _fused(pname: String, pos: Vector2, origin: Vector2, lift: float,
 				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		tw.tween_property(a, "position:y", pos.y + amp, dur) \
 				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+## STEP 5: underside rocks (#040302), contact shadow, lit top rim —
+## platforms read rooted and heavy, not floating stickers
+func _platform_treatment(a: Node2D, pname: String) -> void:
+	var meta: Array = PLAT_META[pname]
+	var rim_y: float = meta[0] + 7.0
+	var rim_x0: float = meta[1] + 9.0
+	var rim_x1: float = meta[2] - 9.0
+	var bottom: float = meta[3]
+	var width: float = meta[4]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(pname)
+	# 2-3 rocks tucked beneath
+	var pool: Array[String] = ["rock_00.png", "rock_03.png", "rock_05.png",
+			"rock_08.png", "rock_10.png"]
+	var n := 2 + (int(hash(pname)) & 1)
+	for i in range(n):
+		var piece: String = pool[rng.randi() % pool.size()]
+		var tex := _tex(CUT, piece)
+		var w := rng.randf_range(46.0, 80.0)
+		var sc := w / float(tex.get_width())
+		var r := Sprite2D.new()
+		r.texture = tex
+		r.scale = Vector2(sc, sc)
+		r.flip_h = rng.randf() < 0.5
+		r.position = Vector2(lerpf(rim_x0 * 0.7, rim_x1 * 0.7,
+				float(i) / maxf(float(n - 1), 1.0)) + rng.randf_range(-14.0, 14.0),
+				bottom - float(tex.get_height()) * sc * 0.18)
+		r.modulate = Color("040302")
+		r.z_index = -1
+		a.add_child(r)
+	# contact shadow: soft black ellipse 8px below
+	if _shadow_tex == null:
+		var grad := Gradient.new()
+		grad.offsets = PackedFloat32Array([0.0, 0.62, 1.0])
+		grad.colors = PackedColorArray([Color(0, 0, 0, 1), Color(0, 0, 0, 0.85),
+				Color(0, 0, 0, 0)])
+		_shadow_tex = GradientTexture2D.new()
+		_shadow_tex.gradient = grad
+		_shadow_tex.fill = GradientTexture2D.FILL_RADIAL
+		_shadow_tex.fill_from = Vector2(0.5, 0.5)
+		_shadow_tex.fill_to = Vector2(0.5, 0.0)
+		_shadow_tex.width = 256
+		_shadow_tex.height = 256
+	var sh := Sprite2D.new()
+	sh.texture = _shadow_tex
+	sh.scale = Vector2(width * 0.76 / 256.0, 34.0 / 256.0)
+	sh.position = Vector2((rim_x0 + rim_x1) * 0.5, bottom + 8.0 + 17.0)
+	sh.modulate = Color(0, 0, 0, 0.59)
+	sh.z_index = -2
+	a.add_child(sh)
+	# lit top rim: 3px line inset 9px, 7px below the top edge
+	var rim := Line2D.new()
+	rim.points = PackedVector2Array([Vector2(rim_x0, rim_y), Vector2(rim_x1, rim_y)])
+	rim.width = 3.0
+	rim.default_color = Color(0.180, 0.149, 0.090, 0.73)
+	rim.antialiased = true
+	rim.z_index = 2
+	a.add_child(rim)
 
 
 ## a plant playing its pack animation — the wind lives in the frames
@@ -165,7 +243,7 @@ func _ground() -> void:
 		s0.position = Vector2(x, 486.0 - tex.get_height() * sc * 0.30
 				+ rng.randf_range(-4.0, 4.0))
 		s0.scale = Vector2(-sc if rng.randf() < 0.5 else sc, sc)
-		s0.material = Realm1Bg.mass_mat(0.40, 0.60, Vector3(1.05, 0.92, 0.80))
+		s0.material = _floor_mat()
 		s0.z_index = 1
 		g.add_child(s0)
 		x += tex.get_width() * sc * 0.80
@@ -180,7 +258,7 @@ func _ground() -> void:
 		s.texture = tex2
 		s.position = Vector2(m[0], 470.0 - tex2.get_height() * (m[1] as float) * 0.34)
 		s.scale = Vector2(m[1], m[1])
-		s.material = Realm1Bg.mass_mat(0.85, 0.5, Vector3(1.08, 0.95, 0.82))
+		s.material = _floor_mat()
 		s.z_index = 0
 		g.add_child(s)
 	# dark rock piles breaking the lip — sparse
@@ -196,6 +274,7 @@ func _ground() -> void:
 		var tex4 := _tex(CUT, piece4)
 		_p(g, piece4, Vector2(sp[0], 492.0 - tex4.get_height() * (sp[1] as float) * 0.42),
 				sp[1], Color(0.04, 0.037, 0.033), 3)
+	# STEP 5: floor is the hole's bottom edge — near-black silhouette
 	# plants grow FROM the line — curls at last in their rightful home
 	for pl: Array in [["PlantSmall_00000.png", -1320.0, 0.26, false],
 			["Grass2_00000.png", -550.0, 0.24, false],
@@ -204,15 +283,27 @@ func _ground() -> void:
 			["Grass2_00000.png", 1680.0, 0.22, true],
 			["PlantSmall_00000.png", 2350.0, 0.25, false]]:
 		_plant(g, pl[0], Vector2(pl[1], 452.0), pl[2], pl[3])
+	for c in g.get_children():
+		if c is AnimatedSprite2D:
+			c.modulate = Color("241c10")
 	# the ref's one lit tuft — a single green-glowing grass by the light
 	var lit := AnimatedSprite2D.new()
 	lit.sprite_frames = _frames_cache["Grass2_00000.png"]
 	lit.position = Vector2(-680, 452)
 	lit.scale = Vector2(0.26, 0.26)
-	lit.modulate = Color(0.30, 0.52, 0.16)
+	lit.modulate = Color("241c10")
 	lit.z_index = 4
 	lit.play("default")
 	g.add_child(lit)
+
+
+func _floor_mat() -> ShaderMaterial:
+	if _floor_ramp == null:
+		_floor_ramp = ShaderMaterial.new()
+		_floor_ramp.shader = load("res://shaders/plat_ramp.gdshader")
+		_floor_ramp.set_shader_parameter("cap", Color(0.051, 0.035, 0.024))
+		_floor_ramp.set_shader_parameter("gamma_v", 1.4)
+	return _floor_ramp
 
 
 func _assembly(pos: Vector2) -> Node2D:
