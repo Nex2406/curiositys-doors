@@ -26,6 +26,7 @@ const PLAT_META := {
 	"large_b": [-117.0, -150.0, 150.0, 170.0, 340.0],
 }
 var _plat_ramp: ShaderMaterial
+var _rock_ramp: ShaderMaterial
 var _floor_ramp: ShaderMaterial
 
 
@@ -107,7 +108,7 @@ func _fused(pname: String, pos: Vector2, origin: Vector2, lift: float,
 	var a := _assembly(pos)
 	if _plat_ramp == null:
 		_plat_ramp = ShaderMaterial.new()
-		_plat_ramp.shader = load("res://shaders/plat_ramp.gdshader")
+		_plat_ramp.shader = load("res://shaders/plat_form.gdshader")
 	var s := Sprite2D.new()
 	s.texture = _tex(SOFT, "plat_%s.png" % pname)
 	s.centered = false
@@ -139,23 +140,34 @@ func _platform_treatment(a: Node2D, pname: String) -> void:
 	var width: float = meta[4]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(pname)
-	# 2-3 rocks tucked beneath
+	# STEP 5c: 3-4 OVERLAPPING under-rocks with a lit ramp — rubble, not
+	# hard black triangles
+	if _rock_ramp == null:
+		_rock_ramp = ShaderMaterial.new()
+		_rock_ramp.shader = load("res://shaders/plat_form.gdshader")
+		_rock_ramp.set_shader_parameter("dark_c", Color(0.063, 0.047, 0.027))
+		_rock_ramp.set_shader_parameter("cap_c", Color(0.227, 0.184, 0.122))
+		_rock_ramp.set_shader_parameter("gamma_v", 1.4)
+		_rock_ramp.set_shader_parameter("rim_strength", 0.0)
 	var pool: Array[String] = ["rock_00.png", "rock_03.png", "rock_05.png",
 			"rock_08.png", "rock_10.png"]
-	var n := 2 + (int(hash(pname)) & 1)
+	var n := 3 + (int(hash(pname)) & 1)
+	var cx := (rim_x0 + rim_x1) * 0.5
+	var span := (rim_x1 - rim_x0) * 0.30
 	for i in range(n):
 		var piece: String = pool[rng.randi() % pool.size()]
 		var tex := _tex(CUT, piece)
-		var w := rng.randf_range(46.0, 80.0)
+		var w := rng.randf_range(60.0, 95.0)
 		var sc := w / float(tex.get_width())
 		var r := Sprite2D.new()
 		r.texture = tex
 		r.scale = Vector2(sc, sc)
 		r.flip_h = rng.randf() < 0.5
-		r.position = Vector2(lerpf(rim_x0 * 0.7, rim_x1 * 0.7,
-				float(i) / maxf(float(n - 1), 1.0)) + rng.randf_range(-14.0, 14.0),
-				bottom - float(tex.get_height()) * sc * 0.18)
-		r.modulate = Color("040302")
+		r.position = Vector2(cx - span + 2.0 * span * float(i) / maxf(float(n - 1), 1.0)
+				+ rng.randf_range(-10.0, 10.0),
+				bottom - float(tex.get_height()) * sc * 0.18
+				+ rng.randf_range(-8.0, 8.0))
+		r.material = _rock_ramp
 		r.z_index = -1
 		a.add_child(r)
 
