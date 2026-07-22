@@ -11,6 +11,9 @@ const CUT := "res://assets/realms/realm1_cut/"
 const SOFT := "res://assets/realms/realm1_soft/"
 const PLANTS := "res://assets/realms/realm1_plants/"
 const CAM_SPEED := 700.0
+## level bounds (step 6b): the camera may never outrun the built world
+const CAM_MIN := 0.0
+const CAM_MAX := 1640.0
 
 var _cache := {}
 var _cam: Camera2D
@@ -50,6 +53,21 @@ func _ready() -> void:
 			["Grass2_00000.png", -34.0, -66.0, 0.18, true]])
 	_fused("large_b", Vector2(830, 300), Vector2(250, 220), 0.10, [
 			["Grass2_00000.png", 84.0, -108.0, 0.2, true]])
+	# right level-end wall: the left wall's mirror, world-space (step 6b)
+	var wr := Sprite2D.new()
+	wr.texture = _tex(SOFT, "plat_wall_ledge.png")
+	wr.centered = false
+	wr.scale = Vector2(-1, 1)
+	wr.position = Vector2(2620, -800)
+	wr.material = _plat_ramp
+	wr.z_index = 5
+	add_child(wr)
+	var wall_back_r := ColorRect.new()
+	wall_back_r.position = Vector2(2620, -540)
+	wall_back_r.size = Vector2(150, 1080)
+	wall_back_r.color = Color(0.02, 0.019, 0.017)
+	wall_back_r.z_index = 4
+	add_child(wall_back_r)
 	_ground()
 	_cam = Camera2D.new()
 	_cam.position = Vector2.ZERO
@@ -77,7 +95,9 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if _cam != null:
-		_cam.position.x += Input.get_axis("ui_left", "ui_right") * CAM_SPEED * delta
+		_cam.position.x = clampf(_cam.position.x
+				+ Input.get_axis("ui_left", "ui_right") * CAM_SPEED * delta,
+				CAM_MIN, CAM_MAX)
 
 
 func _tex(dir: String, tex_name: String) -> Texture2D:

@@ -198,10 +198,10 @@ static func _frame(host: Node2D) -> void:
 			cx = vs.x * 0.5 + rng.randf_range(-vs.x * 0.10, vs.x * 0.10)
 			h = rng.randf_range(120.0, 170.0)
 		elif i % 2 == 0:
-			cx = rng.randf_range(-60.0, vs.x * 0.36)
+			cx = rng.randf_range(-680.0, vs.x * 0.36)
 			h = rng.randf_range(180.0, 280.0)
 		else:
-			cx = rng.randf_range(vs.x * 0.64, vs.x + 60.0)
+			cx = rng.randf_range(vs.x * 0.64, vs.x + 680.0)
 			h = rng.randf_range(180.0, 280.0)
 		var tex := _frame_tex(cache, clump_pool[rng.randi() % clump_pool.size()])
 		var sc := h / float(tex.get_height())
@@ -254,7 +254,7 @@ static func _frame(host: Node2D) -> void:
 			s3.position = Vector2(b2.x + rng.randf_range(-b2.z * 0.22, b2.z * 0.22),
 					b2.y + b2.z * rng.randf_range(0.05, 0.30) + h3 * 0.4)
 		else:
-			s3.position = Vector2(rng.randf_range(-40.0, vs.x + 40.0),
+			s3.position = Vector2(rng.randf_range(-660.0, vs.x + 660.0),
 					band_b + h3 * 0.5 - rng.randf_range(18.0, 38.0))
 		s3.material = blur_mat
 		grp.add_child(s3)
@@ -276,28 +276,8 @@ static func _frame(host: Node2D) -> void:
 	print("ceiling pieces: ", ceiling_count)
 	# left + right walls: backing columns (gap-proof) + 5 blobs per side,
 	# roughly half of each hanging off-screen
-	# left wall: unchanged treatment. right wall (step 3b): denser blob
-	# column + wider backing so it is UNBROKEN top to floor at any window
-	for side: Array in [[-400.0, 135.0, -30.0, 5], [vs.x - 160.0, vs.x + 500.0, vs.x + 25.0, 7]]:
-		var back := ColorRect.new()
-		back.position = Vector2(side[0], -220)
-		back.size = Vector2((side[1] as float) - (side[0] as float), vs.y + 640.0)
-		back.color = Color.WHITE
-		grp.add_child(back)
-		var count: int = side[3]
-		for i in range(count):
-			var tex2 := _frame_tex(cache, blobs[rng.randi() % blobs.size()])
-			var w := rng.randf_range(140.0, 210.0)
-			var sc2 := w / float(tex2.get_width())
-			var s2 := Sprite2D.new()
-			s2.texture = tex2
-			s2.scale = Vector2(sc2, sc2 * rng.randf_range(0.9, 1.4))
-			s2.position = Vector2((side[2] as float) + rng.randf_range(-30.0, 30.0),
-					-40.0 + (vs.y + 140.0) * float(i) / float(count - 1)
-					+ rng.randf_range(-40.0, 40.0))
-			s2.flip_h = rng.randf() < 0.5
-			s2.material = blur_mat
-			grp.add_child(s2)
+	# WALLS moved to world-space level-end geometry (step 6b fix: at
+	# motion 1.35 they swept across mid-level as black slabs)
 	# bottom: 9 stalagmites on the floor line + 4 large plant silhouettes
 	for i in range(9):
 		var tex3 := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
@@ -306,7 +286,7 @@ static func _frame(host: Node2D) -> void:
 		var s3 := Sprite2D.new()
 		s3.texture = tex3
 		s3.scale = Vector2(sc3 * rng.randf_range(0.8, 1.2), sc3)
-		s3.position = Vector2(-60.0 + (vs.x + 120.0) * float(i) / 8.0
+		s3.position = Vector2(-660.0 + (vs.x + 1320.0) * float(i) / 8.0
 				+ rng.randf_range(-30.0, 30.0), vs.y * 0.5 + 478.0 - h3 * 0.35)
 		s3.material = blur_mat
 		grp.add_child(s3)
@@ -329,7 +309,7 @@ static func _frame(host: Node2D) -> void:
 		var native_h := float(sf.get_frame_texture("default", 0).get_height())
 		var sc4 := (spec[2] as float) / native_h
 		an.scale = Vector2(sc4, sc4)
-		an.position = Vector2(180.0 + (vs.x - 360.0) * float(i) / 3.0
+		an.position = Vector2(-300.0 + (vs.x + 600.0) * float(i) / 3.0
 				+ rng.randf_range(-60.0, 60.0),
 				vs.y * 0.5 + 495.0 - (spec[2] as float) * 0.4)
 		an.play("default")
