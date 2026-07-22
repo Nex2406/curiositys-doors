@@ -23,6 +23,18 @@ func _init() -> void:
 	print("corner BL  %.1f" % _patch(img, 0, h - 40, 40, 40))
 	print("corner BR  %.1f" % _patch(img, w - 40, h - 40, 40, 40))
 	print("centre     %.1f" % _patch(img, w / 2 - 100, h / 2 - 75, 200, 150))
+	print("centre40x50 %.1f" % _patch(img, int(w * 0.3), int(h * 0.25),
+			int(w * 0.4), int(h * 0.5)))
+	var lmax := 0.0
+	var rmax := 0.0
+	for y in range(0, h):
+		for x in range(0, 120):
+			var c1 := img.get_pixel(x, y)
+			lmax = maxf(lmax, (0.3 * c1.r + 0.59 * c1.g + 0.11 * c1.b) * 255.0)
+			var c2 := img.get_pixel(w - 120 + x, y)
+			rmax = maxf(rmax, (0.3 * c2.r + 0.59 * c2.g + 0.11 * c2.b) * 255.0)
+	print("Lcol max   %.1f" % lmax)
+	print("Rcol max   %.1f" % rmax)
 	var step := 4
 	var sum := 0.0
 	var n := 0

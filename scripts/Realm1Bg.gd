@@ -64,7 +64,123 @@ static func build(host: Node2D) -> void:
 	wander.tween_method(_set_fog_center, Vector2(0.218, 0.295),
 			Vector2(0.20, 0.28), 12.0) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_frame(host)
 	_vignette(host)
+
+
+## STEP 3/7 (Advika's spec): the silhouette FRAME — the camera looks
+## THROUGH a hole in the rock. Pure black cutout (#040302 via layer
+## modulate), 1.1px DOF blur on the whole layer, centre stays empty.
+## Left wall integrates with the scene's existing wall rock (edge blobs
+## overlap it rather than doubling a second wall).
+static func _frame(host: Node2D) -> void:
+	var pb2 := ParallaxBackground.new()
+	pb2.layer = 50
+	host.add_child(pb2)
+	var pl := ParallaxLayer.new()
+	pl.name = "fg_frame"
+	pl.motion_scale = Vector2(1.35, 1.10)
+	pl.modulate = Color("040302")
+	pb2.add_child(pl)
+	var grp := Node2D.new()
+	# ParallaxBackground shifts layer content by screen_center * motion —
+	# compensate so authored coords are true screen coords at camera (0,0)
+	grp.position = -Vector2(960.0 * 1.35, 540.0 * 1.10)
+	pl.add_child(grp)
+	var blur_mat := ShaderMaterial.new()
+	blur_mat.shader = load("res://shaders/frame_blur.gdshader")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var cache := {}
+	var spikes: Array[String] = ["rock_29.png", "rock_31.png", "rock_33.png",
+			"rock_35.png", "rock_37.png"]
+	var blobs: Array[String] = ["combo_00.png", "combo_03.png", "combo_07.png",
+			"combo_10.png", "bigrock_02.png", "bigrock_06.png", "bigrock_08.png"]
+	# ceiling: solid band across the top 6% (over-extended for parallax)
+	var band := ColorRect.new()
+	band.position = Vector2(-3600, -220)
+	band.size = Vector2(9120, 285)      # bottom edge at y 65 = 6% of 1080
+	band.color = Color.WHITE            # layer modulate blackens
+	grp.add_child(band)
+	# 22 stalactites hanging below the band (SmallRocks spikes, flipped v)
+	for i in range(22):
+		var tex := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
+		var h := rng.randf_range(35.0, 110.0)
+		var sc := h / float(tex.get_height())
+		var s := Sprite2D.new()
+		s.texture = tex
+		s.flip_v = true
+		s.scale = Vector2(sc * rng.randf_range(0.8, 1.3), sc)
+		s.position = Vector2(-80.0 + 2080.0 * float(i) / 21.0
+				+ rng.randf_range(-16.0, 16.0),
+				65.0 + h * 0.5 + rng.randf_range(-26.0, 0.0))
+		s.material = blur_mat
+		grp.add_child(s)
+	# left + right walls: backing columns (gap-proof) + 5 blobs per side,
+	# roughly half of each hanging off-screen
+	for side: Array in [[-400.0, 135.0, -30.0], [1775.0, 2320.0, 1950.0]]:
+		var back := ColorRect.new()
+		back.position = Vector2(side[0], -220)
+		back.size = Vector2(side[1] - side[0], 1720)
+		back.color = Color.WHITE
+		grp.add_child(back)
+		for i in range(5):
+			var tex2 := _frame_tex(cache, blobs[rng.randi() % blobs.size()])
+			var w := rng.randf_range(140.0, 210.0)
+			var sc2 := w / float(tex2.get_width())
+			var s2 := Sprite2D.new()
+			s2.texture = tex2
+			s2.scale = Vector2(sc2, sc2 * rng.randf_range(0.9, 1.4))
+			s2.position = Vector2((side[2] as float) + rng.randf_range(-30.0, 30.0),
+					-40.0 + 1180.0 * float(i) / 4.0 + rng.randf_range(-40.0, 40.0))
+			s2.flip_h = rng.randf() < 0.5
+			s2.material = blur_mat
+			grp.add_child(s2)
+	# bottom: 9 stalagmites on the floor line + 4 large plant silhouettes
+	for i in range(9):
+		var tex3 := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
+		var h3 := rng.randf_range(70.0, 170.0)
+		var sc3 := h3 / float(tex3.get_height())
+		var s3 := Sprite2D.new()
+		s3.texture = tex3
+		s3.scale = Vector2(sc3 * rng.randf_range(0.8, 1.2), sc3)
+		s3.position = Vector2(-60.0 + 2040.0 * float(i) / 8.0
+				+ rng.randf_range(-30.0, 30.0), 1018.0 - h3 * 0.35)
+		s3.material = blur_mat
+		grp.add_child(s3)
+	var plant_specs: Array = [
+		["grass2/Grass2_%05d.png", 30, 90.0],
+		["groupplants/GroupPlants_%05d.png", 45, 165.0],
+		["plantsmall/PlantSmall_%05d.png", 30, 120.0],
+		["grass2/Grass2_%05d.png", 30, 150.0]]
+	for i in range(4):
+		var spec: Array = plant_specs[i]
+		var sf := SpriteFrames.new()
+		sf.set_animation_loop("default", true)
+		sf.set_animation_speed("default", 15.0)
+		for f in range(spec[1]):
+			var img := Image.load_from_file(ProjectSettings.globalize_path(
+					"res://assets/realms/realm1_plants/" + (spec[0] as String) % f))
+			sf.add_frame("default", ImageTexture.create_from_image(img))
+		var an := AnimatedSprite2D.new()
+		an.sprite_frames = sf
+		var native_h := float(sf.get_frame_texture("default", 0).get_height())
+		var sc4 := (spec[2] as float) / native_h
+		an.scale = Vector2(sc4, sc4)
+		an.position = Vector2(180.0 + 1560.0 * float(i) / 3.0
+				+ rng.randf_range(-60.0, 60.0), 1035.0 - (spec[2] as float) * 0.4)
+		an.play("default")
+		an.frame = rng.randi() % int(spec[1])
+		an.material = blur_mat
+		grp.add_child(an)
+
+
+static func _frame_tex(cache: Dictionary, tex_name: String) -> Texture2D:
+	if not cache.has(tex_name):
+		var img := Image.load_from_file(
+				ProjectSettings.globalize_path(CUT + tex_name))
+		cache[tex_name] = ImageTexture.create_from_image(img)
+	return cache[tex_name]
 
 
 ## STEP 2/7 (Advika's spec): the vignette — hard elliptical falloff,
