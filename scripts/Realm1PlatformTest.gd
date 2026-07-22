@@ -127,7 +127,8 @@ func _fused(pname: String, pos: Vector2, origin: Vector2, lift: float,
 				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
-## STEP 5/5b: underside rocks (#040302) + lit top rim (shadows removed —
+## STEP 5/5b: underside rocks (#040302) root the platforms (shadows and
+## rim lines removed — both read as floating artifacts against the glow;
 ## platforms read rooted and heavy, not floating stickers
 func _platform_treatment(a: Node2D, pname: String) -> void:
 	var meta: Array = PLAT_META[pname]
@@ -157,14 +158,6 @@ func _platform_treatment(a: Node2D, pname: String) -> void:
 		r.modulate = Color("040302")
 		r.z_index = -1
 		a.add_child(r)
-	# lit top rim: 3px line inset 9px, 7px below the top edge
-	var rim := Line2D.new()
-	rim.points = PackedVector2Array([Vector2(rim_x0, rim_y), Vector2(rim_x1, rim_y)])
-	rim.width = 3.0
-	rim.default_color = Color(0.180, 0.149, 0.090, 0.73)
-	rim.antialiased = true
-	rim.z_index = 2
-	a.add_child(rim)
 
 
 ## a plant playing its pack animation — the wind lives in the frames
