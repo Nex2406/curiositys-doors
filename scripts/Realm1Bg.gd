@@ -180,20 +180,84 @@ static func _frame(host: Node2D) -> void:
 	band.size = Vector2(vs.x + 7200, 220.0 + vs.y * 0.06)  # bottom at 6% of height
 	band.color = Color.WHITE            # layer modulate blackens
 	grp.add_child(band)
-	# 22 stalactites hanging below the band (SmallRocks spikes, flipped v)
-	for i in range(22):
-		var tex := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
-		var h := rng.randf_range(35.0, 110.0)
+	# STEP 3c: CHAOTIC ceiling — big flipped rock clumps with wild-size
+	# spikes jammed between and beneath. Edge-heavy, ragged, no row, no
+	# grid; centre-top third stays clearer so one arch reads through.
+	var band_b := vs.y * 0.06
+	var clump_pool: Array[String] = ["combo_00.png", "combo_01.png",
+			"combo_03.png", "combo_04.png", "combo_05.png", "combo_06.png",
+			"combo_07.png", "combo_08.png", "combo_09.png", "combo_10.png",
+			"combo_11.png", "bigrock_02.png", "bigrock_06.png", "bigrock_08.png"]
+	var ceiling_count := 0
+	var clump_spots: Array = []
+	# 14 big hanging masses (180-280px), edge-weighted, 2 modest ones centre
+	for i in range(14):
+		var cx: float
+		var h: float
+		if i >= 12:
+			cx = vs.x * 0.5 + rng.randf_range(-vs.x * 0.10, vs.x * 0.10)
+			h = rng.randf_range(120.0, 170.0)
+		elif i % 2 == 0:
+			cx = rng.randf_range(-60.0, vs.x * 0.36)
+			h = rng.randf_range(180.0, 280.0)
+		else:
+			cx = rng.randf_range(vs.x * 0.64, vs.x + 60.0)
+			h = rng.randf_range(180.0, 280.0)
+		var tex := _frame_tex(cache, clump_pool[rng.randi() % clump_pool.size()])
 		var sc := h / float(tex.get_height())
 		var s := Sprite2D.new()
 		s.texture = tex
 		s.flip_v = true
-		s.scale = Vector2(sc * rng.randf_range(0.8, 1.3), sc)
-		s.position = Vector2(-80.0 + (vs.x + 160.0) * float(i) / 21.0
-				+ rng.randf_range(-16.0, 16.0),
-				vs.y * 0.06 + h * 0.5 + rng.randf_range(-26.0, 0.0))
+		s.flip_h = rng.randf() < 0.5
+		s.scale = Vector2(sc * rng.randf_range(0.85, 1.35), sc)
+		var cy := band_b + h * 0.5 - rng.randf_range(15.0, 70.0)
+		s.position = Vector2(cx, cy)
 		s.material = blur_mat
 		grp.add_child(s)
+		clump_spots.append(Vector3(cx, cy, h))
+		ceiling_count += 1
+	# 13 mid pieces (clumps and spikes mixed, 60-160px) crammed against them
+	for i in range(13):
+		var base: Vector3 = clump_spots[rng.randi() % clump_spots.size()]
+		var mid_is_clump := rng.randf() < 0.45
+		var h2 := rng.randf_range(60.0, 160.0)
+		var tex2: Texture2D
+		if mid_is_clump:
+			tex2 = _frame_tex(cache, clump_pool[rng.randi() % clump_pool.size()])
+		else:
+			tex2 = _frame_tex(cache, spikes[rng.randi() % spikes.size()])
+		var sc2 := h2 / float(tex2.get_height())
+		var s2 := Sprite2D.new()
+		s2.texture = tex2
+		s2.flip_v = true
+		s2.flip_h = rng.randf() < 0.5
+		s2.scale = Vector2(sc2 * rng.randf_range(0.8, 1.3), sc2)
+		s2.position = Vector2(base.x + rng.randf_range(-160.0, 160.0),
+				band_b + h2 * 0.5 - rng.randf_range(-30.0, 55.0))
+		s2.material = blur_mat
+		grp.add_child(s2)
+		ceiling_count += 1
+	# 14 tiny shards (25-60px) — under clump bellies and along the band
+	for i in range(14):
+		var h3 := rng.randf_range(25.0, 60.0)
+		var tex3 := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
+		var sc3 := h3 / float(tex3.get_height())
+		var s3 := Sprite2D.new()
+		s3.texture = tex3
+		s3.flip_v = true
+		s3.flip_h = rng.randf() < 0.5
+		s3.scale = Vector2(sc3 * rng.randf_range(0.8, 1.2), sc3)
+		if i % 2 == 0 and clump_spots.size() > 0:
+			var b2: Vector3 = clump_spots[rng.randi() % clump_spots.size()]
+			s3.position = Vector2(b2.x + rng.randf_range(-b2.z * 0.4, b2.z * 0.4),
+					b2.y + b2.z * rng.randf_range(0.25, 0.45) + h3 * 0.4)
+		else:
+			s3.position = Vector2(rng.randf_range(-40.0, vs.x + 40.0),
+					band_b + h3 * 0.5 - rng.randf_range(-8.0, 20.0))
+		s3.material = blur_mat
+		grp.add_child(s3)
+		ceiling_count += 1
+	print("ceiling pieces: ", ceiling_count)
 	# left + right walls: backing columns (gap-proof) + 5 blobs per side,
 	# roughly half of each hanging off-screen
 	# left wall: unchanged treatment. right wall (step 3b): denser blob
