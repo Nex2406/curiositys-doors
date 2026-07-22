@@ -177,13 +177,13 @@ static func _frame(host: Node2D) -> void:
 	# ceiling: solid band across the top 6% (over-extended for parallax)
 	var band := ColorRect.new()
 	band.position = Vector2(-3600, -220)
-	band.size = Vector2(vs.x + 7200, 220.0 + vs.y * 0.06)  # bottom at 6% of height
+	band.size = Vector2(vs.x + 7200, 220.0 + vs.y * 0.13)  # STEP 3d: solid top, roots buried
 	band.color = Color.WHITE            # layer modulate blackens
 	grp.add_child(band)
 	# STEP 3c: CHAOTIC ceiling — big flipped rock clumps with wild-size
 	# spikes jammed between and beneath. Edge-heavy, ragged, no row, no
 	# grid; centre-top third stays clearer so one arch reads through.
-	var band_b := vs.y * 0.06
+	var band_b := vs.y * 0.095
 	var clump_pool: Array[String] = ["combo_00.png", "combo_01.png",
 			"combo_03.png", "combo_04.png", "combo_05.png", "combo_06.png",
 			"combo_07.png", "combo_08.png", "combo_09.png", "combo_10.png",
@@ -210,7 +210,7 @@ static func _frame(host: Node2D) -> void:
 		s.flip_v = true
 		s.flip_h = rng.randf() < 0.5
 		s.scale = Vector2(sc * rng.randf_range(0.85, 1.35), sc)
-		var cy := band_b + h * 0.5 - rng.randf_range(15.0, 70.0)
+		var cy := band_b + h * 0.5 - rng.randf_range(35.0, 90.0)
 		s.position = Vector2(cx, cy)
 		s.material = blur_mat
 		grp.add_child(s)
@@ -233,7 +233,7 @@ static func _frame(host: Node2D) -> void:
 		s2.flip_h = rng.randf() < 0.5
 		s2.scale = Vector2(sc2 * rng.randf_range(0.8, 1.3), sc2)
 		s2.position = Vector2(base.x + rng.randf_range(-160.0, 160.0),
-				band_b + h2 * 0.5 - rng.randf_range(-30.0, 55.0))
+				band_b + h2 * 0.5 - rng.randf_range(28.0, 75.0))
 		s2.material = blur_mat
 		grp.add_child(s2)
 		ceiling_count += 1
@@ -248,14 +248,30 @@ static func _frame(host: Node2D) -> void:
 		s3.flip_h = rng.randf() < 0.5
 		s3.scale = Vector2(sc3 * rng.randf_range(0.8, 1.2), sc3)
 		if i % 2 == 0 and clump_spots.size() > 0:
+			# STEP 3d: tight anchor — shard stays inside its parent's body
+			# (x within ~quarter of parent size, top buried in the clump)
 			var b2: Vector3 = clump_spots[rng.randi() % clump_spots.size()]
-			s3.position = Vector2(b2.x + rng.randf_range(-b2.z * 0.4, b2.z * 0.4),
-					b2.y + b2.z * rng.randf_range(0.25, 0.45) + h3 * 0.4)
+			s3.position = Vector2(b2.x + rng.randf_range(-b2.z * 0.22, b2.z * 0.22),
+					b2.y + b2.z * rng.randf_range(0.05, 0.30) + h3 * 0.4)
 		else:
 			s3.position = Vector2(rng.randf_range(-40.0, vs.x + 40.0),
-					band_b + h3 * 0.5 - rng.randf_range(-8.0, 20.0))
+					band_b + h3 * 0.5 - rng.randf_range(18.0, 38.0))
 		s3.material = blur_mat
 		grp.add_child(s3)
+		ceiling_count += 1
+	# STEP 3d: bridge clumps over the two reported holes (x ~30%, ~75%)
+	for gx: float in [0.30, 0.75]:
+		var texg := _frame_tex(cache, clump_pool[rng.randi() % clump_pool.size()])
+		var hg := rng.randf_range(140.0, 200.0)
+		var scg := hg / float(texg.get_height())
+		var sg := Sprite2D.new()
+		sg.texture = texg
+		sg.flip_v = true
+		sg.flip_h = rng.randf() < 0.5
+		sg.scale = Vector2(scg * 1.3, scg)
+		sg.position = Vector2(vs.x * gx, band_b + hg * 0.5 - rng.randf_range(40.0, 75.0))
+		sg.material = blur_mat
+		grp.add_child(sg)
 		ceiling_count += 1
 	print("ceiling pieces: ", ceiling_count)
 	# left + right walls: backing columns (gap-proof) + 5 blobs per side,
@@ -359,13 +375,18 @@ static func _backdrop(pb: ParallaxBackground) -> void:
 	pl.name = "bg_backdrop"
 	pl.motion_scale = Vector2(0.08, 0.04)
 	pb.add_child(pl)
+	var vs := pb.get_viewport().get_visible_rect().size
 	var s := Sprite2D.new()
 	s.texture = load("res://assets/realms/realm1_backdrop/tunnel_11.png")
 	s.centered = false
-	# ParallaxLayer children are in SCREEN coords: centered horizontally
-	# ((1920-2688)/2), and the painting's lower third (image y 1024) sits on
-	# the horizon line (floor top y 478 world = screen y 1018 -> top at -6)
-	s.position = Vector2(-384, -6)
+	# LEVEL STARTS AT THE PAINTING'S BEGINNING (Advika): at the starting
+	# camera the image's LEFT edge sits on the screen's left edge, and the
+	# painting scrolls across as the player moves right. Vertical rule
+	# unchanged: the painting's lower third (image y 1024) rides the
+	# horizon line (floor top, world y 478). Offsets compensate the
+	# ParallaxBackground screen_center*motion shift at the live window size.
+	s.position = Vector2(-vs.x * 0.5 * 0.08,
+			vs.y * 0.5 + 478.0 - 1024.0 - vs.y * 0.5 * 0.04)
 	s.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/backdrop_gold.gdshader")

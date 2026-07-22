@@ -60,6 +60,35 @@ func _init() -> void:
 				var cr := img.get_pixel(x, y)
 				rmax2 = maxf(rmax2, (0.3 * cr.r + 0.59 * cr.g + 0.11 * cr.b) * 255.0)
 		print("region max %.1f" % rmax2)
+	# CEILSCAN=1: in each column's top 14%, a lit pixel (>40) ABOVE a dark
+	# rock pixel (<15) = a hole in the ceiling. Report failing columns.
+	if OS.get_environment("CEILSCAN") != "":
+		var zone := int(h * 0.14)
+		var fails: Array = []
+		for x in range(0, w):
+			var seen_lit := false
+			for y in range(0, zone):
+				var cc := img.get_pixel(x, y)
+				var lc := (0.3 * cc.r + 0.59 * cc.g + 0.11 * cc.b) * 255.0
+				if lc > 40.0:
+					seen_lit = true
+					if fails.size() < 3 and x >= 655 and x <= 741:
+						print("dbg x=%d first lit y=%d lum=%.0f" % [x, y, lc])
+				elif seen_lit and lc < 15.0:
+					fails.append(x)
+					if fails.size() <= 3:
+						print("dbg fail x=%d dark y=%d" % [x, y])
+					break
+		print("ceiling fail columns: %d %s" % [fails.size(),
+				str(fails.slice(0, 12))])
+	# COLPROBE=<x>: print luma down that column, top 16% every 3px
+	if OS.get_environment("COLPROBE") != "":
+		var cx := int(OS.get_environment("COLPROBE"))
+		var line := ""
+		for y in range(0, int(h * 0.16), 3):
+			var cp := img.get_pixel(cx, y)
+			line += "%d:%d " % [y, int((0.3 * cp.r + 0.59 * cp.g + 0.11 * cp.b) * 255.0)]
+		print(line)
 	var step := 4
 	var sum := 0.0
 	var n := 0
