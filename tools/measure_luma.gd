@@ -25,6 +25,22 @@ func _init() -> void:
 	print("centre     %.1f" % _patch(img, w / 2 - 100, h / 2 - 75, 200, 150))
 	print("centre40x50 %.1f" % _patch(img, int(w * 0.3), int(h * 0.25),
 			int(w * 0.4), int(h * 0.5)))
+	print("centreUpper %.1f" % _patch(img, int(w * 0.3), 0, int(w * 0.4),
+			int(h * 0.4)))
+	# BEFORE=<png>: max luminance among pixels that CHANGED vs the before
+	# image (isolates a newly added layer's own values)
+	if OS.get_environment("BEFORE") != "":
+		var prev := Image.load_from_file(OS.get_environment("BEFORE"))
+		var bmax := 0.0
+		for y in range(0, h):
+			for x in range(0, w):
+				var ca := img.get_pixel(x, y)
+				var cb := prev.get_pixel(x, y)
+				var la := (0.3 * ca.r + 0.59 * ca.g + 0.11 * ca.b) * 255.0
+				var lb := (0.3 * cb.r + 0.59 * cb.g + 0.11 * cb.b) * 255.0
+				if absf(la - lb) > 8.0:
+					bmax = maxf(bmax, la)
+		print("band max   %.1f" % bmax)
 	var lmax := 0.0
 	var rmax := 0.0
 	for y in range(0, h):
@@ -35,6 +51,15 @@ func _init() -> void:
 			rmax = maxf(rmax, (0.3 * c2.r + 0.59 * c2.g + 0.11 * c2.b) * 255.0)
 	print("Lcol max   %.1f" % lmax)
 	print("Rcol max   %.1f" % rmax)
+	# REGION="x0,y0,w,h": print max luminance inside that rect
+	if OS.get_environment("REGION") != "":
+		var parts := OS.get_environment("REGION").split(",")
+		var rmax2 := 0.0
+		for y in range(int(parts[1]), int(parts[1]) + int(parts[3])):
+			for x in range(int(parts[0]), int(parts[0]) + int(parts[2])):
+				var cr := img.get_pixel(x, y)
+				rmax2 = maxf(rmax2, (0.3 * cr.r + 0.59 * cr.g + 0.11 * cr.b) * 255.0)
+		print("region max %.1f" % rmax2)
 	var step := 4
 	var sum := 0.0
 	var n := 0

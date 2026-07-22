@@ -46,6 +46,16 @@ func _ready() -> void:
 	add_child(cl)
 	if OS.get_environment("PLAT_CAM_X") != "":
 		_cam.position.x = float(OS.get_environment("PLAT_CAM_X"))
+	# SOLO_BG_NEAR=1: hide everything except the bg_near band (measurement)
+	if OS.get_environment("SOLO_BG_NEAR") != "":
+		for child in get_children():
+			if child is ParallaxBackground:
+				for l in child.get_children():
+					l.visible = l.name == "bg_near"
+			elif child is CanvasLayer:
+				child.visible = false
+			elif child is CanvasItem:
+				child.visible = false
 	if OS.get_environment("PLAT_SHOT") != "":
 		_shot(OS.get_environment("PLAT_SHOT"))
 

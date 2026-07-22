@@ -34,6 +34,7 @@ static func build(host: Node2D) -> void:
 	pb.layer = -50
 	host.add_child(pb)
 	_backdrop(pb)
+	_bg_near(pb)
 	_strip(pb, cache, 0.15, "band_far.png", 1.03, 0.12, Vector3(1.0, 1.2, 0.75))
 	_strip(pb, cache, 0.35, "band_spires.png", 0.85, 0.65, Vector3(1.10, 0.95, 0.80))
 	_shafts(host, pb)
@@ -55,7 +56,7 @@ static func build(host: Node2D) -> void:
 	# background/midground layer hidden (NOT deleted) — re-enabled in step 4.
 	fog_layer.visible = false
 	for child in pb.get_children():
-		if child.name != "bg_backdrop":
+		if child.name != "bg_backdrop" and child.name != "bg_near":
 			child.visible = false
 	var wander := host.create_tween().set_loops()
 	wander.tween_method(_set_fog_center, Vector2(0.20, 0.28),
@@ -66,6 +67,76 @@ static func build(host: Node2D) -> void:
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_frame(host)
 	_vignette(host)
+
+
+## STEP 4/7 (Advika's spec): ONE near background band, low, on a shared
+## ridgeline at 0.90 * viewport height — the ridgeline rule makes it read
+## as one plane. Middle 30% stays sparse (load-bearing emptiness). Dark
+## warm ramp keeps it under the backdrop's values so depth never inverts.
+static func _bg_near(pb: ParallaxBackground) -> void:
+	var pl := ParallaxLayer.new()
+	pl.name = "bg_near"
+	pl.motion_scale = Vector2(0.68, 0.55)
+	pb.add_child(pl)
+	var grp := Node2D.new()
+	grp.position = -Vector2(960.0 * 0.68, 540.0 * 0.55)
+	pl.add_child(grp)
+	var ramp := ShaderMaterial.new()
+	ramp.shader = load("res://shaders/band_ramp.gdshader")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var cache := {}
+	var ridge := 972.0    # 0.90 * 1080
+	var blobs: Array[String] = ["combo_00.png", "combo_03.png", "combo_05.png",
+			"combo_07.png", "combo_10.png", "bigrock_02.png", "bigrock_06.png",
+			"bigrock_08.png"]
+	var spikes: Array[String] = ["rock_29.png", "rock_31.png", "rock_33.png",
+			"rock_35.png", "rock_37.png"]
+	# 8 overlapping blobs, full width EXCEPT the middle 30% (576..1344 clear)
+	for bx: float in [40.0, 200.0, 380.0, 545.0, 1350.0, 1510.0, 1680.0, 1865.0]:
+		var tex := _frame_tex(cache, blobs[rng.randi() % blobs.size()])
+		var w := rng.randf_range(110.0, 190.0)
+		var sc := w / float(tex.get_width())
+		var h := float(tex.get_height()) * sc
+		var frac := rng.randf_range(0.62, 0.86)
+		var s := Sprite2D.new()
+		s.texture = tex
+		s.scale = Vector2(sc, sc)
+		s.flip_h = rng.randf() < 0.5
+		s.position = Vector2(bx + rng.randf_range(-20.0, 20.0),
+				ridge + h * (0.5 - frac))
+		s.material = ramp
+		grp.add_child(s)
+	# 20 stalagmites rising from the ridgeline; only a few LOW ones in the
+	# sparse middle
+	var sx: Array = [-10.0, 110.0, 240.0, 330.0, 470.0, 610.0, 660.0, 1270.0,
+			1400.0, 1460.0, 1590.0, 1720.0, 1800.0, 1900.0, 1930.0, 60.0]
+	for x: float in sx:
+		var tex2 := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
+		var h2 := rng.randf_range(35.0, 92.0)
+		var sc2 := h2 / float(tex2.get_height())
+		var s2 := Sprite2D.new()
+		s2.texture = tex2
+		s2.scale = Vector2(sc2 * rng.randf_range(0.8, 1.2), sc2)
+		s2.position = Vector2(x + rng.randf_range(-20.0, 20.0), ridge - h2 * 0.5)
+		s2.material = ramp
+		grp.add_child(s2)
+	for x2: float in [740.0, 940.0, 1090.0, 1180.0]:
+		var tex3 := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
+		var h3 := rng.randf_range(35.0, 55.0)
+		var sc3 := h3 / float(tex3.get_height())
+		var s3 := Sprite2D.new()
+		s3.texture = tex3
+		s3.scale = Vector2(sc3, sc3)
+		s3.position = Vector2(x2 + rng.randf_range(-20.0, 20.0), ridge - h3 * 0.5)
+		s3.material = ramp
+		grp.add_child(s3)
+	# the band's own whisper of haze — this layer only
+	var fogr := ColorRect.new()
+	fogr.position = Vector2(-2600, -220)
+	fogr.size = Vector2(7120, 1520)
+	fogr.color = Color(0.114, 0.075, 0.035, 0.07)   # #1d1309 @ 0.07, Mix
+	grp.add_child(fogr)
 
 
 ## STEP 3/7 (Advika's spec): the silhouette FRAME — the camera looks
