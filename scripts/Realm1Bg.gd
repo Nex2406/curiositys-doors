@@ -376,22 +376,31 @@ static func _backdrop(pb: ParallaxBackground) -> void:
 	pl.motion_scale = Vector2(0.08, 0.04)
 	pb.add_child(pl)
 	var vs := pb.get_viewport().get_visible_rect().size
-	var s := Sprite2D.new()
-	s.texture = load("res://assets/realms/realm1_backdrop/tunnel_11.png")
-	s.centered = false
-	# LEVEL STARTS AT THE PAINTING'S BEGINNING (Advika): at the starting
-	# camera the image's LEFT edge sits on the screen's left edge, and the
-	# painting scrolls across as the player moves right. Vertical rule
-	# unchanged: the painting's lower third (image y 1024) rides the
-	# horizon line (floor top, world y 478). Offsets compensate the
-	# ParallaxBackground screen_center*motion shift at the live window size.
-	s.position = Vector2(-vs.x * 0.5 * 0.08,
-			vs.y * 0.5 + 478.0 - 1024.0 - vs.y * 0.5 * 0.04)
-	s.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	# STEP 6a (Advika): the backdrop TILES across the whole level with
+	# horizontal MIRRORING — odd copies flipped so bright meets bright and
+	# dark meets dark at every join (Tunnel 11 is lit directionally; a
+	# plain repeat would seam). Manual instancing: 5 copies, one shared
+	# ShaderMaterial. Level still starts at the painting's left edge; the
+	# vertical lower-third-on-horizon rule is unchanged.
+	var tex: Texture2D = load("res://assets/realms/realm1_backdrop/tunnel_11.png")
+	var tw := float(tex.get_width())   # 2688
+	var base_x := -vs.x * 0.5 * 0.08
+	var y := vs.y * 0.5 + 478.0 - 1024.0 - vs.y * 0.5 * 0.04
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/backdrop_gold.gdshader")
-	s.material = mat
-	pl.add_child(s)
+	for k in range(-2, 3):
+		var s := Sprite2D.new()
+		s.texture = tex
+		s.centered = false
+		s.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		s.material = mat
+		var flip := absi(k) % 2 == 1
+		if flip:
+			s.scale = Vector2(-1, 1)
+			s.position = Vector2(base_x + float(k + 1) * tw, y)
+		else:
+			s.position = Vector2(base_x + float(k) * tw, y)
+		pl.add_child(s)
 
 
 static func _set_fog_center(v: Vector2) -> void:
