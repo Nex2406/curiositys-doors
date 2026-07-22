@@ -34,7 +34,7 @@ static func build(host: Node2D) -> void:
 	pb.layer = -50
 	host.add_child(pb)
 	_backdrop(pb)
-	_bg_near(pb)
+	_bg_near(host, pb)
 	_strip(pb, cache, 0.15, "band_far.png", 1.03, 0.12, Vector3(1.0, 1.2, 0.75))
 	_strip(pb, cache, 0.35, "band_spires.png", 0.85, 0.65, Vector3(1.10, 0.95, 0.80))
 	_shafts(host, pb)
@@ -73,27 +73,30 @@ static func build(host: Node2D) -> void:
 ## ridgeline at 0.90 * viewport height — the ridgeline rule makes it read
 ## as one plane. Middle 30% stays sparse (load-bearing emptiness). Dark
 ## warm ramp keeps it under the backdrop's values so depth never inverts.
-static func _bg_near(pb: ParallaxBackground) -> void:
+static func _bg_near(host: Node2D, pb: ParallaxBackground) -> void:
+	var vs := host.get_viewport().get_visible_rect().size
+	var kx := vs.x / 1920.0
 	var pl := ParallaxLayer.new()
 	pl.name = "bg_near"
 	pl.motion_scale = Vector2(0.68, 0.55)
 	pb.add_child(pl)
 	var grp := Node2D.new()
-	grp.position = -Vector2(960.0 * 0.68, 540.0 * 0.55)
+	grp.position = -Vector2(vs.x * 0.5 * 0.68, vs.y * 0.5 * 0.55)
 	pl.add_child(grp)
 	var ramp := ShaderMaterial.new()
 	ramp.shader = load("res://shaders/band_ramp.gdshader")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
 	var cache := {}
-	var ridge := 972.0    # 0.90 * 1080
+	var ridge := vs.y * 0.90
 	var blobs: Array[String] = ["combo_00.png", "combo_03.png", "combo_05.png",
 			"combo_07.png", "combo_10.png", "bigrock_02.png", "bigrock_06.png",
 			"bigrock_08.png"]
 	var spikes: Array[String] = ["rock_29.png", "rock_31.png", "rock_33.png",
 			"rock_35.png", "rock_37.png"]
 	# 8 overlapping blobs, full width EXCEPT the middle 30% (576..1344 clear)
-	for bx: float in [40.0, 200.0, 380.0, 545.0, 1350.0, 1510.0, 1680.0, 1865.0]:
+	for bx0: float in [40.0, 200.0, 380.0, 545.0, 1350.0, 1510.0, 1680.0, 1865.0]:
+		var bx := bx0 * kx
 		var tex := _frame_tex(cache, blobs[rng.randi() % blobs.size()])
 		var w := rng.randf_range(110.0, 190.0)
 		var sc := w / float(tex.get_width())
@@ -111,7 +114,8 @@ static func _bg_near(pb: ParallaxBackground) -> void:
 	# sparse middle
 	var sx: Array = [-10.0, 110.0, 240.0, 330.0, 470.0, 610.0, 660.0, 1270.0,
 			1400.0, 1460.0, 1590.0, 1720.0, 1800.0, 1900.0, 1930.0, 60.0]
-	for x: float in sx:
+	for x0: float in sx:
+		var x := x0 * kx
 		var tex2 := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
 		var h2 := rng.randf_range(35.0, 92.0)
 		var sc2 := h2 / float(tex2.get_height())
@@ -121,7 +125,8 @@ static func _bg_near(pb: ParallaxBackground) -> void:
 		s2.position = Vector2(x + rng.randf_range(-20.0, 20.0), ridge - h2 * 0.5)
 		s2.material = ramp
 		grp.add_child(s2)
-	for x2: float in [740.0, 940.0, 1090.0, 1180.0]:
+	for x20: float in [740.0, 940.0, 1090.0, 1180.0]:
+		var x2 := x20 * kx
 		var tex3 := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
 		var h3 := rng.randf_range(35.0, 55.0)
 		var sc3 := h3 / float(tex3.get_height())
@@ -145,6 +150,7 @@ static func _bg_near(pb: ParallaxBackground) -> void:
 ## Left wall integrates with the scene's existing wall rock (edge blobs
 ## overlap it rather than doubling a second wall).
 static func _frame(host: Node2D) -> void:
+	var vs := host.get_viewport().get_visible_rect().size
 	var pb2 := ParallaxBackground.new()
 	pb2.layer = 50
 	host.add_child(pb2)
@@ -155,8 +161,9 @@ static func _frame(host: Node2D) -> void:
 	pb2.add_child(pl)
 	var grp := Node2D.new()
 	# ParallaxBackground shifts layer content by screen_center * motion —
-	# compensate so authored coords are true screen coords at camera (0,0)
-	grp.position = -Vector2(960.0 * 1.35, 540.0 * 1.10)
+	# compensate with the LIVE viewport size (a smaller window otherwise
+	# shifts the frame and exposes the right wall — Advika's step 3b bug)
+	grp.position = -Vector2(vs.x * 0.5 * 1.35, vs.y * 0.5 * 1.10)
 	pl.add_child(grp)
 	var blur_mat := ShaderMaterial.new()
 	blur_mat.shader = load("res://shaders/frame_blur.gdshader")
@@ -170,7 +177,7 @@ static func _frame(host: Node2D) -> void:
 	# ceiling: solid band across the top 6% (over-extended for parallax)
 	var band := ColorRect.new()
 	band.position = Vector2(-3600, -220)
-	band.size = Vector2(9120, 285)      # bottom edge at y 65 = 6% of 1080
+	band.size = Vector2(vs.x + 7200, 220.0 + vs.y * 0.06)  # bottom at 6% of height
 	band.color = Color.WHITE            # layer modulate blackens
 	grp.add_child(band)
 	# 22 stalactites hanging below the band (SmallRocks spikes, flipped v)
@@ -182,20 +189,23 @@ static func _frame(host: Node2D) -> void:
 		s.texture = tex
 		s.flip_v = true
 		s.scale = Vector2(sc * rng.randf_range(0.8, 1.3), sc)
-		s.position = Vector2(-80.0 + 2080.0 * float(i) / 21.0
+		s.position = Vector2(-80.0 + (vs.x + 160.0) * float(i) / 21.0
 				+ rng.randf_range(-16.0, 16.0),
-				65.0 + h * 0.5 + rng.randf_range(-26.0, 0.0))
+				vs.y * 0.06 + h * 0.5 + rng.randf_range(-26.0, 0.0))
 		s.material = blur_mat
 		grp.add_child(s)
 	# left + right walls: backing columns (gap-proof) + 5 blobs per side,
 	# roughly half of each hanging off-screen
-	for side: Array in [[-400.0, 135.0, -30.0], [1775.0, 2320.0, 1950.0]]:
+	# left wall: unchanged treatment. right wall (step 3b): denser blob
+	# column + wider backing so it is UNBROKEN top to floor at any window
+	for side: Array in [[-400.0, 135.0, -30.0, 5], [vs.x - 160.0, vs.x + 500.0, vs.x + 25.0, 7]]:
 		var back := ColorRect.new()
 		back.position = Vector2(side[0], -220)
-		back.size = Vector2(side[1] - side[0], 1720)
+		back.size = Vector2((side[1] as float) - (side[0] as float), vs.y + 640.0)
 		back.color = Color.WHITE
 		grp.add_child(back)
-		for i in range(5):
+		var count: int = side[3]
+		for i in range(count):
 			var tex2 := _frame_tex(cache, blobs[rng.randi() % blobs.size()])
 			var w := rng.randf_range(140.0, 210.0)
 			var sc2 := w / float(tex2.get_width())
@@ -203,7 +213,8 @@ static func _frame(host: Node2D) -> void:
 			s2.texture = tex2
 			s2.scale = Vector2(sc2, sc2 * rng.randf_range(0.9, 1.4))
 			s2.position = Vector2((side[2] as float) + rng.randf_range(-30.0, 30.0),
-					-40.0 + 1180.0 * float(i) / 4.0 + rng.randf_range(-40.0, 40.0))
+					-40.0 + (vs.y + 140.0) * float(i) / float(count - 1)
+					+ rng.randf_range(-40.0, 40.0))
 			s2.flip_h = rng.randf() < 0.5
 			s2.material = blur_mat
 			grp.add_child(s2)
@@ -215,8 +226,8 @@ static func _frame(host: Node2D) -> void:
 		var s3 := Sprite2D.new()
 		s3.texture = tex3
 		s3.scale = Vector2(sc3 * rng.randf_range(0.8, 1.2), sc3)
-		s3.position = Vector2(-60.0 + 2040.0 * float(i) / 8.0
-				+ rng.randf_range(-30.0, 30.0), 1018.0 - h3 * 0.35)
+		s3.position = Vector2(-60.0 + (vs.x + 120.0) * float(i) / 8.0
+				+ rng.randf_range(-30.0, 30.0), vs.y * 0.5 + 478.0 - h3 * 0.35)
 		s3.material = blur_mat
 		grp.add_child(s3)
 	var plant_specs: Array = [
@@ -238,8 +249,9 @@ static func _frame(host: Node2D) -> void:
 		var native_h := float(sf.get_frame_texture("default", 0).get_height())
 		var sc4 := (spec[2] as float) / native_h
 		an.scale = Vector2(sc4, sc4)
-		an.position = Vector2(180.0 + 1560.0 * float(i) / 3.0
-				+ rng.randf_range(-60.0, 60.0), 1035.0 - (spec[2] as float) * 0.4)
+		an.position = Vector2(180.0 + (vs.x - 360.0) * float(i) / 3.0
+				+ rng.randf_range(-60.0, 60.0),
+				vs.y * 0.5 + 495.0 - (spec[2] as float) * 0.4)
 		an.play("default")
 		an.frame = rng.randi() % int(spec[1])
 		an.material = blur_mat
