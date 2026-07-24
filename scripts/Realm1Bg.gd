@@ -192,17 +192,17 @@ static func _frame(host: Node2D) -> void:
 	var ceiling_count := 0
 	var clump_spots: Array = []
 	# 14 big hanging masses (180-280px), edge-weighted, 2 modest ones centre
-	for i in range(14):
+	for i in range(20):
 		var cx: float
 		var h: float
-		if i >= 12:
+		if i >= 18:
 			cx = vs.x * 0.5 + rng.randf_range(-vs.x * 0.10, vs.x * 0.10)
 			h = rng.randf_range(70.0, 100.0)
 		elif i % 2 == 0:
 			cx = rng.randf_range(-740.0, vs.x * 0.40)
 			h = rng.randf_range(90.0, 150.0)
 		else:
-			cx = rng.randf_range(vs.x * 0.60, vs.x + 1900.0)
+			cx = rng.randf_range(vs.x * 0.60, vs.x + 3400.0)
 			h = rng.randf_range(90.0, 150.0)
 		var tex := _frame_tex(cache, clump_pool[rng.randi() % clump_pool.size()])
 		var sc := h / float(tex.get_height())
@@ -217,8 +217,8 @@ static func _frame(host: Node2D) -> void:
 		grp.add_child(s)
 		clump_spots.append(Vector3(cx, cy, h))
 		ceiling_count += 1
-	# 13 mid pieces (clumps and spikes mixed, 60-160px) crammed against them
-	for i in range(13):
+	# mid pieces (clumps and spikes mixed) crammed against them
+	for i in range(17):
 		var base: Vector3 = clump_spots[rng.randi() % clump_spots.size()]
 		var mid_is_clump := rng.randf() < 0.45
 		var h2 := rng.randf_range(40.0, 90.0)
@@ -239,7 +239,7 @@ static func _frame(host: Node2D) -> void:
 		grp.add_child(s2)
 		ceiling_count += 1
 	# 14 tiny shards (25-60px) — under clump bellies and along the band
-	for i in range(14):
+	for i in range(20):
 		var h3 := rng.randf_range(18.0, 40.0)
 		var tex3 := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
 		var sc3 := h3 / float(tex3.get_height())
@@ -255,7 +255,7 @@ static func _frame(host: Node2D) -> void:
 			s3.position = Vector2(b2.x + rng.randf_range(-b2.z * 0.15, b2.z * 0.15),
 					b2.y + b2.z * rng.randf_range(0.0, 0.15) + h3 * 0.4)
 		else:
-			s3.position = Vector2(rng.randf_range(-740.0, vs.x + 1900.0),
+			s3.position = Vector2(rng.randf_range(-740.0, vs.x + 3400.0),
 					band_b + h3 * 0.5 - rng.randf_range(34.0, 48.0))
 		s3.material = blur_mat
 		grp.add_child(s3)
@@ -287,7 +287,7 @@ static func _frame(host: Node2D) -> void:
 		var s3 := Sprite2D.new()
 		s3.texture = tex3
 		s3.scale = Vector2(sc3 * rng.randf_range(0.8, 1.2), sc3)
-		s3.position = Vector2(-700.0 + (vs.x + 2600.0) * float(i) / 8.0
+		s3.position = Vector2(-700.0 + (vs.x + 5300.0) * float(i) / 8.0
 				+ rng.randf_range(-30.0, 30.0), vs.y * 0.5 + 478.0 - h3 * 0.35)
 		s3.material = blur_mat
 		grp.add_child(s3)
@@ -310,7 +310,7 @@ static func _frame(host: Node2D) -> void:
 		var native_h := float(sf.get_frame_texture("default", 0).get_height())
 		var sc4 := (spec[2] as float) / native_h
 		an.scale = Vector2(sc4, sc4)
-		an.position = Vector2(-300.0 + (vs.x + 1800.0) * float(i) / 3.0
+		an.position = Vector2(-300.0 + (vs.x + 3600.0) * float(i) / 3.0
 				+ rng.randf_range(-60.0, 60.0),
 				vs.y * 0.5 + 495.0 - (spec[2] as float) * 0.4)
 		an.play("default")
