@@ -9,7 +9,7 @@ uniform vec3  c_glow   : source_color = vec3(0.859, 0.808, 0.600);  // #dbce99
 uniform float desaturate = 0.30;
 uniform float tint_mix   = 0.76;
 uniform float contrast   = 0.66;
-uniform float blur_lod   = 3.0;
+uniform float blur_lod   = 3.5;
 uniform float fog_amount = 0.20;
 
 void fragment(){

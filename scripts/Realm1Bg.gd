@@ -111,32 +111,7 @@ static func _bg_near(host: Node2D, pb: ParallaxBackground) -> void:
 				ridge + h * (0.5 - frac))
 		s.material = ramp
 		grp.add_child(s)
-	# 20 stalagmites rising from the ridgeline; only a few LOW ones in the
-	# sparse middle
-	var sx: Array = [-10.0, 110.0, 240.0, 330.0, 470.0, 610.0, 660.0, 1270.0,
-			1400.0, 1460.0, 1590.0, 1720.0, 1800.0, 1900.0, 1930.0, 60.0]
-	for x0: float in sx:
-		var x := x0 * kx
-		var tex2 := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
-		var h2 := rng.randf_range(35.0, 92.0)
-		var sc2 := h2 / float(tex2.get_height())
-		var s2 := Sprite2D.new()
-		s2.texture = tex2
-		s2.scale = Vector2(sc2 * rng.randf_range(0.8, 1.2), sc2)
-		s2.position = Vector2(x + rng.randf_range(-20.0, 20.0), ridge - h2 * 0.5)
-		s2.material = ramp
-		grp.add_child(s2)
-	for x20: float in [740.0, 940.0, 1090.0, 1180.0]:
-		var x2 := x20 * kx
-		var tex3 := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
-		var h3 := rng.randf_range(35.0, 55.0)
-		var sc3 := h3 / float(tex3.get_height())
-		var s3 := Sprite2D.new()
-		s3.texture = tex3
-		s3.scale = Vector2(sc3, sc3)
-		s3.position = Vector2(x2 + rng.randf_range(-20.0, 20.0), ridge - h3 * 0.5)
-		s3.material = ramp
-		grp.add_child(s3)
+	# (band stalagmites removed — they read as lone floaters)
 	# the band's own whisper of haze — this layer only
 	var fogr := ColorRect.new()
 	fogr.position = Vector2(-2600, -220)
@@ -279,18 +254,7 @@ static func _frame(host: Node2D) -> void:
 	# roughly half of each hanging off-screen
 	# WALLS moved to world-space level-end geometry (step 6b fix: at
 	# motion 1.35 they swept across mid-level as black slabs)
-	# bottom: 9 stalagmites on the floor line + 4 large plant silhouettes
-	for i in range(9):
-		var tex3 := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
-		var h3 := rng.randf_range(70.0, 130.0)
-		var sc3 := h3 / float(tex3.get_height())
-		var s3 := Sprite2D.new()
-		s3.texture = tex3
-		s3.scale = Vector2(sc3 * rng.randf_range(0.8, 1.2), sc3)
-		s3.position = Vector2(-700.0 + (vs.x + 5300.0) * float(i) / 8.0
-				+ rng.randf_range(-30.0, 30.0), vs.y * 0.5 + 478.0 - h3 * 0.35)
-		s3.material = blur_mat
-		grp.add_child(s3)
+	# bottom: plants only (Advika: no lone stalagmite cones)
 	var plant_specs: Array = [
 		["grass2/Grass2_%05d.png", 30, 90.0],
 		["groupplants/GroupPlants_%05d.png", 45, 165.0],

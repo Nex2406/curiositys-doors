@@ -299,20 +299,8 @@ func _ground() -> void:
 		g.add_child(s0)
 		x += tex.get_width() * sc * 0.80
 		i += 1
-	# washed pale mounds — occasional clusters, the line stays mostly clean
-	for m: Array in [[-1900.0, 0.30], [-420.0, 0.34], [1050.0, 0.36],
-			[2400.0, 0.28], [3200.0, 0.33], [4100.0, 0.29], [5000.0, 0.35],
-			[5900.0, 0.30], [6800.0, 0.34], [7700.0, 0.29], [8600.0, 0.33], [9500.0, 0.31]]:
-		var piece2: String = ["combo_07.png", "combo_10.png", "combo_11.png"][
-				int(absf(m[0])) % 3]
-		var tex2 := _tex(CUT, piece2)
-		var s := Sprite2D.new()
-		s.texture = tex2
-		s.position = Vector2(m[0], 470.0 - tex2.get_height() * (m[1] as float) * 0.34)
-		s.scale = Vector2(m[1], m[1])
-		s.material = _floor_mat()
-		s.z_index = 0
-		g.add_child(s)
+	# (washed mounds removed — lone lumps; the dark piles stay, they hug
+	# the cobble lip)
 	# dark rock piles breaking the lip — sparse
 	for d: Array in [[-1500.0, 0.42], [120.0, 0.45], [1500.0, 0.40],
 			[2700.0, 0.43], [3900.0, 0.39], [5100.0, 0.44], [6400.0, 0.41], [7600.0, 0.45], [8800.0, 0.40]]:
@@ -320,14 +308,7 @@ func _ground() -> void:
 		var tex3 := _tex(CUT, piece3)
 		_p(g, piece3, Vector2(d[0], 486.0 - tex3.get_height() * (d[1] as float) * 0.32),
 				d[1], Color(0.055, 0.050, 0.045), 2, int(d[0]) % 2 == 0)
-	# black floor spikes — rare and small, like the ref
-	for sp: Array in [[-2100.0, 0.26], [-80.0, 0.30], [1300.0, 0.24],
-			[2500.0, 0.28], [3600.0, 0.25], [4700.0, 0.29], [5800.0, 0.26], [7000.0, 0.30], [8200.0, 0.27], [9400.0, 0.28]]:
-		var piece4: String = ["rock_29.png", "rock_31.png", "rock_33.png",
-				"rock_37.png"][int(absf(sp[0])) % 4]
-		var tex4 := _tex(CUT, piece4)
-		_p(g, piece4, Vector2(sp[0], 492.0 - tex4.get_height() * (sp[1] as float) * 0.42),
-				sp[1], Color(0.04, 0.037, 0.033), 3)
+	# (floor spikes removed — lone cones)
 	# STEP 5: floor is the hole's bottom edge — near-black silhouette
 	# plants grow FROM the line — curls at last in their rightful home
 	for pl: Array in [["PlantSmall_00000.png", -1320.0, 0.26, false],
