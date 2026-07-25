@@ -12,6 +12,7 @@ uniform vec3 rim_c : source_color = vec3(0.541, 0.455, 0.302);   // #8a744d
 uniform float rim_alpha = 0.8;
 uniform float rim_width = 4.0;
 uniform float rim_strength = 1.0;
+uniform vec3 lift = vec3(0.0);   // flat brightness floor added to the whole tile
 
 void fragment(){
     vec4 t = texture(TEXTURE, UV);
@@ -21,5 +22,6 @@ void fragment(){
     float up_a = texture(TEXTURE, UV - vec2(0.0, TEXTURE_PIXEL_SIZE.y * rim_width)).a;
     float rim_t = clamp(1.0 - up_a, 0.0, 1.0) * t.a * rim_strength;
     col = mix(col, rim_c, rim_t * rim_alpha);
+    col += lift;
     COLOR = vec4(col, t.a) * COLOR;
 }

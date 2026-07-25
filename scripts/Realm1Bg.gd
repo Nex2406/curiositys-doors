@@ -10,12 +10,97 @@ const CUT := "res://assets/realms/realm1_cut/"
 const SOFT := "res://assets/realms/realm1_soft/"
 const SPAN := 5200.0
 
+## STEP 6 (Advika's spec): animated vegetation. Six sequences from the
+## PlantsAnimated pack, baked into grid sheets by tools/pack_plant_sheets.gd.
+## name -> [sheet_file, frame_w, frame_h, count, cols] (mirror the packer).
+const VEG_SHEETS := "res://assets/realms/realm1_plants/sheets/"
+const VEG_SPEC := {
+	"comp1":      ["comp1.png", 256, 256, 30, 16],
+	"grass2":     ["grass2.png", 256, 256, 30, 16],
+	"grass3":     ["grass3.png", 256, 512, 30, 16],
+	"grass4":     ["grass4.png", 256, 512, 30, 16],
+	"grass5":     ["grass5.png", 410, 410, 40,  8],
+	"groupplant": ["groupplant.png", 512, 256, 45, 8],
+}
+## the three tall sequences that read as vines when hung upside down
+const VEG_VINES: Array[String] = ["grass3", "grass4", "grass5"]
+## fraction DOWN each frame where the plant's VISIBLE base sits (measured from
+## the sheets). Lets make_plant root a plant so its real base — not the sprite's
+## transparent bottom edge — lands on the surface. Without this the base floats.
+const VEG_BASE := {
+	"comp1": 0.836, "grass2": 0.805, "grass3": 0.838,
+	"grass4": 0.830, "grass5": 0.924, "groupplant": 0.883,
+}
+static var _veg_cache := {}
+## live tally so any scene can report its vegetation instance count
+static var veg_instance_count := 0
+
+## SpriteFrames for one sequence, sliced from its grid sheet as AtlasTextures
+## (one shared base texture per sheet). loop = true, default fps 12.
+static func veg_frames(name: String) -> SpriteFrames:
+	if _veg_cache.has(name):
+		return _veg_cache[name]
+	var spec: Array = VEG_SPEC[name]
+	var base: Texture2D = load(VEG_SHEETS + spec[0])
+	var fw: int = spec[1]
+	var fh: int = spec[2]
+	var count: int = spec[3]
+	var cols: int = spec[4]
+	var sf := SpriteFrames.new()
+	sf.set_animation_loop("default", true)
+	sf.set_animation_speed("default", 12.0)
+	for i in range(count):
+		var at := AtlasTexture.new()
+		at.atlas = base
+		at.region = Rect2((i % cols) * fw, (i / cols) * fh, fw, fh)
+		at.filter_clip = true
+		sf.add_frame("default", at)
+	_veg_cache[name] = sf
+	return sf
+
+## one animated plant with its OWN random frame / speed / horizontal flip —
+## the single most important part of step 6: without per-instance variation
+## every plant sways in perfect lockstep and reads worse than static. `tint`
+## is the layer colour it sits on; `flip_v` + `top_anchor` make a hanging
+## vine that roots at `pos` and falls `height` px downward.
+static func make_plant(name: String, pos: Vector2, height: float, tint: Color,
+		z: int, rng: RandomNumberGenerator, flip_v := false,
+		top_anchor := false, root_base := false, bury := 12.0) -> AnimatedSprite2D:
+	var sf := veg_frames(name)
+	var count := sf.get_frame_count("default")
+	var native_h: float = VEG_SPEC[name][2]
+	var sc := height / native_h
+	var an := AnimatedSprite2D.new()
+	an.sprite_frames = sf
+	an.z_index = z
+	an.modulate = tint
+	# --- per-instance randomization (no lockstep) ---
+	an.frame = rng.randi() % count
+	an.speed_scale = rng.randf_range(0.7, 1.15)
+	var flip_h := rng.randi() % 2 == 0
+	an.scale = Vector2(-sc if flip_h else sc, -sc if flip_v else sc)
+	var cy: float
+	if root_base:
+		# put the VISIBLE base `bury` px below pos.y (into the rock), using the
+		# measured base fraction — never the sprite's transparent bottom.
+		var bf: float = VEG_BASE.get(name, 0.83)
+		cy = (pos.y + bury) - height * (bf - 0.5)
+	elif top_anchor:
+		cy = pos.y + height * 0.5
+	else:
+		cy = pos.y
+	an.position = Vector2(pos.x, cy)
+	an.play("default")
+	veg_instance_count += 1
+	return an
+
 ## every fog-driven material registers here so the wandering light can
 ## move them all in lockstep (backdrop, bands, platforms)
 static var fog_mats: Array = []
 static func build(host: Node2D) -> void:
 	var cache := {}
 	fog_mats.clear()
+	veg_instance_count = 0
 	RenderingServer.set_default_clear_color(Color(0.020, 0.024, 0.016))
 	# fog spill backdrop
 	var fog_layer := CanvasLayer.new()
@@ -56,7 +141,9 @@ static func build(host: Node2D) -> void:
 	# background/midground layer hidden (NOT deleted) — re-enabled in step 4.
 	fog_layer.visible = false
 	for child in pb.get_children():
-		if child.name != "bg_backdrop" and child.name != "bg_near":
+		if child.name != "bg_backdrop" and child.name != "bg_backdrop_far" \
+				and child.name != "bg_backdrop_mid" and child.name != "bg_near" \
+				and not str(child.name).begins_with("bg_haze"):
 			child.visible = false
 	var wander := host.create_tween().set_loops()
 	wander.tween_method(_set_fog_center, Vector2(0.20, 0.28),
@@ -66,6 +153,7 @@ static func build(host: Node2D) -> void:
 			Vector2(0.20, 0.28), 12.0) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_frame(host)
+	_glow_motes(host)
 	_vignette(host)
 
 
@@ -126,21 +214,22 @@ static func _bg_near(host: Node2D, pb: ParallaxBackground) -> void:
 ## Left wall integrates with the scene's existing wall rock (edge blobs
 ## overlap it rather than doubling a second wall).
 static func _frame(host: Node2D) -> void:
-	var vs := host.get_viewport().get_visible_rect().size
-	var pb2 := ParallaxBackground.new()
-	pb2.layer = 50
-	host.add_child(pb2)
-	var pl := ParallaxLayer.new()
-	pl.name = "fg_frame"
-	pl.motion_scale = Vector2(1.35, 1.10)
-	pl.modulate = Color("040302")
-	pb2.add_child(pl)
+	# FIXED design resolution — the ceiling's geometry is world-absolute, so it is
+	# IDENTICAL at every window size. (Authoring it against the live viewport made it
+	# shrink/shift on any non-1920x1080 window and drift off the world-space cliffs.)
+	var vs := Vector2(1920.0, 1080.0)
+	# The cave FRAME (ceiling) lives in WORLD space, exactly like the closing cliffs
+	# and the platforms — NOT on a ParallaxBackground (which re-centers by the live
+	# window) and NOT sized to the window. Anything window-relative slid off the
+	# world-space cliffs as the camera panned or the window resized, unsealing the
+	# top corner (visible even in "fullscreen" when it isn't 1920x1080). World-
+	# absolute = the whole cave outline is one rigid piece; the corners always seal.
 	var grp := Node2D.new()
-	# ParallaxBackground shifts layer content by screen_center * motion —
-	# compensate with the LIVE viewport size (a smaller window otherwise
-	# shifts the frame and exposes the right wall — Advika's step 3b bug)
-	grp.position = -Vector2(vs.x * 0.5 * 1.35, vs.y * 0.5 * 1.10)
-	pl.add_child(grp)
+	grp.name = "fg_frame"
+	grp.z_index = 40                 # in front of platforms, like a foreground frame
+	grp.modulate = Color("665033")   # lighten the ceiling rock off pure black
+	grp.position = Vector2(0.0, -560.0)
+	host.add_child(grp)
 	var blur_mat := ShaderMaterial.new()
 	blur_mat.shader = load("res://shaders/frame_blur.gdshader")
 	var rng := RandomNumberGenerator.new()
@@ -150,53 +239,93 @@ static func _frame(host: Node2D) -> void:
 			"rock_35.png", "rock_37.png"]
 	var blobs: Array[String] = ["combo_00.png", "combo_03.png", "combo_07.png",
 			"combo_10.png", "bigrock_02.png", "bigrock_06.png", "bigrock_08.png"]
-	# ceiling: solid band across the top 6% (over-extended for parallax)
-	var band := ColorRect.new()
-	band.position = Vector2(-3600, -220)
-	band.size = Vector2(vs.x + 7200, 220.0 + vs.y * 0.045)  # STEP 6b: thin solid top
-	band.color = Color.WHITE            # layer modulate blackens
-	grp.add_child(band)
-	# STEP 3c: CHAOTIC ceiling — big flipped rock clumps with wild-size
-	# spikes jammed between and beneath. Edge-heavy, ragged, no row, no
-	# grid; centre-top third stays clearer so one arch reads through.
-	var band_b := vs.y * 0.03
+	# STEP 6 rebuild (Advika 2026-07-25): a THICK collapsing roof — giant
+	# clustered rocks wall-to-wall across the WHOLE level. The old ceiling ran
+	# dry at half and read thin/pathetic; C_MAX covers the fg_frame's 1.35x
+	# parallax over the ~9000px level so it never runs out.
+	var C_MIN := -1200.0
+	var C_MAX := 15000.0
 	var clump_pool: Array[String] = ["combo_00.png", "combo_01.png",
 			"combo_03.png", "combo_04.png", "combo_05.png", "combo_06.png",
 			"combo_07.png", "combo_08.png", "combo_09.png", "combo_10.png",
 			"combo_11.png", "bigrock_02.png", "bigrock_06.png", "bigrock_08.png"]
+	# SOLID roof band — reaches deep enough (13% of height) that the upper zone
+	# is fully opaque, so no backdrop light peeks through the ceiling there. The
+	# hanging masses below just add the ragged rocky underside. (Advika: NO gaps.)
+	var band := ColorRect.new()
+	band.position = Vector2(C_MIN, -340.0)
+	band.size = Vector2(C_MAX - C_MIN, 340.0 + vs.y * 0.095)
+	band.color = Color(0.10, 0.075, 0.052)
+	grp.add_child(band)
+	var band_b := vs.y * 0.095   # Advika: pushed the roof UP a bit
 	var ceiling_count := 0
 	var clump_spots: Array = []
-	# 14 big hanging masses (180-280px), edge-weighted, 2 modest ones centre
-	for i in range(20):
-		var cx: float
+	# Advika 2026-07-25: the roof read UGLY because every clump was the same
+	# round lump at the same size. Now three distinct classes are mixed —
+	# chunky broad bigrock giants, round combo clumps, and pointed elongated
+	# stalactites — each with its OWN height / vertical-stretch / hang-depth /
+	# width range, so the skyline is ragged and varied, never repetitive. All
+	# tops are buried in the solid roof band, so nothing hangs detached.
+	var round_pool: Array[String] = ["combo_00.png", "combo_01.png",
+			"combo_03.png", "combo_04.png", "combo_05.png", "combo_06.png",
+			"combo_07.png", "combo_09.png", "combo_10.png"]
+	var chunk_pool: Array[String] = ["bigrock_02.png", "bigrock_06.png",
+			"bigrock_08.png", "combo_08.png", "combo_11.png"]
+	var cx := C_MIN
+	while cx < C_MAX:
+		var roll := rng.randf()
+		var tex: Texture2D
 		var h: float
-		if i >= 18:
-			cx = vs.x * 0.5 + rng.randf_range(-vs.x * 0.10, vs.x * 0.10)
-			h = rng.randf_range(70.0, 100.0)
-		elif i % 2 == 0:
-			cx = rng.randf_range(-740.0, vs.x * 0.40)
-			h = rng.randf_range(90.0, 150.0)
+		var stretch: float
+		var widen: float
+		var bottom_y: float
+		# Advika 2026-07-25 (r1 pass 3): each mass is placed by where its BOTTOM
+		# hangs to (moderate for rounded masses, deeper for the spikes she likes),
+		# then its TOP is clamped so it always buries >=25px into the solid band.
+		# That means no mass can leave a bright gap up to the band. SHAPE varies.
+		if roll < 0.16:
+			# pointed stalactite — a SPARSE accent on the bottom edge (kept few so
+			# they never leave bright gaps between them)
+			tex = _frame_tex(cache, spikes[rng.randi() % spikes.size()])
+			h = rng.randf_range(150.0, 220.0)
+			stretch = rng.randf_range(1.25, 1.55)
+			widen = rng.randf_range(0.8, 1.1)
+			bottom_y = rng.randf_range(vs.y * 0.24, vs.y * 0.32)
+		elif roll < 0.58:
+			# chunky bigrock giant — BROAD so neighbours overlap into a solid body
+			tex = _frame_tex(cache, chunk_pool[rng.randi() % chunk_pool.size()])
+			h = rng.randf_range(200.0, 290.0)
+			stretch = rng.randf_range(0.9, 1.1)
+			widen = rng.randf_range(1.6, 2.2)
+			bottom_y = rng.randf_range(vs.y * 0.18, vs.y * 0.26)
 		else:
-			cx = rng.randf_range(vs.x * 0.60, vs.x + 3400.0)
-			h = rng.randf_range(90.0, 150.0)
-		var tex := _frame_tex(cache, clump_pool[rng.randi() % clump_pool.size()])
+			# round combo clump — WIDE + lumpy, fills between the giants
+			tex = _frame_tex(cache, round_pool[rng.randi() % round_pool.size()])
+			h = rng.randf_range(170.0, 240.0)
+			stretch = rng.randf_range(0.9, 1.12)
+			widen = rng.randf_range(1.2, 1.7)
+			bottom_y = rng.randf_range(vs.y * 0.16, vs.y * 0.24)
 		var sc := h / float(tex.get_height())
+		var rh := h * stretch   # rendered height
 		var s := Sprite2D.new()
 		s.texture = tex
 		s.flip_v = true
 		s.flip_h = rng.randf() < 0.5
-		s.scale = Vector2(sc * rng.randf_range(0.85, 1.35), sc)
-		var cy := band_b + h * 0.5 - rng.randf_range(50.0, 85.0)
-		s.position = Vector2(cx, cy)
+		s.scale = Vector2(sc * widen, sc * stretch)
+		# bottom at bottom_y, but pull up so the top is buried >=25px in the band
+		var cy := minf(bottom_y - rh * 0.5, band_b - 25.0 + rh * 0.5)
+		s.position = Vector2(cx + rng.randf_range(-45.0, 45.0), cy)
 		s.material = blur_mat
 		grp.add_child(s)
-		clump_spots.append(Vector3(cx, cy, h))
+		clump_spots.append(Vector3(s.position.x, cy, rh))
 		ceiling_count += 1
-	# mid pieces (clumps and spikes mixed) crammed against them
-	for i in range(17):
+		cx += rng.randf_range(70.0, 115.0)   # very dense — masses overlap solid
+	# mid filler jammed between the giants — thickens the cluster and closes
+	# any gap, scaled to the full span so density holds the whole level
+	for i in range(int((C_MAX - C_MIN) / 105.0)):
 		var base: Vector3 = clump_spots[rng.randi() % clump_spots.size()]
-		var mid_is_clump := rng.randf() < 0.45
-		var h2 := rng.randf_range(40.0, 90.0)
+		var mid_is_clump := rng.randf() < 0.7
+		var h2 := rng.randf_range(120.0, 210.0)
 		var tex2: Texture2D
 		if mid_is_clump:
 			tex2 = _frame_tex(cache, clump_pool[rng.randi() % clump_pool.size()])
@@ -207,15 +336,15 @@ static func _frame(host: Node2D) -> void:
 		s2.texture = tex2
 		s2.flip_v = true
 		s2.flip_h = rng.randf() < 0.5
-		s2.scale = Vector2(sc2 * rng.randf_range(0.8, 1.3), sc2)
-		s2.position = Vector2(base.x + rng.randf_range(-160.0, 160.0),
-				band_b + h2 * 0.5 - rng.randf_range(42.0, 70.0))
+		s2.scale = Vector2(sc2 * rng.randf_range(1.15, 1.8), sc2)
+		s2.position = Vector2(base.x + rng.randf_range(-90.0, 90.0),
+				band_b + h2 * 0.5 - rng.randf_range(40.0, 90.0))
 		s2.material = blur_mat
 		grp.add_child(s2)
 		ceiling_count += 1
-	# 14 tiny shards (25-60px) — under clump bellies and along the band
-	for i in range(20):
-		var h3 := rng.randf_range(18.0, 40.0)
+	# small shards tucked under the bellies for a ragged hanging edge
+	for i in range(int((C_MAX - C_MIN) / 400.0)):
+		var h3 := rng.randf_range(35.0, 80.0)
 		var tex3 := _frame_tex(cache, spikes[rng.randi() % spikes.size()])
 		var sc3 := h3 / float(tex3.get_height())
 		var s3 := Sprite2D.new()
@@ -223,64 +352,23 @@ static func _frame(host: Node2D) -> void:
 		s3.flip_v = true
 		s3.flip_h = rng.randf() < 0.5
 		s3.scale = Vector2(sc3 * rng.randf_range(0.8, 1.2), sc3)
-		if i % 2 == 0 and clump_spots.size() > 0:
-			# STEP 3d: tight anchor — shard stays inside its parent's body
-			# (x within ~quarter of parent size, top buried in the clump)
-			var b2: Vector3 = clump_spots[rng.randi() % clump_spots.size()]
-			s3.position = Vector2(b2.x + rng.randf_range(-b2.z * 0.15, b2.z * 0.15),
-					b2.y + b2.z * rng.randf_range(0.0, 0.15) + h3 * 0.4)
-		else:
-			s3.position = Vector2(rng.randf_range(-740.0, vs.x + 3400.0),
-					band_b + h3 * 0.5 - rng.randf_range(34.0, 48.0))
+		var b2: Vector3 = clump_spots[rng.randi() % clump_spots.size()]
+		s3.position = Vector2(b2.x + rng.randf_range(-b2.z * 0.28, b2.z * 0.28),
+				b2.y + b2.z * rng.randf_range(0.05, 0.22))
 		s3.material = blur_mat
 		grp.add_child(s3)
 		ceiling_count += 1
-	# STEP 3d: bridge clumps over the two reported holes (x ~30%, ~75%)
-	for gx: float in [0.30, 0.75]:
-		var texg := _frame_tex(cache, clump_pool[rng.randi() % clump_pool.size()])
-		var hg := rng.randf_range(70.0, 110.0)
-		var scg := hg / float(texg.get_height())
-		var sg := Sprite2D.new()
-		sg.texture = texg
-		sg.flip_v = true
-		sg.flip_h = rng.randf() < 0.5
-		sg.scale = Vector2(scg * 1.3, scg)
-		sg.position = Vector2(vs.x * gx, band_b + hg * 0.5 - rng.randf_range(48.0, 72.0))
-		sg.material = blur_mat
-		grp.add_child(sg)
-		ceiling_count += 1
+	# (Advika 2026-07-25: ceiling vines REMOVED — grass draping off the roof read
+	# as plants floating in air, which she does not want anywhere.)
 	print("ceiling pieces: ", ceiling_count)
 	# left + right walls: backing columns (gap-proof) + 5 blobs per side,
 	# roughly half of each hanging off-screen
 	# WALLS moved to world-space level-end geometry (step 6b fix: at
 	# motion 1.35 they swept across mid-level as black slabs)
-	# bottom: plants only (Advika: no lone stalagmite cones)
-	var plant_specs: Array = [
-		["grass2/Grass2_%05d.png", 30, 90.0],
-		["groupplants/GroupPlants_%05d.png", 45, 165.0],
-		["plantsmall/PlantSmall_%05d.png", 30, 120.0],
-		["grass2/Grass2_%05d.png", 30, 150.0]]
-	for i in range(4):
-		var spec: Array = plant_specs[i]
-		var sf := SpriteFrames.new()
-		sf.set_animation_loop("default", true)
-		sf.set_animation_speed("default", 15.0)
-		for f in range(spec[1]):
-			var img := Image.load_from_file(ProjectSettings.globalize_path(
-					"res://assets/realms/realm1_plants/" + (spec[0] as String) % f))
-			sf.add_frame("default", ImageTexture.create_from_image(img))
-		var an := AnimatedSprite2D.new()
-		an.sprite_frames = sf
-		var native_h := float(sf.get_frame_texture("default", 0).get_height())
-		var sc4 := (spec[2] as float) / native_h
-		an.scale = Vector2(sc4, sc4)
-		an.position = Vector2(-300.0 + (vs.x + 3600.0) * float(i) / 3.0
-				+ rng.randf_range(-60.0, 60.0),
-				vs.y * 0.5 + 495.0 - (spec[2] as float) * 0.4)
-		an.play("default")
-		an.frame = rng.randi() % int(spec[1])
-		an.material = blur_mat
-		grp.add_child(an)
+	# (Advika 2026-07-25: the bottom fg-frame plants + hanging ceiling vines
+	# were removed — they sat in the 1.35x frame layer / dangled in open air
+	# and read as FLOATING plants. All vegetation now lives grounded in the
+	# ground + platform assemblies.)
 
 
 static func _frame_tex(cache: Dictionary, tex_name: String) -> Texture2D:
@@ -316,36 +404,127 @@ static func _vignette(host: Node2D) -> void:
 ## NOTE for the real level: clamp this layer at both level ends (the spec's
 ## ~2900px of covered camera travel) — the gallery has no ends yet.
 static func _backdrop(pb: ParallaxBackground) -> void:
+	# TWO-DEEP painted parallax (Advika: bg felt flat): a slower, hazier,
+	# larger copy of the tunnel far behind, and the main graded copy in
+	# front at a faster motion so the arches slide against the platforms.
+	# Both tile with MIRRORING (odd copies flipped) — bright meets bright.
+	var vs := pb.get_viewport().get_visible_rect().size
+	var tex: Texture2D = load("res://assets/realms/realm1_backdrop/tunnel_11.png")
+	var tw := float(tex.get_width())
+	# far copy: motion 0.05, scale 1.15, extra blur + haze
+	var pl_far := ParallaxLayer.new()
+	pl_far.name = "bg_backdrop_far"
+	pl_far.motion_scale = Vector2(0.05, 0.02)
+	pb.add_child(pl_far)
+	var mat_far := ShaderMaterial.new()
+	mat_far.shader = load("res://shaders/backdrop_gold.gdshader")
+	mat_far.set_shader_parameter("blur_lod", 4.5)
+	mat_far.set_shader_parameter("fog_amount", 0.38)
+	mat_far.set_shader_parameter("contrast", 0.5)
+	var sc_far := 1.15
+	var tw_far := tw * sc_far
+	var base_far := -vs.x * 0.5 * 0.05
+	var y_far := vs.y * 0.5 + 478.0 - 1024.0 * sc_far - vs.y * 0.5 * 0.02
+	for k in range(-1, 4):
+		var sf := Sprite2D.new()
+		sf.texture = tex
+		sf.centered = false
+		sf.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		sf.material = mat_far
+		if absi(k) % 2 == 1:
+			sf.scale = Vector2(-sc_far, sc_far)
+			sf.position = Vector2(base_far + float(k + 1) * tw_far, y_far)
+		else:
+			sf.scale = Vector2(sc_far, sc_far)
+			sf.position = Vector2(base_far + float(k) * tw_far, y_far)
+		pl_far.add_child(sf)
+	# MID copy (Advika C): a third depth plane between far and main. Scaled 1.09
+	# and lifted a touch so its arches peek above/between the main copy — with
+	# far (0.05), mid (0.15), main (0.30) + near band (0.68) + platforms (1.0),
+	# panning now reveals five distinct depth rates instead of two.
+	var pl_mid := ParallaxLayer.new()
+	pl_mid.name = "bg_backdrop_mid"
+	pl_mid.motion_scale = Vector2(0.15, 0.045)
+	pb.add_child(pl_mid)
+	var mat_mid := ShaderMaterial.new()
+	mat_mid.shader = load("res://shaders/backdrop_gold.gdshader")
+	mat_mid.set_shader_parameter("blur_lod", 4.0)
+	mat_mid.set_shader_parameter("fog_amount", 0.32)
+	mat_mid.set_shader_parameter("contrast", 0.56)
+	var sc_mid := 1.09
+	var tw_mid := tw * sc_mid
+	var base_mid := -vs.x * 0.5 * 0.15
+	var y_mid := vs.y * 0.5 + 478.0 - 1024.0 * sc_mid - vs.y * 0.5 * 0.045 - 26.0
+	for k in range(-1, 4):
+		var sm := Sprite2D.new()
+		sm.texture = tex
+		sm.centered = false
+		sm.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		sm.material = mat_mid
+		if absi(k) % 2 == 1:
+			sm.scale = Vector2(-sc_mid, sc_mid)
+			sm.position = Vector2(base_mid + float(k + 1) * tw_mid, y_mid)
+		else:
+			sm.scale = Vector2(sc_mid, sc_mid)
+			sm.position = Vector2(base_mid + float(k) * tw_mid, y_mid)
+		pl_mid.add_child(sm)
+	# main copy: motion 0.30 — visibly slides
 	var pl := ParallaxLayer.new()
 	pl.name = "bg_backdrop"
-	pl.motion_scale = Vector2(0.08, 0.04)
+	pl.motion_scale = Vector2(0.30, 0.06)
 	pb.add_child(pl)
-	var vs := pb.get_viewport().get_visible_rect().size
-	# STEP 6a (Advika): the backdrop TILES across the whole level with
-	# horizontal MIRRORING — odd copies flipped so bright meets bright and
-	# dark meets dark at every join (Tunnel 11 is lit directionally; a
-	# plain repeat would seam). Manual instancing: 5 copies, one shared
-	# ShaderMaterial. Level still starts at the painting's left edge; the
-	# vertical lower-third-on-horizon rule is unchanged.
-	var tex: Texture2D = load("res://assets/realms/realm1_backdrop/tunnel_11.png")
-	var tw := float(tex.get_width())   # 2688
-	var base_x := -vs.x * 0.5 * 0.08
-	var y := vs.y * 0.5 + 478.0 - 1024.0 - vs.y * 0.5 * 0.04
+	var base_x := -vs.x * 0.5 * 0.22
+	var y := vs.y * 0.5 + 478.0 - 1024.0 - vs.y * 0.5 * 0.05
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/backdrop_gold.gdshader")
-	for k in range(-2, 3):
+	for k in range(-1, 4):
 		var s := Sprite2D.new()
 		s.texture = tex
 		s.centered = false
 		s.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 		s.material = mat
-		var flip := absi(k) % 2 == 1
-		if flip:
+		if absi(k) % 2 == 1:
 			s.scale = Vector2(-1, 1)
 			s.position = Vector2(base_x + float(k + 1) * tw, y)
 		else:
 			s.position = Vector2(base_x + float(k) * tw, y)
 		pl.add_child(s)
+	# Advika 2026-07-25: slow autonomous drift so the backdrop BREATHES even
+	# when the player stands still — the two layers slide at different rates,
+	# so the arches shimmer with parallax life instead of sitting dead.
+	var d_far := pb.create_tween().set_loops()
+	d_far.tween_property(pl_far, "motion_offset", Vector2(40, 12), 23.0) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	d_far.tween_property(pl_far, "motion_offset", Vector2(-40, -12), 23.0) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var d_main := pb.create_tween().set_loops()
+	d_main.tween_property(pl, "motion_offset", Vector2(-22, 7), 17.0) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	d_main.tween_property(pl, "motion_offset", Vector2(22, -7), 17.0) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# Advika 2026-07-25 (more parallax): two drifting HAZE planes between the
+	# backdrop and the platforms. Each crawls on its own (TIME) AND slides at
+	# its own depth rate when the camera pans — real midground parallax, warm-
+	# tinted to sit inside the amber backdrop. Kept visible by the build filter.
+	var noise := _noise()
+	for hz: Array in [["bg_haze_far", 0.34, 0.15, 0.9], ["bg_haze_near", 0.52, 0.12, 1.3]]:
+		var hl := ParallaxLayer.new()
+		hl.name = hz[0]
+		hl.motion_scale = Vector2(hz[1], float(hz[1]) * 0.45)
+		hl.motion_mirroring = Vector2(2600, 0)
+		pb.add_child(hl)
+		var hr := ColorRect.new()
+		hr.position = Vector2(-1300, -260)
+		hr.size = Vector2(2600, 1320)
+		hr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var hm := ShaderMaterial.new()
+		hm.shader = load("res://shaders/cave_mist.gdshader")
+		hm.set_shader_parameter("noise_tex", noise)
+		hm.set_shader_parameter("speed", float(hz[3]) * 0.01)
+		hm.set_shader_parameter("strength", hz[2])
+		hm.set_shader_parameter("tint", Vector3(0.34, 0.25, 0.14))
+		hr.material = hm
+		hl.add_child(hr)
 
 
 static func _set_fog_center(v: Vector2) -> void:
@@ -367,7 +546,8 @@ static func mass_mat(lift: float, detail: float,
 static func _strip(pb: ParallaxBackground, cache: Dictionary, motion: float,
 		tex_name: String, lift: float, detail: float, brighten: Vector3) -> void:
 	var pl := ParallaxLayer.new()
-	pl.motion_scale = Vector2(motion, 1.0)
+	pl.name = "bg_strip"   # kept visible (re-enabled midground parallax planes)
+	pl.motion_scale = Vector2(motion, 0.15)   # low vertical so it never "heaves"
 	pl.motion_mirroring = Vector2(SPAN, 0.0)
 	pb.add_child(pl)
 	var s := Sprite2D.new()
@@ -434,6 +614,72 @@ static func _shafts(host: Node2D, pb: ParallaxBackground) -> void:
 
 ## sparse dust motes drifting through the lit air — additive glints, slow
 ## as snowfall, alive even when the camera is still
+## Drifting glowing MOTES (Advika 2026-07-25: "add hues / tiny glowing balls to
+## make it feel alive"). Soft additive orbs in the realm hues — lantern amber,
+## Curiosity violet, a cool teal — sparse + slow, each bobbing, swaying and
+## flickering on its own phase, at mixed depths (some behind platforms, some in
+## front) so the cave air feels populated and alive.
+static func _glow_motes(host: Node2D) -> void:
+	var layer := Node2D.new()
+	layer.name = "glow_motes"
+	host.add_child(layer)
+	var tex := _glow_dot()
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 909
+	var hues: Array[Color] = [Color("f5b870"), Color("c79be0"), Color("7fb8a6"),
+			Color("f0a860"), Color("b78fd6"), Color("9ad0c0"), Color("d6a0e8"),
+			Color("ffcf8a"), Color("8ab4e0")]   # more hue variety (Advika)
+	for i in range(150):
+		var m := Sprite2D.new()
+		m.texture = tex
+		m.material = mat
+		var hue: Color = hues[rng.randi() % hues.size()]
+		# boost past 1.0 so the additive core reads as a real glow, even over the
+		# lit backdrop; the halo keeps the hue
+		hue = hue * 1.7
+		var a0 := rng.randf_range(0.6, 1.0)
+		hue.a = a0
+		m.modulate = hue
+		var sz := rng.randf_range(0.10, 0.28)
+		m.scale = Vector2(sz, sz)
+		m.z_index = 7 if rng.randf() < 0.28 else 3   # some foreground, most mid
+		var x := rng.randf_range(-900.0, 9900.0)
+		var y := rng.randf_range(70.0, 500.0)
+		m.position = Vector2(x, y)
+		layer.add_child(m)
+		# slow bob + sway on its own period
+		var bob := rng.randf_range(16.0, 42.0)
+		var swy := rng.randf_range(10.0, 28.0)
+		var dur := rng.randf_range(3.6, 7.2)
+		var tw := host.create_tween().set_loops()
+		tw.tween_property(m, "position", Vector2(x + swy, y - bob), dur) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(m, "position", Vector2(x - swy, y + bob), dur) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		# gentle flicker
+		var fa := host.create_tween().set_loops()
+		fa.tween_property(m, "modulate:a", a0 * 0.35, rng.randf_range(1.1, 2.6)) \
+				.set_trans(Tween.TRANS_SINE)
+		fa.tween_property(m, "modulate:a", a0, rng.randf_range(1.1, 2.6)) \
+				.set_trans(Tween.TRANS_SINE)
+
+
+## a soft round glow sprite (radial falloff), built once and shared by the motes
+static func _glow_dot() -> Texture2D:
+	var sz := 64
+	var img := Image.create(sz, sz, false, Image.FORMAT_RGBA8)
+	var c := sz * 0.5
+	for y in sz:
+		for x in sz:
+			var d := Vector2(x - c + 0.5, y - c + 0.5).length() / c
+			var a := clampf(1.0 - d, 0.0, 1.0)
+			a = a * a * a   # soft, tight core with a faint halo
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
+	return ImageTexture.create_from_image(img)
+
+
 static func _motes(pb: ParallaxBackground) -> void:
 	var pl := ParallaxLayer.new()
 	pl.motion_scale = Vector2.ZERO
