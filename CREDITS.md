@@ -31,6 +31,7 @@ work is not reviewed).
 | Asset | Source | Used in |
 |---|---|---|
 | Cave tilemaps + backgrounds | **Szadi art** — itch.io | Realm 1 (Crimson Hollow) |
+| Cave Assets: floor slabs, platforms, big rocks, rock combinations, small rocks/stalagmites (`assets/realms/realm1_cavern/`, sliced in-house by `tools/slice_cave_pack.gd`) | **Maaot** — itch.io | Realm 1 rebuild (Crimson Hollow) |
 | Mossy tileset: terrain, floating platforms, hills, background decoration, hanging plants, decorations & hazards | **Maaot** — itch.io | Realm 2 backgrounds + terrain (purple hue-shift applied in-house) |
 | BlueWizard Animations (idle / walk / jump / dash) | **Maaot** — itch.io (same pack family — confirm exact pack page before submission) | Realm 2 boss, the Wizard — purple cloak + red eyes shifted in-house (`tools/tint_wizard_pack.gd`) |
 | Rune orb (12-frame roll + 12-frame conjure smoke) | Sourced by Advika — **confirm exact pack/page before submission** | Realm 2 wizard's rolling hazard — crystal shifted onto the realm violet in-house (`tools/tint_runeorb_pack.gd`) |

@@ -1,0 +1,91 @@
+[gd_scene load_steps=10 format=3 uid="uid://c0mainmenu0hub"]
+
+; Animated main menu.
+;   MainMenu (Control, full rect)
+;     Background (Control) ....... 3% overscan + breathing (node scale, script-
+;                                  driven); drives the parallax + mist shaders
+;       Painting (TextureRect) ... painting sampled by menu_parallax.gdshader
+;       MistBody (ColorRect) ..... depth-masked mist, pools in the far valley,
+;                                  RIDES the parallax; additive violet
+;       MistVeil (ColorRect) ..... faint front haze, barely rides, much fainter
+;   <UI CanvasLayer added ABOVE Background in a later step — left empty>
+
+[ext_resource type="Texture2D" uid="uid://bamc5n576kgyv" path="res://assets/ui/main_menu/main_menu_bg.png" id="1_bg"]
+[ext_resource type="Texture2D" uid="uid://dwuuumdp26nlo" path="res://assets/ui/main_menu/main_menu_depth.png" id="2_depth"]
+[ext_resource type="Shader" path="res://shaders/menu_parallax.gdshader" id="3_shader"]
+[ext_resource type="Script" path="res://scripts/MainMenuParallax.gd" id="4_script"]
+[ext_resource type="Shader" path="res://shaders/menu_mist.gdshader" id="5_mist"]
+[ext_resource type="Texture2D" uid="uid://jstrdaw1147e" path="res://assets/ui/main_menu/mist_noise.png" id="6_noise"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_par"]
+shader = ExtResource("3_shader")
+shader_parameter/u_offset = Vector2(0, 0)
+shader_parameter/u_depth_strength = 1.0
+shader_parameter/depth_tex = ExtResource("2_depth")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_body"]
+shader = ExtResource("5_mist")
+shader_parameter/tint = Color(0.14, 0.11, 0.18, 1)
+shader_parameter/density = 0.45
+shader_parameter/noise_scale = 2.2
+shader_parameter/warp_amount = 0.42
+shader_parameter/scroll_speed = 1.0
+shader_parameter/vertical_falloff = 0.4
+shader_parameter/depth_influence = 1.0
+shader_parameter/master = 1.0
+shader_parameter/u_offset = Vector2(0, 0)
+shader_parameter/ride = 0.4
+shader_parameter/noise_tex = ExtResource("6_noise")
+shader_parameter/depth_tex = ExtResource("2_depth")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_veil"]
+shader = ExtResource("5_mist")
+shader_parameter/tint = Color(0.13, 0.11, 0.19, 1)
+shader_parameter/density = 0.1
+shader_parameter/noise_scale = 3.6
+shader_parameter/warp_amount = 0.32
+shader_parameter/scroll_speed = 1.7
+shader_parameter/vertical_falloff = 0.6
+shader_parameter/depth_influence = 0.0
+shader_parameter/master = 1.0
+shader_parameter/u_offset = Vector2(0, 0)
+shader_parameter/ride = 0.15
+shader_parameter/noise_tex = ExtResource("6_noise")
+shader_parameter/depth_tex = ExtResource("2_depth")
+
+[node name="MainMenu" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+
+[node name="Background" type="Control" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("4_script")
+debug_show_fps = true
+
+[node name="Painting" type="TextureRect" parent="Background"]
+texture_repeat = 1
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture_filter = 2
+material = SubResource("ShaderMaterial_par")
+texture = ExtResource("1_bg")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="MistBody" type="ColorRect" parent="Background"]
+material = SubResource("ShaderMaterial_body")
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(1, 1, 1, 1)
+
+[node name="MistVeil" type="ColorRect" parent="Background"]
+material = SubResource("ShaderMaterial_veil")
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(1, 1, 1, 1)

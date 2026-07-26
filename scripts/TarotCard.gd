@@ -15,7 +15,6 @@ const GOLD := Color(1.0, 0.82, 0.42)
 const GOLD_DIM := Color(0.72, 0.58, 0.30)
 const INK := Color(0.88, 0.86, 0.80)
 const DIM := Color(0.62, 0.60, 0.56)
-const CARD_FACE := Color(0.10, 0.075, 0.16)
 const CARD_SIZE := Vector2(430.0, 660.0)
 
 @export var numeral := "II"
@@ -26,6 +25,10 @@ const CARD_SIZE := Vector2(430.0, 660.0)
 	"grow the light — hold L",
 	"the orbs only push — move",
 ]
+# Face + dim-overlay colours are overridable so each realm can theme the card to its
+# own palette (Realm 1 sets a warm cave brown; the default stays the R2 violet).
+@export var card_face: Color = Color(0.10, 0.075, 0.16)
+@export var overlay_color: Color = Color(0.02, 0.015, 0.05, 0.82)
 
 var _card: Control
 
@@ -35,7 +38,7 @@ func _ready() -> void:
 	layer = 100
 
 	var dim := ColorRect.new()
-	dim.color = Color(0.02, 0.015, 0.05, 0.82)
+	dim.color = overlay_color
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
@@ -51,7 +54,7 @@ func _ready() -> void:
 
 	# card body + double gold frame — a trump card, not a menu
 	var face := ColorRect.new()
-	face.color = CARD_FACE
+	face.color = card_face
 	face.size = CARD_SIZE
 	_card.add_child(face)
 	for inset in [8.0, 18.0]:

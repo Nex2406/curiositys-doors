@@ -13,6 +13,10 @@ enum State { IDLE, WALK, RUN, JUMP_START, AIR, LAND, ATTACK, DASH, HURT }
 @export var gravity: float = 460.0
 @export var jump_velocity: float = -356.0
 @export var accel_time: float = 0.15
+# Extra mid-air jumps (0 = none; Realm 1 sets 1 for a double jump). Default off so
+# other realms keep single-jump.
+@export var max_air_jumps: int = 0
+var _air_jumps_used: int = 0
 
 # Combat / dash feel. A slash locks Curiosity in place for the swing; a dash is
 # a quick weighty burst in the facing direction (also the platforming gap-closer).
@@ -105,7 +109,9 @@ const FEET_FROM_CENTRE: float = 136.0   # content feet row below canvas centre (
 
 # Source art faces RIGHT. Default unflipped = facing right; flip_h mirrors to face left.
 var _state: State = State.IDLE
-var _facing_right: bool = false
+# She starts facing RIGHT — the way every level runs (Advika 2026-07-26: "when
+# Curiosity spawns make sure she faces the right side, she's always facing left").
+var _facing_right: bool = true
 var _lantern_offset_x: float
 var _lantern_disp_x: float = 0.0   # smoothed held-side anchor
 var _lantern_swing: float = 0.0    # current velocity trail offset
@@ -277,20 +283,32 @@ func _physics_process(delta: float) -> void:
 			_facing_right = want_right
 			_apply_facing()
 
-	if Input.is_action_just_pressed("jump") and is_on_floor() and _is_ground_state():
-		velocity.y = jump_velocity
-		_set_state(State.JUMP_START)
+	if Input.is_action_just_pressed("jump"):
+		if is_on_floor() and _is_ground_state():
+			velocity.y = jump_velocity
+			_air_jumps_used = 0
+			_set_state(State.JUMP_START)
+		elif not is_on_floor() and _air_jumps_used < max_air_jumps:
+			# double jump: a fresh upward burst mid-air, capped at max_air_jumps
+			velocity.y = jump_velocity
+			_air_jumps_used += 1
+			_set_state(State.JUMP_START)
 
 	move_and_slide()
 
 	var grounded: bool = is_on_floor()
+	if grounded:
+		_air_jumps_used = 0
 	if _was_airborne and grounded and (_state == State.AIR or _state == State.JUMP_START):
 		# Landed — no separate land animation, drop straight back into locomotion.
 		_update_locomotion(direction, sprint)
 	elif not grounded and _is_ground_state():
 		_set_state(State.AIR)
 
-	if grounded and _state in [State.IDLE, State.WALK, State.RUN]:
+	# Safety net against a "frozen in jump" pose: if we're on the floor in ANY
+	# ground-or-air locomotion state (the _was_airborne edge above can miss a frame
+	# when landing on a moving platform), always resolve back into locomotion.
+	if grounded and _state in [State.IDLE, State.WALK, State.RUN, State.AIR, State.JUMP_START]:
 		_update_locomotion(direction, sprint)
 
 	_was_airborne = not grounded
