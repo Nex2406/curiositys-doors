@@ -67,7 +67,11 @@ const CEIL_GOLEMS: Array[Vector2] = [
 	Vector2(7825.0, -366.0),
 ]
 ## ground golems, dormant until she nears — they fill the gaps in that same timeline
-const GROUND_GOLEMS: Array[float] = [150.0, 5150.0, 9000.0]
+## Advika 2026-07-26: "make sure the golems stay hidden until Curiosity comes on
+## them — there's one running around at the start". The first one sat at x150 while
+## she spawns at x-380: 530px apart, INSIDE its 580px detect range, so it erupted
+## before she had taken a step. Nothing may sit within detect_range of the spawn.
+const GROUND_GOLEMS: Array[float] = [900.0, 5150.0, 9000.0]
 const CURIOSITY_JUMP := -500.0           # Advika: higher jump for this level (base -356)
 const GOLEM_SCALE := 0.62                # Advika: bigger golems
 const FLOOR_TOP := 470.0                 # world y of the walkable ground surface
@@ -508,11 +512,20 @@ func _process(delta: float) -> void:
 				+ Input.get_axis("ui_left", "ui_right") * CAM_SPEED * delta, lo, hi)
 
 
+## Textures come from the IMPORTED resource, not from a file path. Image.load_from_file
+## + globalize_path only works while the project is a folder on disk: in an exported
+## build the art lives inside the PCK, every one of these calls returned null, and the
+## whole cave drew nothing — the black screen on the live build (Advika 2026-07-26).
+## The raw-file path stays as a fallback for art that was never imported.
 func _tex(dir: String, tex_name: String) -> Texture2D:
 	var key := dir + tex_name
 	if not _cache.has(key):
-		var img := Image.load_from_file(ProjectSettings.globalize_path(dir + tex_name))
-		_cache[key] = ImageTexture.create_from_image(img)
+		var t: Texture2D = load(dir + tex_name)
+		if t == null:
+			var img := Image.load_from_file(ProjectSettings.globalize_path(dir + tex_name))
+			if img != null:
+				t = ImageTexture.create_from_image(img)
+		_cache[key] = t
 	return _cache[key]
 
 

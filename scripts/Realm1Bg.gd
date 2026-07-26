@@ -399,11 +399,18 @@ static func _frame(host: Node2D) -> void:
 	# ground + platform assemblies.)
 
 
+## Imported resource first — see the note on Realm1PlatformTest._tex: loading art by
+## FILE PATH works in the editor and returns null in an exported build, which left the
+## live web build with a cave made of nothing.
 static func _frame_tex(cache: Dictionary, tex_name: String) -> Texture2D:
 	if not cache.has(tex_name):
-		var img := Image.load_from_file(
-				ProjectSettings.globalize_path(CUT + tex_name))
-		cache[tex_name] = ImageTexture.create_from_image(img)
+		var t: Texture2D = load(CUT + tex_name)
+		if t == null:
+			var img := Image.load_from_file(
+					ProjectSettings.globalize_path(CUT + tex_name))
+			if img != null:
+				t = ImageTexture.create_from_image(img)
+		cache[tex_name] = t
 	return cache[tex_name]
 
 
@@ -580,9 +587,13 @@ static func _strip(pb: ParallaxBackground, cache: Dictionary, motion: float,
 	pb.add_child(pl)
 	var s := Sprite2D.new()
 	if not cache.has(tex_name):
-		var img := Image.load_from_file(
-				ProjectSettings.globalize_path(SOFT + tex_name))
-		cache[tex_name] = ImageTexture.create_from_image(img)
+		var t: Texture2D = load(SOFT + tex_name)     # imported first; see _frame_tex
+		if t == null:
+			var img := Image.load_from_file(
+					ProjectSettings.globalize_path(SOFT + tex_name))
+			if img != null:
+				t = ImageTexture.create_from_image(img)
+		cache[tex_name] = t
 	s.texture = cache[tex_name]
 	s.centered = false
 	s.position = Vector2(-SPAN * 0.5, -900.0)
