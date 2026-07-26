@@ -127,8 +127,12 @@ func _run() -> void:
 	# background"). Realm 1 bleeds out across ~8s; Moonlight comes up beneath it from
 	# ~6s, so they sound together for several seconds. The bus is ducked for the whole
 	# card and only opens back up as we arrive.
-	AudioManager.duck_music(2.0)
-	AudioManager.stop_ambient(8.0)
+	# NOT ducked any more: ducking the bus made the merge a background murmur, and
+	# the merge is the point (Advika 2026-07-26: "the track merging needs to be
+	# audible during the transition"). Realm 1 bleeds out across 11s and Moonlight
+	# rises from 4s over 8s, both at full bus volume — they sound together, loudly,
+	# for most of the card.
+	AudioManager.stop_ambient(11.0)
 	_cross_in_next_track()
 
 	var q := _tw()
@@ -160,7 +164,7 @@ func _run() -> void:
 		await get_tree().process_frame
 		await get_tree().process_frame       # let the realm build before it shows
 		print("QUOTE: arrived in ", next_scene)
-	AudioManager.unduck_music(REALM_FADE)     # the realm's own volume returns with it
+	AudioManager.unduck_music(REALM_FADE)     # in case the realm behind us left it ducked
 	var lift := _tw()
 	lift.tween_property(_black, "modulate:a", 0.18, 0.9) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -185,9 +189,9 @@ func _card_shot() -> void:
 ## The Trial re-requests the same track by name on arrival, which AudioManager
 ## no-ops, so what starts here simply keeps playing into the realm.
 func _cross_in_next_track() -> void:
-	await get_tree().create_timer(6.0).timeout
+	await get_tree().create_timer(4.0).timeout
 	if next_track != null:
-		AudioManager.play_ambient(next_track, next_track_name, 6.0)
+		AudioManager.play_ambient(next_track, next_track_name, 8.0)
 
 
 ## Every input is swallowed while the card is up; after the grace it also skips.

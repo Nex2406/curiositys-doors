@@ -1,5 +1,5 @@
 extends Node2D
-## Golem test bench. GOLEM_STATE=dormant|waking|windup|rolling|recovery|defeat
+## Golem test bench. GOLEM_STATE=dormant|waking|rolling|recovery|retreat|defeat
 ## forces a state; GOLEM_SHOT=<path> screenshots after it settles and quits.
 ## A dummy "player" sits to the right so facing/detection resolve.
 
@@ -66,7 +66,7 @@ func _loop_ceiling_drop() -> void:
 func _force(st: String) -> void:
 	var m := {
 		"dormant": BoulderGolem.S.DORMANT, "waking": BoulderGolem.S.WAKING,
-		"windup": BoulderGolem.S.WINDUP, "rolling": BoulderGolem.S.ROLLING,
+		"rolling": BoulderGolem.S.ROLLING, "retreat": BoulderGolem.S.RETREAT,
 		"recovery": BoulderGolem.S.RECOVERY, "defeat": BoulderGolem.S.DYING,
 		"landing": BoulderGolem.S.LANDING,
 	}

@@ -304,6 +304,10 @@ func _ready() -> void:
 	if OS.get_environment("QUOTE_TEST") != "":
 		await get_tree().create_timer(0.4).timeout
 		_on_realm2_door_entered(_player)
+	# DOOR_PRESS=1: the REAL chain, hands-off — stand her in the portal's mouth, let
+	# the ground open, then actually press [Y] so the door's own input path runs.
+	if OS.get_environment("DOOR_PRESS") != "":
+		_door_press_probe()
 	if OS.get_environment("PLAT_SHOT") != "":
 		_shot(OS.get_environment("PLAT_SHOT"))
 
@@ -1135,6 +1139,27 @@ func _erupt_door() -> void:
 		var t := create_tween()
 		t.tween_property(_door_light, "energy", 0.9, DOOR_BIRTH * 0.8) \
 				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+
+## End-to-end proof that the door connects the realms: she is placed in the arch,
+## the portal is armed and erupts, and once it STANDS a real "interact" press is
+## injected — so the level's own [Y] handler, its overlap test and the handover to
+## QuoteTransition all run exactly as they do under a player's hands.
+func _door_press_probe() -> void:
+	await get_tree().create_timer(0.3).timeout
+	if _player == null or not is_instance_valid(_player):
+		return
+	_player.global_position = Vector2(DOOR_POS.x, FLOOR_TOP - 60.0)
+	_door_armed = true
+	print("PROBE: in the arch, waiting for the portal")
+	while not _door_ready:
+		await get_tree().create_timer(0.2).timeout
+	print("PROBE: portal stands — overlap=",
+			_door_trigger.get_overlapping_bodies().has(_player), " pressing Y")
+	await get_tree().create_timer(0.6).timeout
+	Input.action_press("interact")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_release("interact")
 
 
 ## The light bleeding out of the tear — in WORLD space, not on the door, so it never
