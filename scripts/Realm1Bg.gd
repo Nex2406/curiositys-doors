@@ -143,8 +143,11 @@ static func build(host: Node2D) -> void:
 	for child in pb.get_children():
 		if child.name != "bg_backdrop" and child.name != "bg_backdrop_far" \
 				and child.name != "bg_backdrop_mid" and child.name != "bg_near" \
+				and not str(child.name).begins_with("bg_columns") \
 				and not str(child.name).begins_with("bg_haze"):
 			child.visible = false
+	_depth_columns(pb, cache)
+	_cave_mist(host, noise)
 	var wander := host.create_tween().set_loops()
 	wander.tween_method(_set_fog_center, Vector2(0.20, 0.28),
 			Vector2(0.218, 0.295), 14.0) \
@@ -228,7 +231,7 @@ static func _frame(host: Node2D) -> void:
 	grp.name = "fg_frame"
 	grp.z_index = 40                 # in front of platforms, like a foreground frame
 	grp.modulate = Color("665033")   # lighten the ceiling rock off pure black
-	grp.position = Vector2(0.0, -560.0)
+	grp.position = Vector2(0.0, -600.0)   # raised a touch for platform headroom under the roof
 	host.add_child(grp)
 	var blur_mat := ShaderMaterial.new()
 	blur_mat.shader = load("res://shaders/frame_blur.gdshader")
@@ -259,6 +262,31 @@ static func _frame(host: Node2D) -> void:
 	grp.add_child(band)
 	var band_b := vs.y * 0.095   # Advika: pushed the roof UP a bit
 	var ceiling_count := 0
+	# Advika 2026-07-26: above the hanging masses the solid band showed as a flat
+	# BLACK bar across the top of the screen — the stretch aspect is "expand", so a
+	# window taller than 16:9 reveals more world and exposes it. Pack the band with
+	# real rock so the roof reads as thick textured stone right off the top edge of
+	# any window. These go in FIRST, so every hanging mass still draws over them.
+	for row in range(3):        # 3 rows: covers the strip even on very tall windows
+		var fy := band_b - 30.0 - float(row) * 150.0
+		var fx := C_MIN
+		var fi := row
+		while fx < C_MAX:
+			var ftex := _frame_tex(cache, clump_pool[fi % clump_pool.size()])
+			var fh := rng.randf_range(210.0, 320.0)
+			var fsc := fh / float(ftex.get_height())
+			var f := Sprite2D.new()
+			f.texture = ftex
+			f.flip_v = rng.randf() < 0.5
+			f.flip_h = rng.randf() < 0.5
+			f.scale = Vector2(fsc * rng.randf_range(1.4, 2.1), fsc)
+			f.position = Vector2(fx + rng.randf_range(-40.0, 40.0),
+					fy + rng.randf_range(-28.0, 28.0))
+			f.material = blur_mat
+			grp.add_child(f)
+			ceiling_count += 1
+			fx += ftex.get_width() * fsc * rng.randf_range(0.55, 0.78)
+			fi += 1
 	var clump_spots: Array = []
 	# Advika 2026-07-25: the roof read UGLY because every clump was the same
 	# round lump at the same size. Now three distinct classes are mixed —
@@ -807,6 +835,99 @@ static func _noise() -> NoiseTexture2D:
 	ntex.width = 512
 	ntex.height = 512
 	return ntex
+
+
+## A MIDDLE depth between the painted backdrop (motion 0.05-0.30) and the near band
+## (0.68): tall rock columns as flat silhouettes at 0.46, so walking slides them
+## against both and the cavern reads as having room in it (Advika 2026-07-26: "make
+## the background feel alive, add more parallax"). Deliberately low contrast and
+## sparse — this is depth, not scenery, and it must never become the black slabs
+## that got scrapped in step 6b.
+static func _depth_columns(pb: ParallaxBackground, cache: Dictionary) -> void:
+	# THREE depths of rock between the painted backdrop (0.05-0.30) and the near
+	# band (0.68), each with its own speed, size, density and shade, so panning
+	# separates them all (Advika 2026-07-26, twice: "add more parallax", "MORE
+	# PARALLAX IN BG"). Far ones are big, pale and sparse; near ones smaller,
+	# darker and busier — the standard depth cues, done with the cave's own rock.
+	# name, motion, mirror span, height range, spacing, tint
+	for spec: Array in [
+			["bg_columns_far", 0.22, 4200.0, Vector2(620.0, 1050.0),
+					Vector2(520.0, 820.0), Color(0.34, 0.30, 0.24, 0.34), 1811],
+			["bg_columns", 0.46, 3400.0, Vector2(520.0, 900.0),
+					Vector2(360.0, 620.0), Color(0.30, 0.26, 0.20, 0.55), 3311],
+			["bg_columns_near", 0.60, 2600.0, Vector2(360.0, 620.0),
+					Vector2(240.0, 430.0), Color(0.20, 0.17, 0.13, 0.72), 5417]]:
+		var pl := ParallaxLayer.new()
+		pl.name = String(spec[0])
+		pl.motion_scale = Vector2(float(spec[1]), float(spec[1]) * 0.19)
+		pl.motion_mirroring = Vector2(float(spec[2]), 0)
+		pb.add_child(pl)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = int(spec[6])
+		var pool: Array[String] = ["bigrock_06.png", "bigrock_02.png", "combo_11.png",
+				"combo_08.png", "bigrock_08.png"]
+		var hr: Vector2 = spec[3]
+		var gap: Vector2 = spec[4]
+		var x := 60.0
+		while x < float(spec[2]):
+			var tex := _frame_tex(cache, pool[rng.randi() % pool.size()])
+			var h := rng.randf_range(hr.x, hr.y)
+			var sc := h / float(tex.get_height())
+			var s := Sprite2D.new()
+			s.texture = tex
+			s.flip_h = rng.randf() < 0.5
+			s.scale = Vector2(sc * rng.randf_range(0.55, 0.9), sc)
+			# feet below the frame, heads into the upper haze — pillars, not boulders
+			s.position = Vector2(x, rng.randf_range(120.0, 300.0))
+			s.modulate = spec[5]                     # a shade, not a shape
+			s.z_index = -2
+			pl.add_child(s)
+			x += rng.randf_range(gap.x, gap.y)
+
+
+## Drifting mist between the backdrop and the cave itself (Advika 2026-07-26:
+## "the background seems too plain and dead"). Its own CanvasLayer at -40 — behind
+## every world node (platforms, floor, roof are all layer 0) but in front of the
+## parallax backdrop at -50, so the mist reads as air INSIDE the cavern rather than
+## a film over the whole picture. Screen-anchored full-rect sheets, so no window
+## size can leave an edge; each crawls at its own speed and direction and lives in
+## its own vertical band, so the air never pulses in unison.
+static func _cave_mist(host: Node2D, noise: NoiseTexture2D) -> void:
+	var cl := CanvasLayer.new()
+	cl.name = "cave_mist"
+	cl.layer = -40
+	host.add_child(cl)
+	# Advika 2026-07-26: fast and noticeable, and then "too organised — make it
+	# chaotic topsy turvy". So: cave_mist_churn (domain-warped, three octaves), each
+	# sheet with its OWN rotation, drift direction and warp strength, and bands that
+	# overlap heavily so no horizontal seam shows. Nothing here travels straight.
+	# speed, strength, y_shift, band, tint, drift dir, warp, rotation
+	# ...and then pulled WAY back (Advika: "way too much, it looks foreign and
+	# strange"). Two sheets instead of four, a third of the density, drifting mostly
+	# sideways with only a little fold — air in a cave, not weather. The low river
+	# survives because mist belongs on a cave floor; the mid-air sheets do not.
+	for spec: Array in [
+			[0.055, 0.10, 0.00, Vector4(0.06, 0.40, 1.10, 0.74), Vector3(0.44, 0.40, 0.26),
+					Vector2(1.0, -0.12), 0.22, 0.0],
+			# the low river, hugging the floor
+			[0.075, 0.16, 1.30, Vector4(0.60, 0.88, 1.30, 1.00), Vector3(0.42, 0.38, 0.24),
+					Vector2(-1.0, -0.06), 0.30, 0.4]]:
+		var r := ColorRect.new()
+		r.set_anchors_preset(Control.PRESET_FULL_RECT)
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var mat := ShaderMaterial.new()
+		mat.shader = load("res://shaders/cave_mist_churn.gdshader")
+		mat.set_shader_parameter("noise_tex", noise)
+		mat.set_shader_parameter("speed", spec[0])
+		mat.set_shader_parameter("strength", spec[1])
+		mat.set_shader_parameter("y_shift", spec[2])
+		mat.set_shader_parameter("band_zone", spec[3])
+		mat.set_shader_parameter("tint", spec[4])
+		mat.set_shader_parameter("drift", spec[5])
+		mat.set_shader_parameter("warp", spec[6])
+		mat.set_shader_parameter("rot", spec[7])
+		r.material = mat
+		cl.add_child(r)
 
 
 static func _mist(pb: ParallaxBackground, noise: NoiseTexture2D, speed: float,

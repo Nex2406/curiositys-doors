@@ -27,6 +27,35 @@ const TYPE_CPS := 28.0                     # typewriter chars/sec
 @export var numeral := "II"
 @export var card_title := "THE TRIAL"
 @export var portrait: Texture2D = preload("res://assets/enemies/wizard/idle/idle_00.png")
+# The second illustration at the card's foot (Realm 2: the void moth; Realm 1
+# feeds a jade shard here). And a tint on the painted card faces so each realm can
+# recolour the same art to its own palette (white = the original ink-and-cream).
+@export var second_art: Texture2D = preload("res://assets/enemies/void_moth/fly_01.png")
+@export var face_tint: Color = Color(1, 1, 1)
+# The painted card faces are dark ink + light ornament; a multiply-tint can't lift
+# the near-black body to a colour. When `recolor` is on, a luminance ramp remaps the
+# whole face: dark body -> face_lo, bright ornament -> face_hi. Realm 1 sets a warm
+# sepia body + gold ornament to match its cave. Off = Realm 2's original faces.
+@export var screen_offset: Vector2 = Vector2.ZERO   # nudge off screen-centre (compare view)
+# The dim behind the card — ALSO what shows through the card's see-through centre, so
+# it IS the card's body colour. Realm 1 sets a warm dark here to recolour the exact
+# same card without touching its structure. Default = Realm 2's cool dark.
+@export var overlay_color: Color = Color(0.02, 0.015, 0.05, 0.86)
+# Modulate on BOTH illustrations (portrait + foot). Realm 2's art is painted dark and
+# melts into the card; Realm 1's jade/golem art is bright and loud, so Realm 1 dims it
+# here to sit back the same way. White = untouched (Realm 2).
+@export var art_tint: Color = Color(1, 1, 1)
+## foot illustration size + verse size, as multipliers. Defaults keep Realm 2's
+## approved card EXACTLY as shipped; Realm 1 shrinks its jade to buy bigger text.
+@export var foot_art_scale := 1.0
+@export var verse_scale := 1.0
+@export var recolor := false
+@export var face_lo: Color = Color(0.40, 0.30, 0.17)
+@export var face_hi: Color = Color(1.0, 0.84, 0.5)
+const RECOLOR := preload("res://shaders/recolor_warm.gdshader")
+# Warm paper filled over the frame's transparent centre (behind the text) — the
+# realm's card body. Transparent (default) keeps Realm 2's see-through look.
+@export var body_color: Color = Color(0, 0, 0, 0)
 # One uniform voice: threat — answer (Advika: fit the text, make it uniform,
 # say how the moths are expelled).
 @export var verses: Array[String] = [
@@ -61,7 +90,7 @@ func _ready() -> void:
 	layer = 100
 
 	var dim := ColorRect.new()
-	dim.color = Color(0.02, 0.015, 0.05, 0.86)
+	dim.color = overlay_color
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	# IGNORE, or the overlay eats every mouse click before _unhandled_input
 	# sees it (Advika: clicking didn't flip the card)
@@ -118,6 +147,20 @@ func _ready() -> void:
 	# TextureRects default to STOP — the face swallowed every click ON the
 	# card, the one place a player clicks (Advika, twice). Never again:
 	_face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if recolor:
+		# remap the whole painted face to the realm's palette (dark body -> face_lo,
+		# gold ornament -> face_hi) — a multiply-tint can't lift the near-black body
+		var m := ShaderMaterial.new()
+		m.shader = RECOLOR
+		m.set_shader_parameter("lo", face_lo)
+		m.set_shader_parameter("hi", face_hi)
+		m.set_shader_parameter("boost", 1.35)
+		_face.material = m
+	else:
+		_face.modulate = face_tint   # per-realm recolour of the painted card art
+	# mip-filter the big painted face as it downscales, so thin frame lines resolve
+	# smoothly instead of shimmering (Advika: interior lines flickering)
+	_face.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_card.add_child(_face)
 
 	_build_reveal_ui()
@@ -222,6 +265,17 @@ func _build_reveal_ui() -> void:
 	_reveal_ui.visible = false
 	_card.add_child(_reveal_ui)
 
+	# SEMI-TRANSPARENT body wash over the frame's centre, covering the FULL interior up
+	# to the border (so no lighter rectangle edge). Being see-through, the frame's own
+	# eyes/hairlines/crest read THROUGH it as lighter marks. (Realm 1: solid dark brown.)
+	if body_color.a > 0.0:
+		var paper := ColorRect.new()
+		paper.color = body_color
+		paper.position = Vector2(CARD_W * 0.055, CARD_H * 0.035)
+		paper.size = Vector2(CARD_W * 0.89, CARD_H * 0.925)
+		paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_reveal_ui.add_child(paper)
+
 	# CROP to the opaque pixels: both portraits are tall canvases that are
 	# mostly transparent padding — aspect-fit sized the PADDING, so every
 	# "bigger box" bought almost nothing (Advika, at volume, correctly)
@@ -238,39 +292,84 @@ func _build_reveal_ui() -> void:
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	art.position = Vector2(CARD_W * 0.5 - CARD_W * 0.342, CARD_H * 0.145)
 	art.size = Vector2(CARD_W * 0.685, CARD_H * 0.208)  # clears the II above
+	art.modulate = art_tint
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_reveal_ui.add_child(art)
+
+	# The verses' size is solved BEFORE the foot art, because the foot art gets out
+	# of their way rather than the other way round (Advika 2026-07-26: shrink the
+	# jade so the text can be bigger).
+	var vtop := CARD_H * 0.372   # verses, tight, clearing the foot illustration below
+	var vsize := _fit_verse_size()
+	var vspace: float = maxf(CARD_H * (0.044 if verses.size() <= 5 else 0.036), vsize * 1.45)
+	var vbottom: float = vtop + vspace * float(maxi(verses.size() - 1, 0)) + float(vsize)
 
 	# and the second threat: the void moth OWNS the card's foot — big, with
 	# THE TRIAL drawn over its lower wisps (title added after = on top)
 	var moth := TextureRect.new()
-	moth.texture = _cropped(preload("res://assets/enemies/void_moth/fly_01.png"))
+	moth.texture = _cropped(second_art)
 	moth.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	moth.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	# strictly INSIDE the open zone: below the last verse, above the bottom
-	# hairline-with-diamond (Advika: it was blocking the card detailing)
-	moth.position = Vector2(CARD_W * 0.5 - CARD_W * 0.40, CARD_H * 0.60)
-	moth.size = Vector2(CARD_W * 0.80, CARD_H * 0.15)  # breathing room to the diamond
+	# hairline-with-diamond (Advika: it was blocking the card detailing).
+	# foot_art_scale shrinks it (Realm 1) without touching Realm 2's approved card.
+	var msize := Vector2(CARD_W * 0.80, CARD_H * 0.15) * foot_art_scale
+	moth.size = msize                                  # breathing room to the diamond
+	var my: float = maxf(CARD_H * 0.60, vbottom + CARD_H * 0.015)
+	if foot_art_scale < 1.0:
+		# a shrunk foot piece would otherwise hang right under the last verse with a
+		# dead gap beneath it (Advika 2026-07-26) — sit it in the MIDDLE of the space
+		# between the verses and the bottom hairline instead. Full-size art (Realm 2's
+		# moth) keeps its approved placement exactly.
+		var gap_top: float = vbottom + CARD_H * 0.012
+		var gap_bot: float = CARD_H * 0.775
+		my = gap_top + maxf(0.0, (gap_bot - gap_top - msize.y) * 0.5)
+	moth.position = Vector2(CARD_W * 0.5 - msize.x * 0.5,
+			clampf(my, 0.0, CARD_H * 0.775 - msize.y))
+	moth.modulate = art_tint
 	moth.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_reveal_ui.add_child(moth)
 
 	_label(_reveal_ui, card_title, _title_font(6), int(CARD_H * 0.05),
 			CARD_H * 0.795)                                     # below y≈1335/1720
 
-	var y := CARD_H * 0.378   # five verses, tight, clearing the big moth below
+	var y := vtop
 	for verse in verses:
-		var l := _label(_reveal_ui, verse, _garamond, int(CARD_H * 0.026), y)
+		var l := _label(_reveal_ui, verse, _garamond, vsize, y)
 		l.visible_characters = 0
 		_verse_labels.append(l)
-		y += CARD_H * 0.042
+		y += vspace
+
+
+## The biggest shared verse size whose LONGEST line still fits inside the frame.
+## A long verse used to draw straight over the gold border (Advika 2026-07-26:
+## "the text needs to fit into the box not spill") — Labels don't clip and the line
+## is centred, so it bled out both sides. Solving it here means wording is never
+## constrained by the layout, and `verse_scale` can ask for bigger text without
+## risking a spill. One size for every line: they must stay uniform.
+func _fit_verse_size() -> int:
+	var sz := int(CARD_H * 0.030 * verse_scale)
+	var safe_w := CARD_W * 0.80          # inner opening (0.89) with a real margin
+	                                     # — at 0.88 the longest line kissed the gold
+	while sz > int(CARD_H * 0.021):
+		var widest := 0.0
+		for verse in verses:
+			widest = maxf(widest, _garamond.get_string_size(
+					verse, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x)
+		if widest <= safe_w:
+			break
+		sz -= 1
+	return sz
 
 
 func _process(delta: float) -> void:
 	_t += delta
-	# the float: screen center + a slow breath, the glow a half-step behind
-	_wrapper.position = _root.size * 0.5 \
-			+ Vector2(0.0, sin(_t * TAU / 3.4) * 5.0 + _rise)
-	_glow.modulate.a = 0.30 + sin(_t * TAU / 3.4 + 0.9) * 0.07
+	# Hold the card on WHOLE pixels and DON'T bob it — the sub-pixel float made the
+	# thin gold frame + interior hairlines shimmer/crawl, and the pulsing glow made
+	# the border flicker (Advika: "borders glitching / lines flickering"). Steady card
+	# + steady glow = crisp frame. The enter/exit still drifts via _rise.
+	_wrapper.position = (_root.size * 0.5 + screen_offset + Vector2(0.0, _rise)).round()
+	_glow.modulate.a = 0.33
 	if _typing:
 		_type_chars += TYPE_CPS * delta
 		while _type_line < _verse_labels.size():

@@ -15,11 +15,14 @@ const IVORY := Color(0.96, 0.93, 0.84)
 
 const ICON_SIZE := 60.0
 const NUM_FONT_SIZE := 48
-const RIGHT_MARGIN := 60.0
-const TOP := 36.0          # crystal/number sit on roughly the eyes' line
+# Advika 2026-07-26: shoved right into the corner (was 60/36, which floated it
+# well inside the frame), and the count reads "collected / total".
+const RIGHT_MARGIN := 26.0
+const TOP := 22.0          # crystal/number sit on roughly the eyes' line
 
 var _jade_text: Label
 var _got: int = 0
+var _total: int = 0
 
 
 func _ready() -> void:
@@ -30,7 +33,7 @@ func _ready() -> void:
 	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(a)
 
-	var num_w := 140.0
+	var num_w := 130.0        # fits "17/17" at NUM_FONT_SIZE
 	var num_x := -RIGHT_MARGIN - num_w           # number block, right-aligned to the margin
 	var icon_x := num_x - 14.0 - ICON_SIZE       # crystal just left of the number
 
@@ -61,10 +64,12 @@ func _ready() -> void:
 	set_jade(0, 0)
 
 
-func set_jade(got: int, _total: int) -> void:
+func set_jade(got: int, total: int) -> void:
 	_got = got
+	_total = total
 	if _jade_text != null:
-		_jade_text.text = str(got)
+		# "3/17" — the player should always know how much of the realm is left
+		_jade_text.text = "%d/%d" % [got, total] if total > 0 else str(got)
 
 
 # Stub — the health bar is being redesigned; keep the realm's connection valid.

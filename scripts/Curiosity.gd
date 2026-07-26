@@ -109,7 +109,9 @@ const FEET_FROM_CENTRE: float = 136.0   # content feet row below canvas centre (
 
 # Source art faces RIGHT. Default unflipped = facing right; flip_h mirrors to face left.
 var _state: State = State.IDLE
-var _facing_right: bool = false
+# She starts facing RIGHT — the way every level runs (Advika 2026-07-26: "when
+# Curiosity spawns make sure she faces the right side, she's always facing left").
+var _facing_right: bool = true
 var _lantern_offset_x: float
 var _lantern_disp_x: float = 0.0   # smoothed held-side anchor
 var _lantern_swing: float = 0.0    # current velocity trail offset
@@ -303,7 +305,10 @@ func _physics_process(delta: float) -> void:
 	elif not grounded and _is_ground_state():
 		_set_state(State.AIR)
 
-	if grounded and _state in [State.IDLE, State.WALK, State.RUN]:
+	# Safety net against a "frozen in jump" pose: if we're on the floor in ANY
+	# ground-or-air locomotion state (the _was_airborne edge above can miss a frame
+	# when landing on a moving platform), always resolve back into locomotion.
+	if grounded and _state in [State.IDLE, State.WALK, State.RUN, State.AIR, State.JUMP_START]:
 		_update_locomotion(direction, sprint)
 
 	_was_airborne = not grounded

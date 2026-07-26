@@ -169,7 +169,9 @@ func _play_lore(text: String) -> void:
 
 static func _resolve_scene_path(target: String) -> String:
 	match target:
-		"realm_1": return "res://assets/realms/realm1_caves/Realm1.tscn"
+		# Old Crimson-Hollow Realm 1 scrapped from live (Advika, 2026-07-26).
+		# Door1 now flashes but loads nothing until the rebuilt realm is wired in.
+		"realm_1": return ""
 		"realm_2": return "res://scenes/realms/Realm2LiftTest.tscn"
 		"realm_3": return "res://scenes/realms/Realm3FungalTest.tscn"
 		"hub": return "res://scenes/Hub.tscn"
