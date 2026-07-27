@@ -37,8 +37,32 @@ func _ready() -> void:
 	var num_x := -RIGHT_MARGIN - num_w           # number block, right-aligned to the margin
 	var icon_x := num_x - 14.0 - ICON_SIZE       # crystal just left of the number
 
+	# a soft green bloom behind the shard so it reads as lit rather than pasted on
+	# (Advika 2026-07-27: "add a hue to it or make it glow")
+	var halo := TextureRect.new()
+	halo.texture = _glow_tex()
+	halo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	# tight to the shard — light coming FROM INSIDE it, not a lamp behind it
+	# (Advika 2026-07-27: "the glow is too big, it should look like the jade glows
+	# from within")
+	halo.custom_minimum_size = Vector2(ICON_SIZE * 1.15, ICON_SIZE * 1.15)
+	halo.size = halo.custom_minimum_size
+	halo.position = Vector2(icon_x + ICON_SIZE * 0.075, TOP + ICON_SIZE * 0.075)
+	halo.modulate = Color(0.42, 1.0, 0.58, 0.62)
+	var halo_mat := CanvasItemMaterial.new()
+	halo_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	halo.material = halo_mat
+	a.add_child(halo)
+	# and it breathes, so the corner has a pulse to it
+	var pulse := create_tween().set_loops()
+	pulse.tween_property(halo, "modulate:a", 0.34, 1.7) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	pulse.tween_property(halo, "modulate:a", 0.62, 1.7) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
 	var icon := TextureRect.new()
 	icon.texture = JADE_ICON
+	icon.modulate = Color(1.25, 1.5, 1.28)   # lift the shard's own green
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
@@ -64,6 +88,22 @@ func _ready() -> void:
 	a.add_child(_jade_text)
 
 	set_jade(0, 0)
+
+
+## A soft radial, built in code so the HUD carries no extra art dependency.
+func _glow_tex() -> Texture2D:
+	var grad := Gradient.new()
+	grad.set_color(0, Color(1, 1, 1, 0.85))
+	grad.set_color(1, Color(1, 1, 1, 0.0))
+	grad.add_point(0.45, Color(1, 1, 1, 0.30))
+	var t := GradientTexture2D.new()
+	t.gradient = grad
+	t.fill = GradientTexture2D.FILL_RADIAL
+	t.fill_from = Vector2(0.5, 0.5)
+	t.fill_to = Vector2(0.5, 0.0)
+	t.width = 128
+	t.height = 128
+	return t
 
 
 func set_jade(got: int, total: int) -> void:

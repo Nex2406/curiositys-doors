@@ -906,7 +906,20 @@ static func _depth_columns(pb: ParallaxBackground, cache: Dictionary) -> void:
 			# a sixth, nearly at walking speed: it slides fast past everything behind
 			# it, which is the depth cue you actually FEEL while moving
 			["bg_columns_close", 0.80, 2000.0, Vector2(300.0, 520.0),
-					Vector2(300.0, 520.0), Color(0.13, 0.11, 0.09, 0.80), 6803]]:
+					Vector2(300.0, 520.0), Color(0.13, 0.11, 0.09, 0.80), 6803],
+			# eight depths now. Two more slotted BETWEEN the existing ones rather
+			# than further out — the eye reads depth from how many things move at
+			# different speeds past each other, not from how far the far one is.
+			["bg_columns_deep2", 0.17, 4600.0, Vector2(700.0, 1150.0),
+					Vector2(600.0, 940.0), Color(0.35, 0.31, 0.25, 0.27), 1213],
+			["bg_columns_mid2", 0.40, 3600.0, Vector2(540.0, 930.0),
+					Vector2(390.0, 660.0), Color(0.31, 0.27, 0.21, 0.50), 2917],
+			# ten. Two more filling the remaining gaps in the speed ladder, so no two
+			# neighbouring layers move at a similar enough rate to read as one plane.
+			["bg_columns_far2", 0.28, 4000.0, Vector2(640.0, 1080.0),
+					Vector2(470.0, 780.0), Color(0.33, 0.29, 0.23, 0.38), 4409],
+			["bg_columns_near2", 0.70, 2300.0, Vector2(330.0, 560.0),
+					Vector2(270.0, 470.0), Color(0.17, 0.14, 0.11, 0.76), 6101]]:
 		var pl := ParallaxLayer.new()
 		pl.name = String(spec[0])
 		pl.motion_scale = Vector2(float(spec[1]), float(spec[1]) * 0.19)

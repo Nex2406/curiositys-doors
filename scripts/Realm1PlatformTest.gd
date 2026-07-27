@@ -21,6 +21,8 @@ const RECOLOR := preload("res://shaders/recolor_warm.gdshader")
 const EYE_LO := Color(0.18, 0.07, 0.02)
 const EYE_HI := Color(1.0, 0.66, 0.28)
 const JADE_DARKEN := Color(0.52, 0.56, 0.5)   # dim the jade (keeps its green hue)
+## the pickup chime — "deep spark", her pick of the six synthesised candidates
+const JADE_SFX: AudioStream = preload("res://assets/audio/jade/jade_pickup_5_deep_spark.wav")
 # playable layer — Curiosity + golems (physics). Platforms carry her via
 # AnimatableBody2D (sync_to_physics), the floor/walls are StaticBody2D.
 const CURIOSITY := preload("res://scenes/Curiosity.tscn")
@@ -28,7 +30,7 @@ const GOLEM_SCENE := preload("res://scenes/Golem.tscn")
 const GOLEM_BALL := preload("res://scenes/GolemBall.tscn")
 const BOULDER_GOLEM := preload("res://scripts/BoulderGolem.gd")   # new rolling cave golem
 const TAROT_DELAY := 5.0    # Advika: the card lands 5s after the player is in the level
-const CURIOSITY_SCALE := 0.235  # Advika: bigger than default, then smaller, twice
+const CURIOSITY_SCALE := 0.21   # Advika: smaller again (0.26 -> 0.235 -> 0.21)
 const CURIOSITY_DIM := Color(0.62, 0.6, 0.64)   # Advika: dim the bright purple cloak
 # measured SOLID rock top-row per platform texture (where the rock is actually solid,
 # not the feathered edge) — the collider top sits here so Curiosity plants, no float.
@@ -666,6 +668,11 @@ func _setup_hud() -> void:
 
 func _on_jade_collected() -> void:
 	_jade_got += 1
+	# the shard lands in the hand: a short bright buzz + the sound (Advika 2026-07-27).
+	# On a laptop there is no motor, so Haptics also kicks the camera — that tick IS
+	# the feedback there; a connected gamepad rumbles, a phone browser vibrates.
+	Haptics.buzz(45, 0.35)
+	AudioManager.play_sfx(JADE_SFX, -6.0)
 	if _hud != null:
 		_hud.set_jade(_jade_got, _jade_total)
 	# The last jade ARMS the portal (the card promises "gather all the jade; the way

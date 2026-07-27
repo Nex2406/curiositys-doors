@@ -297,8 +297,11 @@ func _physics_process(delta: float) -> void:
 		# get bounced back up before it lands (Advika: it bounced then rolled)
 		velocity.y = minf(velocity.y + gravity * delta, 700.0)
 
-	# a woken golem only gets AWAKE_LIFE seconds of hunting before it burrows away
-	if _awake_t >= 0.0 and _state != S.RETREAT and _state != S.DYING:
+	# A woken golem only gets AWAKE_LIFE seconds of HUNTING before it burrows away —
+	# and waiting for her to come down off a platform is not hunting, so the clock
+	# only runs while he is actually rolling or gathering himself to roll again.
+	if _awake_t >= 0.0 and _state != S.RETREAT and _state != S.DYING \
+			and (_state == S.ROLLING or _player_on_my_ground()):
 		_awake_t += delta
 		if _awake_t >= AWAKE_LIFE and (_state == S.ROLLING or _state == S.RECOVERY):
 			_enter(S.RETREAT)
@@ -329,7 +332,7 @@ func _do_dormant(_delta: float) -> void:
 		var tw := create_tween()
 		tw.tween_property(_visual, "position:x", 1.5, 0.1)
 		tw.tween_property(_visual, "position:x", 0.0, 0.1)
-	if _player_dist() <= detect_range:
+	if _player_dist() <= detect_range and _player_on_my_ground():
 		_enter(S.WAKING)
 
 
@@ -338,7 +341,9 @@ func _do_waking() -> void:
 	if _t >= spawn_dur and _cur_anim != "idle":
 		_play("idle")                                    # settle, react window
 	if _t >= spawn_dur + 0.1:                            # 0.8 -> 0.25 -> 0.1
-		_enter(S.ROLLING)
+		# he is up — but he only LAUNCHES if she is down here with him. Otherwise he
+		# stands and waits (RECOVERY is the waiting pose) until her feet land.
+		_enter(S.ROLLING if _player_on_my_ground() else S.RECOVERY)
 
 
 func _do_rolling(delta: float) -> void:
@@ -465,8 +470,11 @@ func _do_recovery(_delta: float) -> void:
 		_play("idle")
 		_visual.speed_scale = 1.0
 	if _t >= 0.75:
-		if _player_dist() <= detect_range:
-			_enter(S.ROLLING)                    # still close: charge again
+		# THE LAUNCH RULE: he charges the instant she is on his ground and in range.
+		# Off the ground she is out of reach, and he simply waits, however long that
+		# takes — the wait costs him nothing (his life clock only runs while hunting).
+		if _player_dist() <= detect_range and _player_on_my_ground():
+			_enter(S.ROLLING)
 		elif _player_dist() > detect_range * 1.7:
 			_enter(S.DORMANT)                    # clearly gone: re-burrow
 		else:
@@ -573,6 +581,18 @@ func _player_dist() -> float:
 	if _player == null or not is_instance_valid(_player):
 		return 1e9
 	return global_position.distance_to(_player.global_position)
+
+
+## Is she standing on HIS ground — not floating past, not up on a platform?
+## Advika 2026-07-27: "make the golem in idle wait, and the second her feet hit the
+## ground LAUNCH it". A golem erupting under a player who is safely up on a platform
+## looked silly and cost nothing; now the threat is tied to being down there with it.
+func _player_on_my_ground() -> bool:
+	if _player == null or not is_instance_valid(_player):
+		return false
+	if not _player.is_on_floor():
+		return false
+	return absf(_player.global_position.y - global_position.y) < 150.0
 
 
 func _face_player() -> void:
