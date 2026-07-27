@@ -906,7 +906,10 @@ func _sit_place() -> Vector2:
 func _setup_play() -> void:
 	# "Echoed Blades (Loop)" — Realm 1's background track (Advika's JRPG pack,
 	# 2026-07-26). Loop flag lives in the .ogg's import settings.
-	AudioManager.play_ambient(preload("res://assets/audio/realm1_echoed_blades.ogg"), "realm1")
+	# fades UP over 3.5s rather than starting at full — the cave should be quiet for
+	# a breath before the track arrives (Advika 2026-07-27: "add fade in to r1's track")
+	AudioManager.play_ambient(preload("res://assets/audio/realm1_echoed_blades.ogg"),
+			"realm1", 3.5)
 	_add_static_floor()
 	_add_end_walls()
 	_add_ceiling()
