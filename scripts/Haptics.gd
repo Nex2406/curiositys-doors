@@ -18,8 +18,15 @@ extends Node
 # shake for a duration — that is what a rising island needs, rather than a single
 # impulse that has faded before the thing has even left the ground.
 
-const KICK := 44.0            # px of camera offset at full trauma
-const DECAY := 1.7            # trauma lost per second (was 2.6)
+# 2026-07-27 again, after playing it: 44px with a slow decay was not "strong", it
+# was the screen having a fit — aggressive and far too long. A screen kick is a
+# PUNCTUATION mark; it should land and be gone. Impacts get a short 13px snap,
+# and sustained rumbles are held at a fraction of that (SUSTAIN_SCALE) so a long
+# beat like the island's climb is a tremor you half-notice, not a quake.
+const KICK := 13.0            # px of camera offset at full trauma
+const DECAY := 3.4            # trauma lost per second — a hit is over in ~0.3s
+const SUSTAIN_SCALE := 0.30   # rumble() shakes this much of an impact's amount
+const MAX_SUSTAIN := 2.0      # seconds; nothing shakes for longer than this
 const ROLL_HZ := 34.0         # jitter rate; below this it reads as a wobble
 
 var _trauma := 0.0
@@ -47,8 +54,10 @@ func buzz(ms: int = 80, strength: float = 0.8) -> void:
 ## single hit. For anything that goes on happening — ground tearing open, an
 ## island climbing — where one impulse would be over before the beat is.
 func rumble(seconds: float, strength: float = 0.8) -> void:
-	_hold = maxf(_hold, clampf(strength, 0.0, 1.0))
-	_hold_t = maxf(_hold_t, seconds)
+	# the DEVICE gets the full strength — that is the real haptic. The screen only
+	# gets a fraction of it, and never for more than MAX_SUSTAIN.
+	_hold = maxf(_hold, clampf(strength, 0.0, 1.0) * SUSTAIN_SCALE)
+	_hold_t = maxf(_hold_t, minf(seconds, MAX_SUSTAIN))
 	Input.vibrate_handheld(int(seconds * 1000.0))
 	for pad in Input.get_connected_joypads():
 		Input.start_joy_vibration(pad, strength * 0.6, strength, seconds)

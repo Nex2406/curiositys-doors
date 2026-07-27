@@ -671,7 +671,7 @@ func _on_jade_collected() -> void:
 	# the shard lands in the hand: a short bright buzz + the sound (Advika 2026-07-27).
 	# On a laptop there is no motor, so Haptics also kicks the camera — that tick IS
 	# the feedback there; a connected gamepad rumbles, a phone browser vibrates.
-	Haptics.buzz(45, 0.35)
+	Haptics.buzz(45, 0.22)
 	AudioManager.play_sfx(JADE_SFX, -14.0)   # softened (Advika: it sat too loud)
 	if _hud != null:
 		_hud.set_jade(_jade_got, _jade_total)

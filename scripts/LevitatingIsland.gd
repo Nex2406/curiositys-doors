@@ -103,7 +103,7 @@ func start_levitation() -> void:
 	# the ground straining: a SUSTAINED rumble that builds under the whole shake,
 	# not one impulse that has faded before the island moves (Advika 2026-07-27:
 	# "haptics in realm 2, especially when the platform is lifted, and I want STRONG")
-	Haptics.rumble(shake_duration, 0.55)
+	Haptics.rumble(shake_duration, 0.45)
 	levitation_started.emit()
 
 
@@ -142,8 +142,8 @@ func _physics_process(delta: float) -> void:
 				# THE TEAR: the hardest hit in the game, then a long heavy rumble
 				# carrying the first seconds of the climb so the lift is FELT, not
 				# just watched.
-				Haptics.buzz(380, 1.0)
-				Haptics.rumble(3.4, 0.72)
+				Haptics.buzz(380, 0.9)
+				Haptics.rumble(1.6, 0.5)     # the device feels it; the screen barely
 				state = State.RISING
 				_t = 0.0
 				_lift_felt = 0.0
@@ -151,14 +151,17 @@ func _physics_process(delta: float) -> void:
 			# the climb keeps a low tremor going the whole way up, topped up every
 			# half second, and pulses harder each time it passes another 900px —
 			# the ride should never stop being felt
+			# a whisper of tremor on the way up — the gamepad/phone keeps buzzing,
+			# the screen only breathes. A constant visible shake for a climb this
+			# long was unwatchable.
 			_lift_felt += delta
-			if _lift_felt >= 0.5:
+			if _lift_felt >= 1.2:
 				_lift_felt = 0.0
-				Haptics.rumble(0.6, 0.30)
+				Haptics.rumble(1.0, 0.16)
 			var climbed: float = absf(position.y - _base.y)
 			if climbed - _last_pulse_y >= 900.0:
 				_last_pulse_y = climbed
-				Haptics.buzz(160, 0.62)
+				Haptics.buzz(160, 0.34)
 			if endless:
 				# ease to cruise, then hold it — there is no arrival
 				var ramp := clampf(_t / cruise_ramp, 0.0, 1.0)
