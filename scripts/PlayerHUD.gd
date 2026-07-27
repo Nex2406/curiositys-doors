@@ -37,29 +37,6 @@ func _ready() -> void:
 	var num_x := -RIGHT_MARGIN - num_w           # number block, right-aligned to the margin
 	var icon_x := num_x - 14.0 - ICON_SIZE       # crystal just left of the number
 
-	# a soft green bloom behind the shard so it reads as lit rather than pasted on
-	# (Advika 2026-07-27: "add a hue to it or make it glow")
-	var halo := TextureRect.new()
-	halo.texture = _glow_tex()
-	halo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	# tight to the shard — light coming FROM INSIDE it, not a lamp behind it
-	# (Advika 2026-07-27: "the glow is too big, it should look like the jade glows
-	# from within")
-	halo.custom_minimum_size = Vector2(ICON_SIZE * 1.15, ICON_SIZE * 1.15)
-	halo.size = halo.custom_minimum_size
-	halo.position = Vector2(icon_x + ICON_SIZE * 0.075, TOP + ICON_SIZE * 0.075)
-	halo.modulate = Color(0.42, 1.0, 0.58, 0.62)
-	var halo_mat := CanvasItemMaterial.new()
-	halo_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	halo.material = halo_mat
-	a.add_child(halo)
-	# and it breathes, so the corner has a pulse to it
-	var pulse := create_tween().set_loops()
-	pulse.tween_property(halo, "modulate:a", 0.34, 1.7) \
-			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	pulse.tween_property(halo, "modulate:a", 0.62, 1.7) \
-			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-
 	var icon := TextureRect.new()
 	icon.texture = JADE_ICON
 	icon.modulate = Color(1.25, 1.5, 1.28)   # lift the shard's own green
@@ -69,6 +46,28 @@ func _ready() -> void:
 	icon.size = Vector2(ICON_SIZE, ICON_SIZE)
 	icon.position = Vector2(icon_x, TOP)
 	a.add_child(icon)
+
+	# THE GLOW IS THE SHARD ITSELF: a second copy of the same art, additively
+	# blended over it and breathing. A radial behind it always read as a lamp
+	# BEHIND the jade; light in the shape of the stone reads as light coming out of
+	# the stone (Advika 2026-07-27: "the hue isn't internal").
+	var inner := TextureRect.new()
+	inner.texture = JADE_ICON
+	inner.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	inner.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	inner.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
+	inner.size = Vector2(ICON_SIZE, ICON_SIZE)
+	inner.position = Vector2(icon_x, TOP)
+	inner.modulate = Color(0.30, 0.95, 0.45, 0.55)
+	var add_mat := CanvasItemMaterial.new()
+	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	inner.material = add_mat
+	a.add_child(inner)
+	var pulse := create_tween().set_loops()
+	pulse.tween_property(inner, "modulate:a", 0.24, 1.8) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	pulse.tween_property(inner, "modulate:a", 0.55, 1.8) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 	# EB Garamond, BUNDLED — the old system-serif (Georgia/Times) resolved on desktop
 	# and fell back to a plain sans in the browser, which is the ugly counter Advika

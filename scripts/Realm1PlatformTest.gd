@@ -63,9 +63,9 @@ const CEIL_GOLEM := Vector2(830.0, -381.0)
 ## encounter is its own beat. (The old 830 clinger was dropped: it sat 680px from
 ## the teaching golem at 150.)
 const CEIL_GOLEMS: Array[Vector2] = [
-	Vector2(2150.0, -360.0),
+	Vector2(2150.0, -344.0),
 	Vector2(3875.0, -380.0),
-	Vector2(6625.0, -381.0),
+	Vector2(6625.0, -364.0),
 	Vector2(7825.0, -366.0),
 ]
 ## ground golems, dormant until she nears — they fill the gaps in that same timeline
@@ -672,7 +672,7 @@ func _on_jade_collected() -> void:
 	# On a laptop there is no motor, so Haptics also kicks the camera — that tick IS
 	# the feedback there; a connected gamepad rumbles, a phone browser vibrates.
 	Haptics.buzz(45, 0.35)
-	AudioManager.play_sfx(JADE_SFX, -6.0)
+	AudioManager.play_sfx(JADE_SFX, -14.0)   # softened (Advika: it sat too loud)
 	if _hud != null:
 		_hud.set_jade(_jade_got, _jade_total)
 	# The last jade ARMS the portal (the card promises "gather all the jade; the way

@@ -269,26 +269,32 @@ static func _frame(host: Node2D) -> void:
 	# showed through as a black bar under the roof (Advika 2026-07-27: "get rid of
 	# this rectangle thing on the ceiling"). Tight spacing means no straight edge is
 	# ever exposed, whatever the masses above happen to do.
+	# NOTE: its own RNG. Drawing from the shared `rng` shifted every later random,
+	# which moved every hanging mass in the roof and quietly broke the ceiling
+	# golems' hand-checked depths — twice. Any future roof addition gets its own
+	# stream for the same reason.
+	var hem_rng := RandomNumberGenerator.new()
+	hem_rng.seed = 4242
 	var hem_pool: Array[String] = ["combo_00.png", "combo_03.png", "combo_07.png",
 			"combo_10.png", "bigrock_02.png", "bigrock_08.png", "combo_05.png"]
 	var hx := C_MIN
 	var hi := 0
 	while hx < C_MAX:
 		var htex := _frame_tex(cache, hem_pool[hi % hem_pool.size()])
-		var hh := rng.randf_range(130.0, 210.0)
+		var hh := hem_rng.randf_range(130.0, 210.0)
 		var hsc := hh / float(htex.get_height())
 		var hs := Sprite2D.new()
 		hs.texture = htex
 		hs.flip_v = true
-		hs.flip_h = rng.randf() < 0.5
-		hs.scale = Vector2(hsc * rng.randf_range(1.2, 1.9), hsc)
+		hs.flip_h = hem_rng.randf() < 0.5
+		hs.scale = Vector2(hsc * hem_rng.randf_range(1.2, 1.9), hsc)
 		# centred ON the edge, so the rock sits half above and half below it
-		hs.position = Vector2(hx + rng.randf_range(-24.0, 24.0),
-				band_b - hh * rng.randf_range(0.12, 0.34))
+		hs.position = Vector2(hx + hem_rng.randf_range(-24.0, 24.0),
+				band_b - hh * hem_rng.randf_range(0.12, 0.34))
 		hs.material = blur_mat
 		grp.add_child(hs)
 		ceiling_count += 1
-		hx += rng.randf_range(58.0, 94.0)
+		hx += hem_rng.randf_range(58.0, 94.0)
 	# Advika 2026-07-26: above the hanging masses the solid band showed as a flat
 	# BLACK bar across the top of the screen — the stretch aspect is "expand", so a
 	# window taller than 16:9 reveals more world and exposes it. Pack the band with
@@ -296,25 +302,28 @@ static func _frame(host: Node2D) -> void:
 	# any window. These go in FIRST, so every hanging mass still draws over them.
 	# 5 rows: fullscreen and tall windows reveal more world above the roof line, and
 	# 3 rows still left a dark strip along the very top (Advika 2026-07-27).
+	# own RNG, same reason as the hem: this loop must never shift the hanging masses
+	var fill_rng := RandomNumberGenerator.new()
+	fill_rng.seed = 9091
 	for row in range(5):
 		var fy := band_b - 30.0 - float(row) * 150.0
 		var fx := C_MIN
 		var fi := row
 		while fx < C_MAX:
 			var ftex := _frame_tex(cache, clump_pool[fi % clump_pool.size()])
-			var fh := rng.randf_range(210.0, 320.0)
+			var fh := fill_rng.randf_range(210.0, 320.0)
 			var fsc := fh / float(ftex.get_height())
 			var f := Sprite2D.new()
 			f.texture = ftex
-			f.flip_v = rng.randf() < 0.5
-			f.flip_h = rng.randf() < 0.5
-			f.scale = Vector2(fsc * rng.randf_range(1.4, 2.1), fsc)
-			f.position = Vector2(fx + rng.randf_range(-40.0, 40.0),
-					fy + rng.randf_range(-28.0, 28.0))
+			f.flip_v = fill_rng.randf() < 0.5
+			f.flip_h = fill_rng.randf() < 0.5
+			f.scale = Vector2(fsc * fill_rng.randf_range(1.4, 2.1), fsc)
+			f.position = Vector2(fx + fill_rng.randf_range(-40.0, 40.0),
+					fy + fill_rng.randf_range(-28.0, 28.0))
 			f.material = blur_mat
 			grp.add_child(f)
 			ceiling_count += 1
-			fx += ftex.get_width() * fsc * rng.randf_range(0.55, 0.78)
+			fx += ftex.get_width() * fsc * fill_rng.randf_range(0.55, 0.78)
 			fi += 1
 	var clump_spots: Array = []
 	# Advika 2026-07-25: the roof read UGLY because every clump was the same
@@ -394,8 +403,11 @@ static func _frame(host: Node2D) -> void:
 		s2.flip_v = true
 		s2.flip_h = rng.randf() < 0.5
 		s2.scale = Vector2(sc2 * rng.randf_range(1.15, 1.8), sc2)
-		s2.position = Vector2(base.x + rng.randf_range(-90.0, 90.0),
-				band_b + h2 * 0.5 - rng.randf_range(40.0, 90.0))
+		# anchored INTO the mass it fills beside, not to the band's line: positioned
+		# off band_b it could land below the mass with nothing above it and read as a
+		# rock floating in the air (Advika 2026-07-27: "why is this in thin air").
+		s2.position = Vector2(base.x + rng.randf_range(-80.0, 80.0),
+				base.y + rng.randf_range(-0.22, 0.18) * base.z)
 		s2.material = blur_mat
 		grp.add_child(s2)
 		ceiling_count += 1

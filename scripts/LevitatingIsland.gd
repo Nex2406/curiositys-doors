@@ -40,6 +40,8 @@ var _base := Vector2.ZERO      # anchor: where the island rests / current rise o
 var _t := 0.0                  # time in current state
 var _ht := 0.0                 # hover clock (never resets — keeps sway continuous)
 var _rise_y := 0.0             # endless mode: accumulated climb
+var _lift_felt := 0.0          # seconds since the climb's tremor was last topped up
+var _last_pulse_y := 0.0       # height at which the last heavy pulse fired
 var _debris: CPUParticles2D
 var _cam: Camera2D
 
@@ -98,7 +100,10 @@ func start_levitation() -> void:
 		return
 	state = State.SHAKING
 	_t = 0.0
-	Haptics.buzz(int(shake_duration * 1000.0), 0.5)  # rumble under the whole shake
+	# the ground straining: a SUSTAINED rumble that builds under the whole shake,
+	# not one impulse that has faded before the island moves (Advika 2026-07-27:
+	# "haptics in realm 2, especially when the platform is lifted, and I want STRONG")
+	Haptics.rumble(shake_duration, 0.55)
 	levitation_started.emit()
 
 
@@ -134,10 +139,26 @@ func _physics_process(delta: float) -> void:
 			if _t >= shake_duration:
 				position = _base
 				_debris.emitting = true  # the seam gives way
-				Haptics.buzz(280, 1.0)   # the tear itself hits hardest
+				# THE TEAR: the hardest hit in the game, then a long heavy rumble
+				# carrying the first seconds of the climb so the lift is FELT, not
+				# just watched.
+				Haptics.buzz(380, 1.0)
+				Haptics.rumble(3.4, 0.72)
 				state = State.RISING
 				_t = 0.0
+				_lift_felt = 0.0
 		State.RISING:
+			# the climb keeps a low tremor going the whole way up, topped up every
+			# half second, and pulses harder each time it passes another 900px —
+			# the ride should never stop being felt
+			_lift_felt += delta
+			if _lift_felt >= 0.5:
+				_lift_felt = 0.0
+				Haptics.rumble(0.6, 0.30)
+			var climbed: float = absf(position.y - _base.y)
+			if climbed - _last_pulse_y >= 900.0:
+				_last_pulse_y = climbed
+				Haptics.buzz(160, 0.62)
 			if endless:
 				# ease to cruise, then hold it — there is no arrival
 				var ramp := clampf(_t / cruise_ramp, 0.0, 1.0)
