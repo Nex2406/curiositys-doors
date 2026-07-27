@@ -1,5 +1,40 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-07-22_
+_Last updated: 2026-07-27_
+
+## 2026-07-27 — REALM 1 IS SHIPPED, END TO END, ON MAIN
+The cave is live: **https://nex2406.github.io/curiositys-doors/**. Hub Door 1 →
+the rebuilt cave → 17 jade → the portal → Fear's quote card → The Trial. The old
+Crimson-Hollow realm and its four abandoned rebuild rigs are DELETED.
+- **The level** (`scripts/Realm1PlatformTest.gd`, `scenes/realms/realm1/`):
+  26 platforms with colliders measured from the painted art, 17 jade, 3 ground +
+  4 ceiling golems, ten parallax depths, churning mist, the eruption door.
+- **Golems** (`BoulderGolem.gd`): no wind-up state — the curl plays while he is
+  already charging. Committed charges with a 150px overshoot, 0.75s gather, 7s of
+  hunting life then he burrows away, death bursts into grit. He only wakes and
+  only launches when Curiosity is on HIS ground; his life clock pauses while he
+  waits her out on a platform. His body ignores her entirely (she shares the
+  floor's collision layer, which let him stand on her head and be shoved).
+- **The door**: erupts when the last jade is gathered AND she reaches the pocket,
+  grows out of the floor over 5s with staged quakes and rubble, holds a window
+  onto Realm 2 (a real capture of the Trial forest), scattered card-hued aura.
+  [Y] only works once it stands. A 40-frame overgrown-door replacement was built
+  and scrapped on sight; those frames are parked, untracked, in
+  `assets/realms/realm1_door/_new_set_unused/`.
+- **The bridge** (`QuoteTransition.gd`): 10s on Fear's line in Cormorant Garamond
+  Italic Light on `#E8C88A`, then "Press any key to continue" and it waits. Both
+  realms' tracks cross underneath, undicked, and the black lifts as a blink.
+- **Haptics** (`Haptics.gd`): `buzz` for impacts, `rumble(s, strength)` for
+  sustained beats (Realm 2's liftoff uses it). The screen kick is punctuation —
+  13px, gone in 0.3s. NOTE: laptops have no motor; a controller or an Android
+  phone browser is the only way to feel the real thing.
+- **Measurement tools, all repeatable**: `measure_plat_rims.py`,
+  `measure_golem_contact.py`, `measure_roof_line.py`, `clean_cling_frame.py`,
+  `make_jade_sfx.py`, `bake_portal_view.py`. Pickers: `FontPicker.tscn`,
+  `SfxPicker.tscn`.
+- **The bug that mattered**: art loaded with
+  `Image.load_from_file(globalize_path(...))` returns null in an exported build,
+  so the live cave rendered as a black screen while the editor looked perfect. Use
+  `load()`. A green export does NOT catch it.
 
 ## 2026-07-22 — R1 BACKGROUND locked-ish (`feat/r1-cave-rebuild`, NOT merged)
 Advika's vision (now in docs/realms/realm1.md): dark underground cave,
