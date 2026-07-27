@@ -294,7 +294,9 @@ static func _frame(host: Node2D) -> void:
 	# window taller than 16:9 reveals more world and exposes it. Pack the band with
 	# real rock so the roof reads as thick textured stone right off the top edge of
 	# any window. These go in FIRST, so every hanging mass still draws over them.
-	for row in range(3):        # 3 rows: covers the strip even on very tall windows
+	# 5 rows: fullscreen and tall windows reveal more world above the roof line, and
+	# 3 rows still left a dark strip along the very top (Advika 2026-07-27).
+	for row in range(5):
 		var fy := band_b - 30.0 - float(row) * 150.0
 		var fx := C_MIN
 		var fi := row
@@ -900,7 +902,11 @@ static func _depth_columns(pb: ParallaxBackground, cache: Dictionary) -> void:
 			["bg_columns", 0.46, 3400.0, Vector2(520.0, 900.0),
 					Vector2(360.0, 620.0), Color(0.30, 0.26, 0.20, 0.55), 3311],
 			["bg_columns_near", 0.60, 2600.0, Vector2(360.0, 620.0),
-					Vector2(240.0, 430.0), Color(0.20, 0.17, 0.13, 0.72), 5417]]:
+					Vector2(240.0, 430.0), Color(0.20, 0.17, 0.13, 0.72), 5417],
+			# a sixth, nearly at walking speed: it slides fast past everything behind
+			# it, which is the depth cue you actually FEEL while moving
+			["bg_columns_close", 0.80, 2000.0, Vector2(300.0, 520.0),
+					Vector2(300.0, 520.0), Color(0.13, 0.11, 0.09, 0.80), 6803]]:
 		var pl := ParallaxLayer.new()
 		pl.name = String(spec[0])
 		pl.motion_scale = Vector2(float(spec[1]), float(spec[1]) * 0.19)

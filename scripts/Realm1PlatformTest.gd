@@ -1592,9 +1592,11 @@ func _ground() -> void:
 	# MORE world) it filled the bottom of the screen as a dead bar. Three more rows of
 	# real rock, each deeper, bigger and dimmer, carry the floor off the bottom of any
 	# window instead. Rows go BEHIND the ridge (negative z within the assembly).
-	for row in range(3):
+	# 5 rows for the same reason the roof got 5: a fullscreen or tall window shows
+	# more world below the walk line, and 3 rows ran out into a flat dark band.
+	for row in range(5):
 		var row_y: float = 600.0 + float(row) * 150.0
-		var row_dim := Color(1, 1, 1) * (0.74 - 0.16 * float(row))
+		var row_dim := Color(1, 1, 1) * maxf(0.16, 0.74 - 0.13 * float(row))
 		row_dim.a = 1.0
 		var rx := -2800.0
 		var ri := row
