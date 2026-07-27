@@ -46,8 +46,10 @@ func _ready() -> void:
 	icon.position = Vector2(icon_x, TOP)
 	a.add_child(icon)
 
-	var serif := SystemFont.new()
-	serif.font_names = PackedStringArray(["Georgia", "Times New Roman", "serif"])
+	# EB Garamond, BUNDLED — the old system-serif (Georgia/Times) resolved on desktop
+	# and fell back to a plain sans in the browser, which is the ugly counter Advika
+	# saw on the live build (2026-07-27). Same serif as the cards and the door prompt.
+	var serif: Font = load("res://assets/fonts/eb_garamond.ttf")
 
 	_jade_text = Label.new()
 	_jade_text.add_theme_font_override("font", serif)

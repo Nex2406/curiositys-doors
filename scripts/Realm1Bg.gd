@@ -144,9 +144,11 @@ static func build(host: Node2D) -> void:
 		if child.name != "bg_backdrop" and child.name != "bg_backdrop_far" \
 				and child.name != "bg_backdrop_mid" and child.name != "bg_near" \
 				and not str(child.name).begins_with("bg_columns") \
+				and not str(child.name).begins_with("bg_dust") \
 				and not str(child.name).begins_with("bg_haze"):
 			child.visible = false
 	_depth_columns(pb, cache)
+	_depth_dust(pb)
 	_cave_mist(host, noise)
 	var wander := host.create_tween().set_loops()
 	wander.tween_method(_set_fog_center, Vector2(0.20, 0.28),
@@ -262,6 +264,31 @@ static func _frame(host: Node2D) -> void:
 	grp.add_child(band)
 	var band_b := vs.y * 0.095   # Advika: pushed the roof UP a bit
 	var ceiling_count := 0
+	# HEM: a dense row of rock straddling the band's bottom edge. The band is a solid
+	# rectangle, and wherever the hanging masses left a gap its straight bottom edge
+	# showed through as a black bar under the roof (Advika 2026-07-27: "get rid of
+	# this rectangle thing on the ceiling"). Tight spacing means no straight edge is
+	# ever exposed, whatever the masses above happen to do.
+	var hem_pool: Array[String] = ["combo_00.png", "combo_03.png", "combo_07.png",
+			"combo_10.png", "bigrock_02.png", "bigrock_08.png", "combo_05.png"]
+	var hx := C_MIN
+	var hi := 0
+	while hx < C_MAX:
+		var htex := _frame_tex(cache, hem_pool[hi % hem_pool.size()])
+		var hh := rng.randf_range(130.0, 210.0)
+		var hsc := hh / float(htex.get_height())
+		var hs := Sprite2D.new()
+		hs.texture = htex
+		hs.flip_v = true
+		hs.flip_h = rng.randf() < 0.5
+		hs.scale = Vector2(hsc * rng.randf_range(1.2, 1.9), hsc)
+		# centred ON the edge, so the rock sits half above and half below it
+		hs.position = Vector2(hx + rng.randf_range(-24.0, 24.0),
+				band_b - hh * rng.randf_range(0.12, 0.34))
+		hs.material = blur_mat
+		grp.add_child(hs)
+		ceiling_count += 1
+		hx += rng.randf_range(58.0, 94.0)
 	# Advika 2026-07-26: above the hanging masses the solid band showed as a flat
 	# BLACK bar across the top of the screen — the stretch aspect is "expand", so a
 	# window taller than 16:9 reveals more world and exposes it. Pack the band with
@@ -862,8 +889,14 @@ static func _depth_columns(pb: ParallaxBackground, cache: Dictionary) -> void:
 	# darker and busier — the standard depth cues, done with the cave's own rock.
 	# name, motion, mirror span, height range, spacing, tint
 	for spec: Array in [
+			# five rock depths now (Advika asked for more parallax three times) —
+			# 0.12 through 0.60, each slower, bigger, paler and sparser than the next
+			["bg_columns_deep", 0.12, 5200.0, Vector2(760.0, 1250.0),
+					Vector2(700.0, 1100.0), Color(0.36, 0.32, 0.26, 0.22), 907],
 			["bg_columns_far", 0.22, 4200.0, Vector2(620.0, 1050.0),
 					Vector2(520.0, 820.0), Color(0.34, 0.30, 0.24, 0.34), 1811],
+			["bg_columns_mid", 0.34, 3800.0, Vector2(560.0, 960.0),
+					Vector2(430.0, 700.0), Color(0.32, 0.28, 0.22, 0.44), 2609],
 			["bg_columns", 0.46, 3400.0, Vector2(520.0, 900.0),
 					Vector2(360.0, 620.0), Color(0.30, 0.26, 0.20, 0.55), 3311],
 			["bg_columns_near", 0.60, 2600.0, Vector2(360.0, 620.0),
@@ -894,6 +927,49 @@ static func _depth_columns(pb: ParallaxBackground, cache: Dictionary) -> void:
 			s.z_index = -2
 			pl.add_child(s)
 			x += rng.randf_range(gap.x, gap.y)
+
+
+## Two depths of drifting dust — the cheapest, clearest parallax cue there is: specks
+## at 0.5 and 0.9 slide past each other and past the rock as she walks.
+static func _depth_dust(pb: ParallaxBackground) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 771
+	var grad := Gradient.new()
+	grad.set_color(0, Color(1, 1, 1, 1))
+	grad.set_color(1, Color(1, 1, 1, 0))
+	var dot := GradientTexture2D.new()
+	dot.gradient = grad
+	dot.fill = GradientTexture2D.FILL_RADIAL
+	dot.fill_from = Vector2(0.5, 0.5)
+	dot.fill_to = Vector2(0.5, 0.0)
+	dot.width = 64
+	dot.height = 64
+	# motion, span, count, size range, alpha
+	for spec: Array in [
+			[0.52, 2400.0, 34, Vector2(0.05, 0.14), 0.30],
+			[0.90, 1700.0, 26, Vector2(0.08, 0.22), 0.42]]:
+		var pl := ParallaxLayer.new()
+		pl.name = "bg_dust_%d" % int(float(spec[0]) * 100.0)
+		pl.motion_scale = Vector2(float(spec[0]), float(spec[0]) * 0.5)
+		pl.motion_mirroring = Vector2(float(spec[1]), 0)
+		pb.add_child(pl)
+		for i in range(int(spec[2])):
+			var s := Sprite2D.new()
+			s.texture = dot
+			var sz: Vector2 = spec[3]
+			var k: float = rng.randf_range(sz.x, sz.y)
+			s.scale = Vector2(k, k)
+			s.position = Vector2(rng.randf_range(0.0, float(spec[1])),
+					rng.randf_range(-360.0, 420.0))
+			s.modulate = Color(0.96, 0.90, 0.78, rng.randf_range(0.12, float(spec[4])))
+			pl.add_child(s)
+			# each speck breathes and drifts on its own clock
+			var per: float = rng.randf_range(3.0, 8.0)
+			var t := pb.create_tween().set_loops()
+			t.tween_property(s, "position:y", s.position.y - rng.randf_range(20.0, 70.0), per) \
+					.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			t.tween_property(s, "position:y", s.position.y, per) \
+					.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 ## Drifting mist between the backdrop and the cave itself (Advika 2026-07-26:

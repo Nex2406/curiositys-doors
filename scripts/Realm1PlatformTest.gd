@@ -495,9 +495,14 @@ func _process(delta: float) -> void:
 	if lo > hi:               # window wider than the level: just center it
 		lo = (CLIFF_L + CLIFF_R) * 0.5
 		hi = lo
-	# armed and close enough to witness it: the ground opens
+	# Armed, and standing in the pocket where she can actually WATCH it: past the last
+	# platform and down on the floor. Firing at 1250px out meant it erupted while she
+	# was still up on the platforms behind and she missed the whole thing (Advika
+	# 2026-07-27: "make the door animation come only when the user has reached the
+	# end, not before, when those platforms are there — then they don't see it").
 	if _door_armed and not _door_revealed and _player != null and is_instance_valid(_player) \
-			and _player.global_position.x > DOOR_POS.x - 1250.0:
+			and _player.global_position.x > DOOR_POS.x - 700.0 \
+			and _player.global_position.y > FLOOR_TOP - 170.0:
 		_erupt_door()
 
 	var target_x: float
@@ -950,7 +955,6 @@ func _setup_play() -> void:
 			add_child(gc)
 			_ceiling_cover(spot)
 	_add_realm2_door()
-	_arm_door_trigger()
 	# the instructions card, 3s in. Skipped for the screenshot/contact harnesses —
 	# it pauses the whole tree, which would freeze whatever they are shooting.
 	# (TAROT_SHOT=1 forces it back on so the card itself can be shot in-level.)
@@ -1081,47 +1085,16 @@ func _add_realm2_door() -> void:
 
 	# The eruption is EARNED: the ground gives the portal up once every jade is
 	# gathered and she is near enough to see it happen (see _on_jade_collected and
-	# _process); landing on the last platform fires it too. DOOR_REVEAL=1 arms it
-	# without the jade, for screenshots and for testing the end of the level.
+	# _process). DOOR_REVEAL=1 arms it without the jade, for screenshots and for
+	# testing the end of the level.
 	if OS.get_environment("DOOR_REVEAL") != "":
 		_door_armed = true
 
 
-## An Area2D lying across the LAST platform in the level — landing on it is what
-## calls the portal up out of the ground. It rides the platform (it is a child of
-## the assembly), so a moving last platform carries its own trigger.
-func _arm_door_trigger() -> void:
-	if _plats.is_empty():
-		return
-	var last: Dictionary = _plats[0]
-	for p: Dictionary in _plats:
-		if p.pos.x > last.pos.x:
-			last = p
-	var meta: Array = PLAT_META[last.pname]
-	var area := Area2D.new()
-	area.name = "DoorCueTrigger"
-	area.collision_layer = 0
-	area.collision_mask = 1                # Curiosity's layer
-	var cs := CollisionShape2D.new()
-	var r := RectangleShape2D.new()
-	r.size = Vector2(float(meta[2]) - float(meta[1]), 150.0)
-	cs.shape = r
-	# sits ON the platform: the box straddles the rim so a landing registers
-	cs.position = Vector2((float(meta[1]) + float(meta[2])) * 0.5, float(meta[0]) - 55.0)
-	area.add_child(cs)
-	last.node.add_child(area)
-	area.body_entered.connect(_on_final_platform_reached)
-
-
-## She landed on the last platform. If the realm has been emptied of jade, the
-## ground tears open and the portal is born; otherwise nothing stirs yet.
-func _on_final_platform_reached(body: Node2D) -> void:
-	if body != _player or _door_revealed or _door == null:
-		return
-	if _jade_total > 0 and _jade_got < _jade_total \
-			and OS.get_environment("DOOR_REVEAL") == "":
-		return                              # the jade is the price; the card says so
-	_erupt_door()
+## (The old "landing on the last platform" trigger is gone: that platform sits well
+## back from the pocket and high up, so the portal was born behind and below her and
+## the whole eruption played to an empty camera. The approach test in _process is the
+## only trigger now.)
 
 
 ## The portal tears itself out of the ground: the art plays ONCE, the light comes up
