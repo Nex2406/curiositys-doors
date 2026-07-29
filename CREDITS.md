@@ -21,9 +21,12 @@ work is not reviewed).
 - **Curiosity** — full hero sprite set (idle / walk / run / jump / combat / dash)
 - **Golems** — Realm 1 enemy sprites (patrol / alert / attack / death)
 - **Jade** — collectible sprites (Realm 1)
-- **Void Moth turn + attack sheets** — the voidturn fold (11f) and
-  voidattack comet (9f) sequences, size-normalized in-house
-  (`tools/align_voidmoth_turn.py`)
+- **Void Moth** — the complete creature: fly (12f) + death (3f) base sheets and
+  the voidturn fold (11f) / voidattack comet (9f) sequences, size-normalized
+  in-house (`tools/align_voidmoth_turn.py`)
+- **Rune orb** — 12-frame roll + 12-frame conjure smoke (the wizard's rolling
+  hazard); palette-shifted onto the realm violet in-house
+  (`tools/tint_runeorb_pack.gd`)
 - **Tarot trial card** — both painted faces (`assets/ui/tarot/`): door-arch
   front + ornamental reveal frame
 
@@ -34,8 +37,6 @@ work is not reviewed).
 | Cave Assets: floor slabs, platforms, big rocks, rock combinations, small rocks/stalagmites (`assets/realms/realm1_cavern/`, sliced in-house by `tools/slice_cave_pack.gd`) | **Maaot** — itch.io | Realm 1 rebuild (Crimson Hollow) |
 | Mossy tileset: terrain, floating platforms, hills, background decoration, hanging plants, decorations & hazards | **Maaot** — itch.io | Realm 2 backgrounds + terrain (purple hue-shift applied in-house) |
 | BlueWizard Animations (idle / walk / jump / dash) | **Maaot** — itch.io (same pack family — confirm exact pack page before submission) | Realm 2 boss, the Wizard — purple cloak + red eyes shifted in-house (`tools/tint_wizard_pack.gd`) |
-| Rune orb (12-frame roll + 12-frame conjure smoke) | Sourced by Advika — **confirm exact pack/page before submission** | Realm 2 wizard's rolling hazard — crystal shifted onto the realm violet in-house (`tools/tint_runeorb_pack.gd`) |
-| Void Moth base sheets (fly 12 / death 3) | Sourced by Advika — **confirm origin: pack page or own generation, before submission** | Realm 2 trial stalker — slain only by lantern-light |
 | Slimes, animated plants | **Maaot** — itch.io (same pack family — confirm exact pack page before submission) | Realm 2 (planned) |
 
 ### Procedural / generated in-repo
@@ -65,3 +66,5 @@ PR. No orphan art.*
 |---|---|---|---|
 | Cinzel (`assets/fonts/cinzel.ttf`) | Google Fonts | SIL OFL 1.1 | Tarot card titles |
 | EB Garamond (`assets/fonts/eb_garamond.ttf`) | Google Fonts | SIL OFL 1.1 | Tarot card verses + prompts |
+| Cormorant Garamond Italic (`assets/fonts/cormorant_garamond_italic.ttf`) | Google Fonts | SIL OFL 1.1 | Realm-transition quote card |
+| Cormorant Infant Italic (`assets/fonts/candidates/cormorant_infant_italic.ttf`) | Google Fonts | SIL OFL 1.1 | Main menu entries |
