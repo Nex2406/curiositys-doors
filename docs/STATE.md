@@ -1,5 +1,47 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-07-27_
+_Last updated: 2026-07-29_
+
+## 2026-07-29 — THE GAME HAS A FRONT DOOR: the main menu is built and boots
+`run/main_scene` is now `scenes/UI/MainMenu.tscn`. Everything is on exported dials;
+`@tool`, so it composes live in the editor. The 2026-07-25 menu was scrapped for
+being AI-looking — this one is built on art Advika chose (a painted arched
+corridor, an eye-and-filigree frame plate, a painted title).
+- **The opener, in order** (`MainMenu.gd`): the border INSCRIBES ITSELF over the
+  bare painting (3.5s) → a 0.35s beat → the title is WRITTEN (6.5s) → the entries
+  rise in, staggered 0.14s apart. Music (Starfall Dreams) swells from silence over
+  4.5s from the top. `R` replays the whole opener in a debug build.
+- **The write-on** (`shaders/title_write_on.gdshader` + `tools/make_title_write_order.py`)
+  — one shader, two order maps. Each map's R channel says WHEN a pixel appears and
+  its G channel how close it is to a stroke, so a warm nib glow can bloom into the
+  dark beside the line it is drawing. The title runs left-to-right per line with a
+  pause between them; the border runs from the crown eye down BOTH sides at once,
+  meeting at the moon on the bottom rule. Baked from connected components, not by
+  hand. `tools/make_frame_draw_order.py` does the border.
+- **The plate**: separable gaussian blur (`menu_blur.gdshader`) under a grade,
+  two domain-warped mist sheets, dust in two depths, all five frame eyes breathing
+  a fifth of a cycle apart, the corridor light breathing on two out-of-phase sines,
+  and the finished title floating 6px on an 8s cycle.
+- **Entries**: BEGIN · CONTINUE · SETTINGS · QUIT in Cormorant Infant Italic.
+  CONTINUE is always on the plate but disabled until a save exists (M6 lights it);
+  QUIT is dropped on web. Selection is a sliding hairline, never a highlight box.
+- **Settings** (`scenes/UI/SettingsPanel.tscn`) — Master / Music / Sound volume,
+  persisted through SaveManager, applied to the buses on the proper linear→dB
+  curve. Its own scene so the pause menu can open the SAME panel later.
+- **Menu SFX** synthesised in `tools/make_menu_sfx.py` (no licence): a soft
+  inharmonic move tick — inharmonic on purpose, so fast repeats never form a tune —
+  and a two-note select chime.
+- **`tools/AudioPicker.tscn`** auditions every clip we own, including the unused
+  music packs read straight off disk from `Downloads/_audio_library` (266MB
+  deliberately NOT imported into the project).
+- **Four bugs worth remembering**: (1) Godot rounds Control positions to whole
+  pixels, so animating a Control's position makes it stair-step — the title floats
+  via a Node2D parent instead. (2) A canvas shader that writes `COLOR` from scratch
+  DISCARDS the node's modulate, and reading `COLOR` in `fragment()` to get it back
+  is wrong (it is already multiplied by the texture — that squares the art and kills
+  any glow); capture it in `vertex()`. (3) `Tween.parallel()` binds to the PREVIOUS
+  tweener, so `tween_interval()` then `parallel().tween_property()` runs the
+  property DURING the wait. (4) With `stretch/aspect=expand`, a non-16:9 window
+  shows more canvas than 1920x1080 — layers pinned to that size leave bare strips.
 
 ## 2026-07-27 — REALM 1 IS SHIPPED, END TO END, ON MAIN
 The cave is live: **https://nex2406.github.io/curiositys-doors/**. Hub Door 1 →

@@ -1,0 +1,230 @@
+[gd_scene load_steps=20 format=3]
+
+[ext_resource type="Script" path="res://scripts/MainMenu.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/ui/menu/menu_bg_tunnel19.png" id="2_bg"]
+[ext_resource type="Shader" path="res://shaders/menu_grade.gdshader" id="3_grade"]
+[ext_resource type="Shader" path="res://shaders/menu_mist.gdshader" id="6_mist"]
+[ext_resource type="Texture2D" path="res://assets/ui/menu/menu_frame_eye.png" id="4_frame"]
+[ext_resource type="Texture2D" path="res://assets/ui/menu/title_plate.png" id="5_title"]
+[ext_resource type="Shader" path="res://shaders/menu_blur.gdshader" id="9_blur"]
+[ext_resource type="Shader" path="res://shaders/title_write_on.gdshader" id="7_write"]
+[ext_resource type="Texture2D" path="res://assets/ui/menu/title_write_order.png" id="8_order"]
+[ext_resource type="Texture2D" path="res://assets/ui/menu/menu_frame_order.png" id="10_forder"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_blur_h"]
+shader = ExtResource("9_blur")
+shader_parameter/direction = Vector2(1, 0)
+shader_parameter/radius = 9.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_blur_v"]
+shader = ExtResource("9_blur")
+shader_parameter/direction = Vector2(0, 1)
+shader_parameter/radius = 9.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_grade"]
+shader = ExtResource("3_grade")
+shader_parameter/desaturation = 0.3
+shader_parameter/shadow_tint = Color(0.72, 0.66, 1.1, 1)
+shader_parameter/highlight_tint = Color(1.06, 0.98, 0.88, 1)
+shader_parameter/shadow_range = Vector2(0.05, 0.45)
+shader_parameter/highlight_range = Vector2(0.3, 0.75)
+shader_parameter/shadow_lift = Vector3(0.055, 0.04, 0.09)
+shader_parameter/exposure = 0.9
+shader_parameter/vignette_inner = 0.34
+shader_parameter/vignette_corner = 0.35
+shader_parameter/title_scrim_centre = Vector2(0.6, 0.17)
+shader_parameter/title_scrim_radii = Vector2(0.34, 0.24)
+shader_parameter/title_scrim_strength = 0.55
+shader_parameter/floor_scrim_start = 0.62
+shader_parameter/floor_scrim_strength = 0.7
+shader_parameter/floor_scrim_x_centre = 0.5
+shader_parameter/floor_scrim_x_falloff = 0.45
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_mist_far"]
+shader = ExtResource("6_mist")
+shader_parameter/noise_scale = 2.5
+shader_parameter/aspect = 1.777778
+shader_parameter/drift = 0.02
+shader_parameter/warp_strength = 0.9
+shader_parameter/churn = 3.0
+shader_parameter/contrast = 1.0
+shader_parameter/opacity = 0.16
+shader_parameter/density_floor = 0.35
+shader_parameter/density_range = Vector2(0.3, 0.75)
+shader_parameter/lum_mask_lo = 0.05
+shader_parameter/lum_mask_hi = 0.18
+shader_parameter/light_centre = Vector2(0.49, 0.34)
+shader_parameter/tint_distance = 0.55
+shader_parameter/warm_tint = Color(0.79, 0.66, 0.42, 1)
+shader_parameter/cool_tint = Color(0.17, 0.13, 0.22, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_mist_near"]
+shader = ExtResource("6_mist")
+shader_parameter/noise_scale = 5.0
+shader_parameter/aspect = 1.777778
+shader_parameter/drift = -0.045
+shader_parameter/warp_strength = 1.2
+shader_parameter/churn = 3.0
+shader_parameter/contrast = 1.3
+shader_parameter/opacity = 0.1
+shader_parameter/density_floor = 0.35
+shader_parameter/density_range = Vector2(0.3, 0.75)
+shader_parameter/lum_mask_lo = 0.05
+shader_parameter/lum_mask_hi = 0.18
+shader_parameter/light_centre = Vector2(0.49, 0.34)
+shader_parameter/tint_distance = 0.55
+shader_parameter/warm_tint = Color(0.79, 0.66, 0.42, 1)
+shader_parameter/cool_tint = Color(0.17, 0.13, 0.22, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_write"]
+shader = ExtResource("7_write")
+shader_parameter/order_map = ExtResource("8_order")
+shader_parameter/progress = 1.0
+shader_parameter/feather = 0.015
+shader_parameter/nib_width = 0.012
+shader_parameter/nib_color = Color(1, 0.92, 0.72, 1)
+shader_parameter/nib_strength = 0.6
+shader_parameter/halo_strength = 0.85
+shader_parameter/glow_color = Color(1, 0.93, 0.78, 1)
+shader_parameter/glow_strength = 0.35
+shader_parameter/glow_tightness = 2.2
+shader_parameter/glow_pulse = 0.16
+shader_parameter/glow_period = 6.5
+shader_parameter/glow_core = 0.1
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_frame_draw"]
+shader = ExtResource("7_write")
+shader_parameter/order_map = ExtResource("10_forder")
+shader_parameter/progress = 1.0
+shader_parameter/feather = 0.02
+shader_parameter/nib_width = 0.016
+shader_parameter/nib_color = Color(1, 0.92, 0.72, 1)
+shader_parameter/nib_strength = 0.5
+shader_parameter/halo_strength = 0.7
+shader_parameter/glow_color = Color(1, 0.93, 0.78, 1)
+shader_parameter/glow_strength = 0.0
+shader_parameter/glow_tightness = 2.2
+shader_parameter/glow_pulse = 0.0
+shader_parameter/glow_period = 6.5
+shader_parameter/glow_core = 0.0
+
+[sub_resource type="Gradient" id="Gradient_dot"]
+offsets = PackedFloat32Array(0, 0.35, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.5, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_dot"]
+gradient = SubResource("Gradient_dot")
+width = 32
+height = 32
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[sub_resource type="Gradient" id="Gradient_mote_life"]
+offsets = PackedFloat32Array(0, 0.2, 0.75, 1)
+colors = PackedColorArray(1, 0.93, 0.78, 0, 1, 0.93, 0.78, 0.75, 1, 0.93, 0.78, 0.6, 1, 0.93, 0.78, 0)
+
+[sub_resource type="Gradient" id="Gradient_mote_near"]
+offsets = PackedFloat32Array(0, 0.25, 0.7, 1)
+colors = PackedColorArray(1, 0.93, 0.78, 0, 1, 0.93, 0.78, 0.3, 1, 0.93, 0.78, 0.22, 1, 0.93, 0.78, 0)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_title"]
+atlas = ExtResource("5_title")
+region = Rect2(0, 202, 1199, 698)
+
+[node name="MainMenu" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="BGBase" type="Sprite2D" parent="."]
+texture_filter = 4
+position = Vector2(960, 540)
+scale = Vector2(0.714286, 0.714286)
+texture = ExtResource("2_bg")
+
+[node name="BlurH" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_blur_h")
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+
+[node name="BlurV" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_blur_v")
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+
+[node name="BGGrade" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_grade")
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+
+[node name="MistFar" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_mist_far")
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+
+[node name="MistNear" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_mist_near")
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+
+[node name="Motes" type="CPUParticles2D" parent="."]
+position = Vector2(960, 700)
+amount = 110
+lifetime = 13.0
+preprocess = 13.0
+randomness = 0.6
+texture = SubResource("GradientTexture2D_dot")
+emission_shape = 3
+emission_rect_extents = Vector2(430, 330)
+direction = Vector2(0, -1)
+spread = 40.0
+gravity = Vector2(0, -3)
+initial_velocity_min = 3.0
+initial_velocity_max = 11.0
+scale_amount_min = 0.05
+scale_amount_max = 0.15
+color_ramp = SubResource("Gradient_mote_life")
+
+[node name="MotesNear" type="CPUParticles2D" parent="."]
+position = Vector2(960, 900)
+amount = 20
+lifetime = 9.0
+preprocess = 9.0
+randomness = 0.7
+texture = SubResource("GradientTexture2D_dot")
+emission_shape = 3
+emission_rect_extents = Vector2(900, 260)
+direction = Vector2(0, -1)
+spread = 55.0
+gravity = Vector2(0, -6)
+initial_velocity_min = 9.0
+initial_velocity_max = 26.0
+scale_amount_min = 0.22
+scale_amount_max = 0.5
+color_ramp = SubResource("Gradient_mote_near")
+
+[node name="Frame" type="TextureRect" parent="."]
+material = SubResource("ShaderMaterial_frame_draw")
+modulate = Color(0.94, 0.91, 0.86, 0.34)
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+texture = ExtResource("4_frame")
+expand_mode = 1
+
+[node name="TitleAnchor" type="Node2D" parent="."]
+
+[node name="Title" type="TextureRect" parent="TitleAnchor"]
+texture_filter = 4
+material = SubResource("ShaderMaterial_write")
+offset_left = 630.275
+offset_top = 223.5
+offset_right = 1289.725
+offset_bottom = 607.4
+mouse_filter = 2
+texture = SubResource("AtlasTexture_title")
+expand_mode = 1

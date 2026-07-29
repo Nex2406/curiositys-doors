@@ -48,6 +48,8 @@ work is not reviewed).
 | Track | Source | License | Used in |
 |---|---|---|---|
 | "Moonlight (Full Loop)" (`assets/audio/realm2_moonlight.ogg`) | **AlkaKrab** — *Free 12 Fairytale Magical Fantasy Tracks* | Royalty-free, commercial use allowed, credit appreciated (License Info.pdf in pack; contact alkakrab04@gmail.com) | Realm 2 ambient |
+| "Echoed Blades" (`assets/audio/realm1_echoed_blades.ogg`) | **AlkaKrab** — *Free JRPG Music Pack* | Royalty-free, commercial use allowed, credit appreciated (License Info.pdf in pack) | Realm 1 ambient |
+| "Starfall Dreams (Loop)" (`assets/audio/menu_starfall_dreams.ogg`) | **AlkaKrab** — *Free JRPG Music Pack* | Royalty-free, commercial use allowed, credit appreciated (License Info.pdf in pack) | Main menu |
 | Card reveal chime (`assets/audio/wizard_card_reveal.ogg`, from `UI/Notifications/GP_Disconnected.wav`) | **Olex Mazur** — *Card Game SFX Pack* | Per pack terms — confirm exact page before submission | Realm 2 trial card reveal |
 
 - All other ambience is still the placeholder drone synthesized in code
