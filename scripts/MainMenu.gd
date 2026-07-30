@@ -147,23 +147,24 @@ const HUB_SCENE := "res://scenes/Hub.tscn"
 ## where cream stops separating from the background.
 ## Per-entry rather than derived so hiding one (QUIT on web) never reflows the others —
 ## a menu that changes shape between launches reads as a bug.
-## Four entries, 78px apart. Dropped 30px as a block on Advika's call — the block sat high
-## in its runway and crowded the title's flourish. QUIT now sits at 882, into the top of the
-## lit floor, and stays legible only because the grade's `floor_scrim` already darkens the
-## bottom-centre. Much lower than this and cream stops separating from that ground.
-@export var begin_y := 648.0:
+## Lowered twice on Advika's call, and the SPACING had to give to do it: at 78px apart the
+## block could not drop further without QUIT running into the frame's bottom ornament (top
+## edge y=914). At 70px the four fit from 680 to 890 — 124px of air under the title's
+## flourish, 24px above the ornament. QUIT rests on the lit floor and stays legible only
+## because the grade's `floor_scrim` darkens the bottom-centre. This is the floor.
+@export var begin_y := 680.0:
 	set(v):
 		begin_y = v
 		_layout_menu()
-@export var continue_y := 726.0:
+@export var continue_y := 750.0:
 	set(v):
 		continue_y = v
 		_layout_menu()
-@export var settings_y := 804.0:
+@export var settings_y := 820.0:
 	set(v):
 		settings_y = v
 		_layout_menu()
-@export var quit_y := 882.0:
+@export var quit_y := 890.0:
 	set(v):
 		quit_y = v
 		_layout_menu()
