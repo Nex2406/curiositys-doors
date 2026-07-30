@@ -147,22 +147,23 @@ const HUB_SCENE := "res://scenes/Hub.tscn"
 ## where cream stops separating from the background.
 ## Per-entry rather than derived so hiding one (QUIT on web) never reflows the others —
 ## a menu that changes shape between launches reads as a bug.
-## Re-spaced from three entries to four when SETTINGS joined: the same 358px runway now
-## carries four at 78px apart, centred on it, which keeps 62px of air above the first and
-## below the last. Any wider and QUIT lands on the lit floor where cream stops separating.
-@export var begin_y := 618.0:
+## Four entries, 78px apart. Dropped 30px as a block on Advika's call — the block sat high
+## in its runway and crowded the title's flourish. QUIT now sits at 882, into the top of the
+## lit floor, and stays legible only because the grade's `floor_scrim` already darkens the
+## bottom-centre. Much lower than this and cream stops separating from that ground.
+@export var begin_y := 648.0:
 	set(v):
 		begin_y = v
 		_layout_menu()
-@export var continue_y := 696.0:
+@export var continue_y := 726.0:
 	set(v):
 		continue_y = v
 		_layout_menu()
-@export var settings_y := 774.0:
+@export var settings_y := 804.0:
 	set(v):
 		settings_y = v
 		_layout_menu()
-@export var quit_y := 852.0:
+@export var quit_y := 882.0:
 	set(v):
 		quit_y = v
 		_layout_menu()
@@ -850,8 +851,10 @@ func _entry_specs() -> Array:
 		{"id": "continue", "text": "CONTINUE", "y": continue_y, "enabled": has_save},
 		{"id": "settings", "text": "SETTINGS", "y": settings_y, "enabled": true},
 	]
-	if not OS.has_feature("web"):
-		specs.append({"id": "quit", "text": "QUIT", "y": quit_y, "enabled": true})
+	# QUIT is on web too now (Advika's call) — the two builds show the same four entries.
+	# `_commit` drops the browser out of fullscreen before quitting there, so nobody is left
+	# staring at a dead canvas filling their screen.
+	specs.append({"id": "quit", "text": "QUIT", "y": quit_y, "enabled": true})
 	return specs
 
 
@@ -999,6 +1002,8 @@ func _commit() -> void:
 			return
 		"quit":
 			_committed = true
+			if OS.has_feature("web"):
+				ScreenMode.set_fullscreen(false)
 			get_tree().quit()
 		_:
 			# Both Begin and Continue land in the Hub today; Continue diverges when M6

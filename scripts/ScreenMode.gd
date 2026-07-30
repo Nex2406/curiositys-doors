@@ -19,10 +19,12 @@ func _ready() -> void:
 	# page that tries on load is refused — so there the first keypress or click takes it,
 	# once, and the hotkey stays for afterwards.
 	if OS.has_feature("web"):
+		_hook_web_fullscreen()
 		return
-	# ...and a run that asked for a specific window size means to have it — that is how the
-	# screenshot harnesses run, and they are useless framed to the monitor instead.
-	if OS.get_cmdline_args().has("--resolution"):
+	# NO_FULLSCREEN=1 for the screenshot harnesses, which are useless framed to the monitor.
+	# (Checking the command line for --resolution does NOT work: the engine consumes its own
+	# arguments before a script can see them, so the guard silently never fired.)
+	if OS.get_environment("NO_FULLSCREEN") != "":
 		return
 	set_fullscreen(true)
 
@@ -30,6 +32,29 @@ func _ready() -> void:
 ## On web, take the first real interaction as the gesture that grants fullscreen. Only once
 ## — if the player leaves fullscreen deliberately, we do not drag them back in.
 var _web_claimed := false
+
+
+## Asking through GDScript means the request leaves a frame AFTER the browser event, which
+## some browsers refuse. This listens for the DOM event itself and calls requestFullscreen
+## inside the handler, which is the one form no browser argues with. Capture phase, and it
+## unhooks itself once it has fired.
+func _hook_web_fullscreen() -> void:
+	JavaScriptBridge.eval("""
+		(function () {
+			if (window.__cd_fs_hooked) return;
+			window.__cd_fs_hooked = true;
+			var take = function () {
+				var el = document.querySelector('canvas') || document.documentElement;
+				if (!document.fullscreenElement && el.requestFullscreen) {
+					el.requestFullscreen().catch(function () {});
+				}
+				window.removeEventListener('pointerdown', take, true);
+				window.removeEventListener('keydown', take, true);
+			};
+			window.addEventListener('pointerdown', take, true);
+			window.addEventListener('keydown', take, true);
+		})();
+	""", true)
 
 
 func _claim_web_fullscreen(event: InputEvent) -> void:
