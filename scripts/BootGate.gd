@@ -8,13 +8,12 @@ extends Node2D
 ## player is told the hotkey exists rather than discovering it never.
 ##
 ##   F / F11        fullscreen, then in
-##   any other key  straight in, windowed
+##   any other key  straight in, windowed — undocumented on purpose (Advika cut the second
+##                  line), but kept so nobody can be stuck on this screen
 ##
-## Voice is the tarot card's: Cinzel for the instruction, EB Garamond for the quiet line
-## under it, dimmed cream, centred on black.
+## One line, Cinzel caps in the quote card's gold, centred on black: the tarot's voice.
 
 const CINZEL := "res://assets/fonts/cinzel.ttf"
-const GARAMOND := "res://assets/fonts/eb_garamond.ttf"
 const CREAM := Color(0.910, 0.784, 0.541)     # #E8C88A — the quote card's gold
 const MENU_SCENE := "res://scenes/UI/MainMenu.tscn"
 
@@ -51,7 +50,6 @@ func _ready() -> void:
 	# single spaces: the 10px tracking already opens the words up, and doubling them as well
 	# pulls the line into three separate things
 	col.add_child(_line("PRESS F FOR FULLSCREEN", CINZEL, 30, Color(CREAM, 0.92), 10))
-	col.add_child(_line("Press any key to continue", GARAMOND, 22, Color(CREAM, 0.5), 0))
 
 	var t := create_tween()
 	t.tween_property(_block, "modulate:a", 1.0, FADE_IN)

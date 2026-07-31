@@ -139,6 +139,9 @@ const SFX_SELECT := "res://assets/audio/ui/menu_select.wav"
 		_build_menu()
 const CREAM := Color(0.918, 0.902, 0.855)  # #EAE6DA — the title's own cream
 const HUB_SCENE := "res://scenes/Hub.tscn"
+## BEGIN goes through the prologue now; CONTINUE still lands straight in the Hub, because
+## a player resuming a save has already heard the voice.
+const PROLOGUE_SCENE := "res://scenes/prologue/Prologue.tscn"
 
 ## Vertical CENTRES, one per entry, not a top + spacing: the runway between the title
 ## flourish (bottom y=556) and the frame ornament (top y=914) is only 358px, and these
@@ -1006,10 +1009,33 @@ func _commit() -> void:
 			if OS.has_feature("web"):
 				ScreenMode.set_fullscreen(false)
 			get_tree().quit()
+		"begin":
+			_committed = true
+			_start_prologue()
 		_:
-			# Both Begin and Continue land in the Hub today; Continue diverges when M6
-			# teaches the boot flow where the player actually was.
+			# CONTINUE still lands in the Hub directly; it diverges when M6 teaches the
+			# boot flow where the player actually was.
+			_committed = true
 			Transition.transition_to(HUB_SCENE)
+
+
+## No scene change: the prologue is a CanvasLayer laid OVER the live menu, so the painting
+## is still rendering underneath while the prologue's backdrop dissolves it away. A scene
+## change would cut to black before the voice had said anything, and the first line is
+## written to land while the player is still looking at the picture.
+##
+## It goes in as our SIBLING under the tree root, not as our child, so it survives being
+## handed the job of freeing us — which it does the moment its backdrop reaches full black.
+func _start_prologue() -> void:
+	var menu_root := get_node_or_null("Menu")
+	if menu_root != null:
+		menu_root.visible = false   # the entries go at once; only the painting dims out
+	var prologue: CanvasLayer = load(PROLOGUE_SCENE).instantiate()
+	get_tree().root.add_child(prologue)
+	# Hand over the "current scene" title as well, or `change_scene_to_file` at the end of
+	# the prologue would try to free a menu that no longer exists.
+	get_tree().current_scene = prologue
+	prologue.attach_over(self)
 
 
 ## MENU_SEQ=<abs dir>: capture a frame sequence so the motion can actually be watched.
