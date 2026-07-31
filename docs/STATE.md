@@ -1,5 +1,46 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-07-29_
+_Last updated: 2026-07-31_
+
+## 2026-07-31 — THE OPENING: a prologue that types, then one card, then the cave
+The game now has a front-to-back opening. **There is no hub in the flow any more** —
+BEGIN goes menu → prologue → quote card → Realm 1. (Hub.tscn still EXISTS and is
+still referenced from `Door.gd:177`, `MainMenu.gd` CONTINUE, `Intro.gd`,
+`RealmBase.return_scene`, and the ESC-return in Realm 2 / Realm 3. Nothing deleted.)
+- **The prologue** (`scripts/Prologue.gd` + `scenes/prologue/Prologue.tscn`) — five
+  stanzas typed onto black, 38.5s measured. It lays over the LIVE menu rather than
+  cutting: the painting dissolves (1.6s) with nothing written over it, is freed the
+  instant it is covered, then a held beat of black, and only THEN the first character.
+  Written for a player who has not read the book: someone was already here → you came
+  on a pull you never chose → they put it there on purpose → three doors, one at a
+  time, each opens the next → go on. `PRO_TIME=1` prints the depicted length and the
+  max characters landed in one frame (must be 1). `PRO_SKIP=1` jumps to the card.
+- **It only types.** The old per-line skip is DELETED, not patched: a key pressed
+  during a non-skippable wait stayed latched and was spent by the NEXT line the moment
+  it began, so a line the player never touched appeared whole. ESC abandons the whole
+  prologue; nothing else is listened to.
+- **Typing tick** (`tools/make_typing_sfx.py` → `type_tick.wav`) — seeded NOISE, no
+  fundamental, 500-1600Hz, 55ms, 6ms attack. Anything with a pitch becomes a drone at
+  twenty ticks a second. Four players round-robin, ±9% pitch jitter, 55ms rate cap,
+  spaces silent, −21dB.
+- **`scripts/Typewriter.gd`** — the float-accumulator cursor, punctuation pauses and
+  `{0.5}` pause tokens, shared by the prologue and the card. One implementation.
+- **`scripts/QuoteCard.gd`** — THE quote template, and both quotes in the game are now
+  literally the same object: Fear's line at the Realm 1 → Realm 2 handover, and the new
+  one before Realm 1. Quote / optional speaker / attribution / prompt, Cormorant
+  Garamond Italic at Light 300 in `#E8C88A`, 64pt. An empty speaker is NOT BUILT (a
+  hidden Label still costs its separation). It owns no pacing and no black —
+  `QuoteTransition` still owns the hold, the music cross, the scene change and the
+  blink-lift. Measured proof the two cards match: first line 66px tall in both, delta 0.
+- **The Realm 1 opening card** is "And before I could argue, / the floor gave way."
+  with no speaker. NOT typed — it is a held breath after the prologue, on black.
+- **The doorway in Realm 1 is built out of REALM 2's assets** (Advika: "the connecting
+  doorway") — two mossy rock piers, trees leaning in to meet as the arch, front-layer
+  vines and leaves crossing the posts, loose rock bedding the base, R2 itself seen
+  through the passage (`r2_gateway_view.png`, baked by `tools/bake_gateway_view.py`),
+  fireflies crossing over. `DOOR_ART=painted` still gets the old arch for A/B.
+- **The bug worth remembering**: a `CanvasLayer` nested inside a `CanvasLayer` does NOT
+  inherit it — `layer` is a global sort key. The card sat at 0 under the bridge's own
+  black at 200 and the first capture came back an entirely empty frame.
 
 ## 2026-07-29 — THE GAME HAS A FRONT DOOR: the main menu is built and boots
 `run/main_scene` is now `scenes/UI/MainMenu.tscn`. Everything is on exported dials;
