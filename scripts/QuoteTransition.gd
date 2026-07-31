@@ -10,6 +10,12 @@ class_name QuoteTransition
 ## (first read is protected, retries are not punished). The two realms' tracks
 ## CROSS: Realm 1 fades out over the first ~4s while Realm 2's comes up beneath it
 ## from ~2s, so for a couple of seconds both are sounding.
+##
+## THE WORDS ARE NO LONGER DRAWN HERE (2026-07-31). Realm 1 needed an opening card of its
+## own, and rather than write a second card the presentation moved into `QuoteCard` —
+## quote, optional speaker, attribution, continue affordance, and the typewriter it shares
+## with the prologue. What stayed is what only a BRIDGE does: freezing the tree, crossing
+## the two soundtracks, changing scene, and lifting the black as a blink. See `_build_card`.
 
 signal finished()
 
@@ -29,7 +35,7 @@ const CREAM := Color("E8C88A")
 ## rejecting fifteen candidates). The families were never the problem: they are
 ## VARIABLE fonts and every sample drew at regular weight, which is why they all
 ## read heavy. Cormorant Garamond Italic pulled down to Light (300) is the high-
-## contrast hairline italic that look is made of — see _thin().
+## contrast hairline italic that look is made of.
 const QUOTE_FONT := "res://assets/fonts/cormorant_garamond_italic.ttf"
 const GARAMOND_IT := "res://assets/fonts/eb_garamond_italic.ttf"
 const GARAMOND := "res://assets/fonts/eb_garamond.ttf"
@@ -40,9 +46,20 @@ const QUOTE_WEIGHT := 300
 @export var next_track: AudioStream = preload("res://assets/audio/realm2_moonlight.ogg")
 @export var next_track_name: String = "realm2"
 
+## THE WORDS. Exported (2026-07-31) so this same bridge can carry a different quote — the
+## prologue uses one to reach Realm 1. Defaults are Fear's line, which is what the Realm 1
+## → Realm 2 handover has always shown.
+##
+## One entry per line. `speaker` empty means no speaker line is drawn at all and the block
+## closes up — the Realm 1 opening quote has no speaker.
+@export var quote_lines: PackedStringArray = PackedStringArray([
+	"“You will not fall, nor rise.”",
+])
+@export var speaker: String = "— Fear"
+@export var attribution: String = "(Written by Silence – Advika Kohli)"
+
 var _black: ColorRect
-var _block: VBoxContainer
-var _prompt: Label
+var _card: QuoteCard
 var _t := 0.0
 var _skipped := false
 var _holding := false
@@ -60,81 +77,47 @@ func _ready() -> void:
 	_black.modulate.a = 0.0
 	add_child(_black)
 
-	# the quote block, composed as one unit and centred on both axes
-	var centre := CenterContainer.new()
-	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
-	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(centre)
-
-	_block = VBoxContainer.new()
-	_block.add_theme_constant_override("separation", 2)
-	_block.modulate.a = 0.0
-	centre.add_child(_block)
-
-	# em dash, parentheses and en dash exactly as written; the quote marks are the
-	# typographic pair (the ASCII " draws as a closing mark at both ends).
-	var quote := _line("\u201cYou will not fall, nor rise.\u201d", QUOTE_FONT, 64, CREAM, true)
-	quote.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_block.add_child(quote)
-
-	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(0, 16)
-	_block.add_child(gap)
-
-	# attribution: right-aligned inside the block's width, reading as one unit
-	var fear := _line("\u2014 Fear", QUOTE_FONT, 36, CREAM, true)
-	fear.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_block.add_child(fear)
-
-	var book := _line("(Written by Silence \u2013 Advika Kohli)", GARAMOND_IT, 20,
-			Color(CREAM.r, CREAM.g, CREAM.b, 0.55))
-	book.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_block.add_child(book)
-
-	# "Press any key to continue" — the tarot card's prompt voice exactly: plain EB
-	# Garamond, small, dimmed cream, sitting low and centred under the quote. It only
-	# appears once the card has been up long enough to read (Advika 2026-07-27).
-	_prompt = _line("Press any key to continue", GARAMOND, 22,
-			Color(CREAM.r, CREAM.g, CREAM.b, 0.55))
-	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_prompt.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_prompt.modulate.a = 0.0
-	var prompt_wrap := CenterContainer.new()
-	prompt_wrap.set_anchors_preset(Control.PRESET_FULL_RECT)
-	prompt_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	prompt_wrap.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	add_child(prompt_wrap)
-	var prompt_col := VBoxContainer.new()
-	prompt_col.alignment = BoxContainer.ALIGNMENT_END
-	prompt_col.custom_minimum_size = Vector2(0, 620)
-	prompt_wrap.add_child(prompt_col)
-	prompt_col.add_child(_prompt)
-
+	_build_card()
 	_run()
 
 
-func _line(text: String, font_path: String, size: int, colour: Color,
-		thin: bool = false) -> Label:
-	var l := Label.new()
-	l.text = text
-	var f: Font = load(font_path)
-	if f != null:
-		l.add_theme_font_override("font", _thin(f) if thin else f)
-	l.add_theme_font_size_override("font_size", size)
-	l.add_theme_color_override("font_color", colour)
-	# NO glow, no hue — cream on black. The words carry it.
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return l
+## The card, dressed exactly as this one has always been dressed. Every value is passed in
+## explicitly rather than inherited from QuoteCard's defaults — 64/36/20pt, Cormorant
+## pulled to Light, right-aligned credits, cream on black, no typing, and the prompt as a
+## WORD rather than a caret. Nothing about how it looks is meant to have changed.
+func _build_card() -> void:
+	_card = QuoteCard.new()
+	_card.name = "Card"
+	# A CanvasLayer nested inside a CanvasLayer does NOT inherit it — the child's `layer`
+	# is a global sort key, so leaving it at 0 buried the whole card under this file's own
+	# black at 200 and the card shot came back as an empty frame. One above ours.
+	_card.layer = layer + 1
 
+	# em dash, parentheses and en dash exactly as written; the quote marks are the
+	# typographic pair (the ASCII " draws as a closing mark at both ends).
+	_card.quote_lines = quote_lines
+	_card.speaker = speaker
+	_card.attribution = attribution
 
-## Variable fonts default to Regular, which is why every italic candidate read
-## heavy. This pulls the weight axis down to Light — the hairline, high-contrast
-## italic that makes a title card feel cinematic instead of bookish.
-func _thin(base: Font) -> Font:
-	var v := FontVariation.new()
-	v.base_font = base
-	v.variation_opentype = {"wght": QUOTE_WEIGHT}
-	return v
+	_card.block_fade_in = QUOTE_IN
+	_card.quote_font = load(QUOTE_FONT)
+	_card.quote_size = 64
+	_card.quote_weight = QUOTE_WEIGHT     # Light (300) — the hairline cinematic italic
+	_card.attribution_font = load(GARAMOND_IT)
+	_card.attribution_size = 20
+	_card.text_colour = CREAM
+	_card.attribution_alpha = 0.55
+	_card.quote_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_card.credit_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_card.speaker_gap = 16
+
+	# "Press any key to continue" — the tarot card's prompt voice: plain EB Garamond,
+	# small, dimmed cream, centred under the quote. It appears only once the card has been
+	# up long enough to read (Advika 2026-07-27), which is why the delay is ours, below.
+	_card.indicator_text = "Press any key to continue"
+	_card.indicator_alpha = 0.55
+	_card.indicator_gap = 120
+	add_child(_card)
 
 
 ## Every tween on this card must run THROUGH the pause — the gameplay behind is
@@ -157,10 +140,7 @@ func _run() -> void:
 
 	# The two realms' music MIXES under the card, both sitting lower than normal
 	# (Advika: "both tracks mixing together in a slightly lower volume in the
-	# background"). Realm 1 bleeds out across ~8s; Moonlight comes up beneath it from
-	# ~6s, so they sound together for several seconds. The bus is ducked for the whole
-	# card and only opens back up as we arrive.
-	# NOT ducked any more: ducking the bus made the merge a background murmur, and
+	# background"). NOT ducked: ducking the bus made the merge a background murmur, and
 	# the merge is the point (Advika 2026-07-26: "the track merging needs to be
 	# audible during the transition"). Realm 1 bleeds out across 11s and Moonlight
 	# rises from 4s over 8s, both at full bus volume — they sound together, loudly,
@@ -168,8 +148,9 @@ func _run() -> void:
 	AudioManager.stop_ambient(11.0)
 	_cross_in_next_track()
 
-	var q := _tw()
-	q.tween_property(_block, "modulate:a", 1.0, QUOTE_IN)
+	# The quote block breathes in over QUOTE_IN. Not awaited: the hold below is measured
+	# from the top of the card, exactly as it was when the fade lived in this file.
+	_card.present()
 
 	# QUOTE_SHOT=<path>: capture the card mid-hold (the level's own shot harness dies
 	# with the scene change, so the card carries its own)
@@ -185,19 +166,14 @@ func _run() -> void:
 		await get_tree().create_timer(0.05).timeout
 		elapsed += 0.05
 		_t = elapsed
-	if _prompt != null:
-		var pt := _tw()
-		pt.tween_property(_prompt, "modulate:a", 1.0, 1.0)
+	_card.reveal_indicator()
 	_waiting = true
 	while not _skipped:
 		await get_tree().create_timer(0.05).timeout
 	_waiting = false
 	_holding = false
 
-	var out := _tw()
-	out.tween_property(_block, "modulate:a", 0.0, QUOTE_OUT)
-	out.parallel().tween_property(_prompt, "modulate:a", 0.0, QUOTE_OUT * 0.6)
-	await out.finished
+	await _card.fade_out(QUOTE_OUT)
 
 	# load the next realm UNDER the black, then open our eyes on it — the black
 	# lifts as a BLINK (Advika): a first look, a shut, then all the way open.
@@ -238,6 +214,9 @@ func _cross_in_next_track() -> void:
 
 
 ## Every input is swallowed while the card is up; after the grace it also skips.
+## This runs at `_input`, ahead of QuoteCard's own `_unhandled_input`, and marks every
+## press handled — so the card's built-in skip/dismiss never fires here and the pacing
+## stays entirely in this file.
 func _input(event: InputEvent) -> void:
 	var pressed: bool = (event is InputEventKey and event.pressed and not event.echo) \
 			or (event is InputEventMouseButton and event.pressed) \
