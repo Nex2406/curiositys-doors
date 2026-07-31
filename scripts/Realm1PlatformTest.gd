@@ -162,7 +162,8 @@ var _sit := ""
 var _sit_freecam := false       # PLAT_SIT=ceiling*: hold the framing, don't chase her
 var _plats: Array = []          # {pname, pos} for every standable platform
 ## the Realm 2 portal door at the level end — hidden until every jade is gathered
-var _door: AnimatedSprite2D
+var _door: Node2D                   # the doorway root (R2 assembly, or the painted set)
+var _door_scale: float = 1.25       # DOOR_SCALE for the painted set, R2_DOOR_SCALE for the assembly
 var _door_light: PointLight2D
 var _door_revealed: bool = false    # the eruption has started
 var _door_ready: bool = false       # it has finished — only now does [Y] work
@@ -989,11 +990,19 @@ func _show_tarot() -> void:
 	add_child(Realm1Card.build())
 
 
-## The animated Realm 2 portal door that waits at the level end. Placement + idle
-## animation only — it floats and bobs, its mist loops, and its purple glow spills
-## onto the gold cave rock (the two palettes meeting = intentional foreshadowing).
-## The actual teleport is a TODO on TransitionTrigger (wired in the next step).
+## The doorway to Realm 2 that waits at the level end. Since 2026-07-30 it is BUILT
+## OUT OF REALM 2'S OWN ASSETS (Advika: "I want the door in realm 1 built out of
+## realm 2's assets as this is the connecting doorway") — see `_r2_doorway`. The
+## painted arch set is still reachable with DOOR_ART=painted for A/B.
 func _add_realm2_door() -> void:
+	if OS.get_environment("DOOR_ART") != "painted":
+		_add_r2_doorway()
+		return
+	_add_painted_door()
+
+
+## The original hand-painted eruption arch (realm1door1..12), kept for comparison.
+func _add_painted_door() -> void:
 	var door := AnimatedSprite2D.new()
 	door.name = "Realm2Door"
 	# ONE-SHOT ERUPTION, not a loop (Advika 2026-07-26): the portal tears itself out
@@ -1020,7 +1029,8 @@ func _add_realm2_door() -> void:
 	sf.add_frame("standing", load("res://assets/realms/realm1_door/realm1door12.png"))
 	door.sprite_frames = sf
 	door.animation = "erupt"
-	door.scale = Vector2(DOOR_SCALE, DOOR_SCALE)
+	_door_scale = DOOR_SCALE
+	door.scale = Vector2(_door_scale, _door_scale)
 	door.position = DOOR_POS
 	door.z_index = 7                          # in front of platforms (z5), behind hero (z10)
 	# a touch dimmed + cooled so the bright portal settles into the dark cave
@@ -1041,6 +1051,16 @@ func _add_realm2_door() -> void:
 	# arrives on its OWN delay during the birth, at its own size, in its own place.
 	# See _door_aura(), fired from _erupt_door().
 
+	# (The old levitation bob is gone: a portal that tore itself OUT OF THE GROUND
+	# must not float. It stands where it broke through.)
+	_door_window(door)
+	_door_fittings(door)
+
+
+## Everything the doorway needs regardless of what it is MADE of: the violet light it
+## throws onto R1's warm rock, the trigger that senses Curiosity in the opening, the
+## [Y] prompt, and the armed flag. Shared by both door builds.
+func _door_fittings(door: Node2D) -> void:
 	# purple portal light washing onto the surrounding warm rock (R2 reaching into R1);
 	# dark until the door is revealed.
 	var light := PointLight2D.new()
@@ -1050,10 +1070,6 @@ func _add_realm2_door() -> void:
 	light.texture_scale = 3.0
 	door.add_child(light)
 	_door_light = light
-
-	# (The old levitation bob is gone: a portal that tore itself OUT OF THE GROUND
-	# must not float. It stands where it broke through.)
-	_door_window(door)
 
 	# TransitionTrigger: senses Curiosity (layer 1) standing in the opening. Monitoring
 	# stays OFF until the portal has finished erupting — no entering a half-born door.
@@ -1107,6 +1123,424 @@ func _add_realm2_door() -> void:
 ## only trigger now.)
 
 
+# ---------------------------------------------------------------------------
+# THE CONNECTING DOORWAY — assembled from Realm 2's own art
+# ---------------------------------------------------------------------------
+# Advika 2026-07-30: "I want the door in realm 1 built out of realm 2's assets as
+# this is the connecting doorway." So not one painted arch: a GROUPED ASSEMBLY of
+# the far realm's material pushing through into the cave. Realm 1 owns no part of this
+# shape; the forest is GROWING THROUGH, which is exactly what a connecting doorway
+# should read as.
+#
+# SHAPE (Advika's brief, second pass — the first read as a creature, not a doorway):
+#   - two MOSSY ROCK PIERS as the uprights, roughly symmetrical but NOT mirrored:
+#     different stacks, different heights, offset top edges, irregular profile
+#   - SMALL TREES on the OUTER side of each pier, leaning inward, their upper foliage
+#     meeting over the gap — that meeting IS the arch
+#   - LEAF CLUSTERS layered over the join so the meeting is soft and organic, never a
+#     clean seam
+#   - LOOSE ROCKS scattered at each base, bedding the piers into R1's ground
+#   - the negative space between the piers stays clearly a PASSAGE: the arch frames
+#     it, it never crowds it
+# Explicitly forbidden: mirror symmetry that reads as a face, paired glows that read
+# as eyes, any taper that reads as a head or a limb. Nothing floats (scene dressing
+# law) — every standing piece is anchored to the contact row and bedded in rock.
+const R2DIR := "res://assets/realms/realm2_moss/"
+const R2_FLOOR := 191.5             # = DOOR_CONTACT: the contact row, door-local
+const R2_OPEN_HALF := 78.0          # half-width of the clear passage, door-local
+const R2_OPEN_TOP := -178.0         # the canopy's underside — where the curtain starts
+const R2_DOOR_SCALE := 0.86         # the assembly is drawn large in local units
+
+# The top ~22% of every R2 trunk is solid black (it ran up into that realm's canopy
+# shadow). Standing free in a cave it reads as a flat black slab, so each trunk is
+# regioned down to its LIT span — measured rows, per file.
+const R2_TRUNK_LIT := {
+	"vine_trunk_0.png": Vector2(362.0, 1262.0),
+	"vine_trunk_1.png": Vector2(349.0, 1106.0),
+	"vine_trunk_2.png": Vector2(339.0, 1219.0),
+	"vine_trunk_3.png": Vector2(431.0, 1209.0),
+}
+
+func _add_r2_doorway() -> void:
+	var door := Node2D.new()
+	door.name = "Realm2Door"
+	_door_scale = R2_DOOR_SCALE
+	door.scale = Vector2(_door_scale, _door_scale)
+	door.position = DOOR_POS
+	door.z_index = 7                # in front of platforms (z5), behind hero (z10)
+	# barely dimmed: this is R2's own violet, and it should NOT be recoloured towards
+	# R1's gold — the contrast between the two palettes IS the doorway.
+	door.modulate = Color(0.96, 0.94, 1.0)
+	door.visible = false            # there is no door until the forest pushes one through
+	add_child(door)
+	_door = door
+	_r2_doorway(door)
+	_door_fittings(door)
+
+
+## Build the assembly. All coordinates are door-local: (0,0) is the arch's centre,
+## +R2_FLOOR is the floor line, so the whole thing grows about its base (see
+## `_grow_door`) and stays rooted while it climbs.
+func _r2_doorway(root: Node2D) -> void:
+	# what you see THROUGH it — the far side, behind every piece of the frame
+	_r2_threshold(root)
+	_r2_posts(root)
+	_r2_canopy(root)
+	_r2_curtain(root)
+	_r2_base(root)
+	_r2_front_growth(root)
+	# THE ONLY LIGHTS ARE R2's OWN: its flowers on their 30-frame loop and its
+	# wind-blown shoots. Deliberately unpaired — different sizes, heights and sides,
+	# so no two glows ever sit level with each other and read as eyes.
+	_r2_anim(root, "flower", 78.0, Vector2(-176.0, R2_FLOOR - 2.0), 8, 11.0)
+	_r2_anim(root, "flower", 54.0, Vector2(206.0, R2_FLOOR + 4.0), 8, 9.0, true)
+	_r2_anim(root, "plant_wind", 46.0, Vector2(-112.0, R2_FLOOR + 4.0), 8, 13.0)
+	_r2_anim(root, "plant_wind", 36.0, Vector2(140.0, R2_FLOOR + 2.0), 8, 12.0, true)
+	_r2_anim(root, "plant1", 32.0, Vector2(172.0, R2_FLOOR - 1.0), 8, 10.0)
+	# and R2's fireflies, coming THROUGH the passage into R1's air
+	_r2_fireflies(root)
+
+
+## THE POSTS — two vine trunks carrying the canopy, one either side of the passage.
+## Slimmed on X (the source trunks are R2 background timber, three times too fat to
+## read as a doorpost) and cropped to their lit span, with their cut tops buried deep
+## inside the canopy mass and their feet buried in the rock pile: no end of any trunk
+## is ever visible, which is what made the last pass read as chopped.
+func _r2_posts(root: Node2D) -> void:
+	_r2_piece(root, "vine_trunk_3.png", 416.0, Vector2(-108.0, R2_FLOOR + 12.0), 4,
+			"b", false, 0.035, Color(1, 1, 1), _r2_lit("vine_trunk_3.png"), 0.52)
+	_r2_piece(root, "vine_trunk_2.png", 402.0, Vector2(112.0, R2_FLOOR + 12.0), 4,
+			"b", true, -0.03, Color(1, 1, 1), _r2_lit("vine_trunk_2.png"), 0.54)
+	# a deeper pair behind them, dimmed, so the doorway has thickness
+	_r2_piece(root, "vine_trunk_1.png", 372.0, Vector2(-146.0, R2_FLOOR + 10.0), 2,
+			"b", true, 0.06, Color(0.58, 0.56, 0.70), _r2_lit("vine_trunk_1.png"), 0.46)
+	_r2_piece(root, "vine_trunk_0.png", 358.0, Vector2(152.0, R2_FLOOR + 10.0), 2,
+			"b", false, -0.07, Color(0.56, 0.54, 0.68), _r2_lit("vine_trunk_0.png"), 0.48)
+	# Every post ends in a cut, and a cut trunk top left showing reads as a black
+	# rectangle sitting in the leaves (it did, top-right, until this). Each one gets a
+	# cluster planted directly over its end, in front of it.
+	var caps: Array = [
+		[-108.0, -204.0, 104.0], [112.0, -190.0, 112.0],
+		[-146.0, -170.0, 88.0], [152.0, -156.0, 84.0],
+	]
+	for c: Array in caps:
+		_r2_piece(root, "tuft_1.png" if int(c[0]) % 2 == 0 else "tuft_2.png",
+				float(c[2]), Vector2(float(c[0]), float(c[1])), 6, "c",
+				float(c[0]) > 0.0, 0.0, Color(0.86, 0.84, 0.96))
+
+
+## THE CANOPY — the crown the posts hold up, and the thing the last pass got wrong.
+## It is built as ONE continuous mass: clusters laid along a shallow dome, each
+## overlapping its neighbours by roughly half, sizes and heights jittered so neither
+## the top edge nor the underside ever forms a straight line (Advika: "the top seems
+## a lil too odd", and the flat seam she circled). Three depths — a dim back row for
+## bulk, the body, and a small front fringe that breaks the underside into leaves.
+func _r2_canopy(root: Node2D) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 51877
+	# (Moss cut from R2's ground strips was tried here as canopy bulk and thrown out:
+	# those paintings are full-width bands with straight edges, so every patch landed
+	# as a visible rectangle — the exact chopped look this pass exists to kill.)
+	# Bulk comes from big DIM tufts sunk behind the crown instead, and the top edge is
+	# broken by R2's upward shoots poking out of it at uneven heights, so the dome
+	# never closes into a clean curve.
+	var shoots: Array = [
+		["plant1/frame_000.png", -188.0, -282.0, 86.0], ["plant_wind/frame_007.png", -126.0, -318.0, 104.0],
+		["plant1/frame_014.png", -58.0, -336.0, 92.0], ["plant_wind/frame_021.png", 16.0, -324.0, 116.0],
+		["plant1/frame_009.png", 88.0, -338.0, 82.0], ["plant_wind/frame_003.png", 152.0, -300.0, 98.0],
+		["plant1/frame_026.png", 210.0, -272.0, 74.0], ["plant_wind/frame_017.png", -232.0, -252.0, 68.0],
+	]
+	for sh: Array in shoots:
+		_r2_piece(root, String(sh[0]), float(sh[3]),
+				Vector2(float(sh[1]), float(sh[2])), 2, "b",
+				rng.randf() < 0.5, rng.randf_range(-0.16, 0.16),
+				Color(0.64, 0.62, 0.78))
+	# tufts as the crown itself: clustered, not spaced — pairs sit close and leave
+	# gaps between them, and the size range is deliberately extreme (a 48px clump next
+	# to a 146px one) so no rhythm forms.
+	var files: Array[String] = ["tuft_0.png", "tuft_1.png", "tuft_2.png"]
+	var spots: Array = [
+		[-206.0, -232.0, 118.0, 3], [-176.0, -268.0, 62.0, 5],
+		[-128.0, -286.0, 146.0, 5], [-96.0, -238.0, 54.0, 7],
+		[-40.0, -302.0, 104.0, 3], [-8.0, -262.0, 72.0, 7],
+		[34.0, -298.0, 132.0, 5], [72.0, -244.0, 48.0, 7],
+		[112.0, -282.0, 96.0, 3], [148.0, -236.0, 66.0, 5],
+		[196.0, -256.0, 124.0, 5], [222.0, -212.0, 58.0, 7],
+		[-224.0, -196.0, 74.0, 7], [-64.0, -206.0, 86.0, 7],
+		[86.0, -200.0, 78.0, 7], [174.0, -186.0, 52.0, 7],
+	]
+	for sp: Array in spots:
+		var dim: float = rng.randf_range(0.66, 1.0)
+		_r2_piece(root, files[rng.randi() % 3], float(sp[2]),
+				Vector2(float(sp[0]), float(sp[1])), int(sp[3]), "c",
+				rng.randf() < 0.5, rng.randf_range(-0.42, 0.42),
+				Color(dim, dim * 0.98, dim * 1.06))
+	# and a dim back mass of oversized tufts, filling the gaps between the crown's
+	# clusters so daylight from the cave never shows through the middle of it
+	var backs: Array = [
+		[-178.0, -246.0, 168.0], [-72.0, -272.0, 186.0],
+		[52.0, -268.0, 176.0], [166.0, -240.0, 158.0],
+	]
+	for b: Array in backs:
+		_r2_piece(root, files[rng.randi() % 3], float(b[2]),
+				Vector2(float(b[0]), float(b[1])), 1, "c",
+				rng.randf() < 0.5, rng.randf_range(-0.3, 0.3),
+				Color(0.40, 0.39, 0.50))
+
+
+## THE CURTAIN — beards, ferns and vines hanging out of the canopy's underside into
+## the top of the passage. Every strand starts at a different height and runs to a
+## different length, so there is no row: the fringe the eye follows is ragged.
+func _r2_curtain(root: Node2D) -> void:
+	# Lengths are deliberately asymmetric about the middle: the strands over the
+	# PASSAGE (roughly x -70..70) are the shortest of the set, so the way through
+	# stays open and the eye reads a gap, not a thicket.
+	var strands: Array = [
+		["hang_beard_0.png", -186.0, -196.0, 168.0, false],
+		["hang_fern_0.png", -148.0, -172.0, 126.0, true],
+		["hang_beard_1.png", -104.0, -208.0, 176.0, false],
+		["hang_fern_3.png", -62.0, -190.0, 74.0, false],
+		["hang_fern_1.png", -26.0, -206.0, 82.0, true],
+		["vine_dark.png", 8.0, -198.0, 66.0, false],
+		["hang_fern_4.png", 44.0, -202.0, 88.0, false],
+		["hang_beard_0.png", 84.0, -180.0, 112.0, true],
+		["hang_fern_2.png", 124.0, -200.0, 176.0, false],
+		["hang_beard_1.png", 168.0, -186.0, 134.0, true],
+		["hang_fern_0.png", 202.0, -204.0, 152.0, false],
+	]
+	for s: Array in strands:
+		_r2_piece(root, String(s[0]), float(s[3]),
+				Vector2(float(s[1]), float(s[2])), 6, "t", bool(s[4]))
+
+
+## THE BASE — the rock pile both posts are planted in, and the loose rock scattered
+## out from it so the doorway is bedded into R1's ground instead of set down on it.
+## Deliberately not mirrored: the left pile is broad and low, the right is a taller
+## narrower stack.
+func _r2_base(root: Node2D) -> void:
+	# left: broad and low
+	_r2_piece(root, "boulder_1.png", 150.0, Vector2(-172.0, R2_FLOOR + 14.0), 3, "b",
+			true, 0.0, Color(0.72, 0.70, 0.84))
+	_r2_piece(root, "rock_moss_2.png", 132.0, Vector2(-126.0, R2_FLOOR + 18.0), 5, "b")
+	_r2_piece(root, "rock_moss_0.png", 92.0, Vector2(-196.0, R2_FLOOR + 10.0), 5, "b", true)
+	# right: taller, narrower
+	_r2_piece(root, "rock_moss_0.png", 112.0, Vector2(166.0, R2_FLOOR + 16.0), 3, "b",
+			false, 0.0, Color(0.70, 0.68, 0.82))
+	_r2_piece(root, "rock_moss_2.png", 156.0, Vector2(128.0, R2_FLOOR + 20.0), 5, "b", true)
+	_r2_piece(root, "boulder_0.png", 104.0, Vector2(206.0, R2_FLOOR + 12.0), 5, "b")
+	# loose rock, sunk past the contact row, out of the passage mouth
+	var spread: Array = [
+		["rock_moss_1.png", 44.0, -244.0, 6.0, false],
+		["boulder_2.png", 36.0, -218.0, 10.0, true],
+		["rock_moss_0.png", 32.0, -96.0, 8.0, true],
+		["boulder_2.png", 26.0, 92.0, 4.0, false],
+		["rock_moss_1.png", 38.0, 240.0, 6.0, true],
+		["boulder_2.png", 30.0, 268.0, 9.0, false],
+	]
+	for r: Array in spread:
+		_r2_piece(root, String(r[0]), float(r[1]),
+				Vector2(float(r[2]), R2_FLOOR + float(r[3])), 5, "b", bool(r[4]))
+
+
+## THE FRONT LAYER (Advika: "add more leaves to the front part + vines") — leaves and
+## vines drawn OVER the posts and the rock pile, in front of everything. This is what
+## stops the doorway reading as flat cut-outs stacked back to front: growth crossing
+## the posts breaks their outline, and the eye reads one thicket instead of parts.
+func _r2_front_growth(root: Node2D) -> void:
+	# vines running down the face of each post, crossing its edges
+	_r2_piece(root, "vine_dark.png", 236.0, Vector2(-124.0, -108.0), 9, "t",
+			false, 0.10, Color(0.78, 0.74, 0.90))
+	_r2_piece(root, "vine_dark.png", 198.0, Vector2(-92.0, -34.0), 9, "t",
+			true, -0.08, Color(0.70, 0.67, 0.83))
+	_r2_piece(root, "vine_dark.png", 254.0, Vector2(126.0, -122.0), 9, "t",
+			true, -0.12, Color(0.80, 0.76, 0.92))
+	_r2_piece(root, "vine_dark.png", 186.0, Vector2(96.0, -20.0), 9, "t",
+			false, 0.07, Color(0.72, 0.69, 0.85))
+	# leaf clusters over the posts at staggered heights, none of them level
+	_r2_piece(root, "hang_fern_2.png", 132.0, Vector2(-136.0, -74.0), 9, "t", true)
+	_r2_piece(root, "hang_fern_4.png", 106.0, Vector2(-86.0, 22.0), 9, "t")
+	_r2_piece(root, "hang_fern_3.png", 92.0, Vector2(-158.0, 44.0), 9, "t", true)
+	_r2_piece(root, "hang_fern_1.png", 124.0, Vector2(142.0, -52.0), 9, "t")
+	_r2_piece(root, "hang_fern_0.png", 98.0, Vector2(98.0, 40.0), 9, "t", true)
+	_r2_piece(root, "hang_fern_2.png", 84.0, Vector2(176.0, 30.0), 9, "t")
+	# curls tucked where post meets canopy, softening both joins
+	_r2_piece(root, "hang_curl_0.png", 74.0, Vector2(-132.0, -164.0), 9, "c",
+			false, 0.18, Color(0.74, 0.70, 0.86))
+	_r2_piece(root, "hang_curl_0.png", 66.0, Vector2(140.0, -152.0), 9, "c",
+			true, -0.14, Color(0.72, 0.68, 0.84))
+	# moss clumps sitting on the rock pile, in front, tying rock to growth
+	_r2_piece(root, "tuft_1.png", 54.0, Vector2(-148.0, R2_FLOOR + 4.0), 9, "b")
+	_r2_piece(root, "tuft_2.png", 46.0, Vector2(-98.0, R2_FLOOR + 2.0), 9, "b", true)
+	_r2_piece(root, "tuft_0.png", 50.0, Vector2(118.0, R2_FLOOR + 2.0), 9, "b")
+	_r2_piece(root, "tuft_2.png", 40.0, Vector2(184.0, R2_FLOOR + 6.0), 9, "b", true)
+	_r2_piece(root, "tuft_1.png", 36.0, Vector2(-214.0, R2_FLOOR + 8.0), 9, "b", true)
+
+
+## The lit span of a trunk, as a source region (see R2_TRUNK_LIT).
+func _r2_lit(file: String) -> Rect2:
+	var lit: Vector2 = R2_TRUNK_LIT.get(file, Vector2.ZERO)
+	if lit == Vector2.ZERO:
+		return Rect2()
+	var tex: Texture2D = load(R2DIR + file)
+	# start a little BELOW the first lit row: that row is where a highlight begins,
+	# but most of the trunk's width there is still in canopy shadow, so cutting
+	# exactly on it leaves a black band across the top of the crop.
+	var top: float = lit.x + (lit.y - lit.x) * 0.10
+	return Rect2(0.0, top, float(tex.get_width()), lit.y - top)
+
+
+## One piece of the assembly. `h` is its height in door-local units (so the source
+## resolution never has to be thought about), `anchor` is which edge lands on `pos.y`
+## — "b" bottom (things that stand), "t" top (things that hang), "c" centre. A
+## non-empty `region` crops the source first, and then `h` sizes the CROP.
+func _r2_piece(root: Node2D, file: String, h: float, pos: Vector2, z: int,
+		anchor: String = "c", flip: bool = false, rot: float = 0.0,
+		tint: Color = Color(1, 1, 1), region: Rect2 = Rect2(),
+		xsq: float = 1.0) -> Sprite2D:
+	var tex: Texture2D = load(R2DIR + file)
+	var src_h: float = float(tex.get_height())
+	var sp := Sprite2D.new()
+	sp.texture = tex
+	if region.size.y > 0.0:
+		sp.region_enabled = true
+		sp.region_rect = region
+		src_h = region.size.y
+	var s: float = h / src_h
+	# xsq narrows a piece without shortening it — the R2 trunks are background timber
+	# and need slimming before they read as doorposts rather than tusks.
+	sp.scale = Vector2(-s * xsq if flip else s * xsq, s)
+	var y: float = pos.y
+	if anchor == "b":
+		y -= h * 0.5
+	elif anchor == "t":
+		y += h * 0.5
+	sp.position = Vector2(pos.x, y)
+	sp.rotation = rot
+	sp.z_index = z
+	sp.modulate = tint
+	root.add_child(sp)
+	return sp
+
+
+
+
+## An animated R2 plant (30-frame folders: flower / plant1 / plant_wind), bedded by
+## its bottom edge like `_r2_piece`'s "b" anchor.
+func _r2_anim(root: Node2D, sub: String, h: float, pos: Vector2, z: int,
+		fps: float, flip: bool = false) -> AnimatedSprite2D:
+	var sf := SpriteFrames.new()
+	sf.set_animation_speed("default", fps)
+	sf.set_animation_loop("default", true)
+	for i in range(30):
+		sf.add_frame("default", load(R2DIR + "%s/frame_%03d.png" % [sub, i]))
+	var a := AnimatedSprite2D.new()
+	a.sprite_frames = sf
+	var s: float = h / float(sf.get_frame_texture("default", 0).get_height())
+	a.scale = Vector2(-s if flip else s, s)
+	a.position = Vector2(pos.x, pos.y - h * 0.5)
+	a.z_index = z
+	a.frame = randi() % 30              # never in unison
+	a.play()
+	root.add_child(a)
+	return a
+
+
+## THE FAR SIDE, seen through the arch. Two layers: a dark violet membrane that stops
+## R1's cave showing through the gap, and over it the forest itself — a real capture
+## of Realm 2, masked to a soft ellipse so it dissolves into the frame instead of
+## ending on a straight edge.
+func _r2_threshold(root: Node2D) -> void:
+	var centre_y: float = (R2_FLOOR + R2_OPEN_TOP) * 0.5
+	var grad := Gradient.new()
+	grad.set_color(0, Color(0.16, 0.09, 0.24, 0.98))
+	grad.set_color(1, Color(0.03, 0.02, 0.05, 0.0))
+	grad.add_point(0.62, Color(0.09, 0.05, 0.15, 0.85))
+	var gtex := GradientTexture2D.new()
+	gtex.gradient = grad
+	gtex.fill = GradientTexture2D.FILL_RADIAL
+	gtex.fill_from = Vector2(0.5, 0.5)
+	gtex.fill_to = Vector2(0.5, 0.0)
+	gtex.width = 256
+	gtex.height = 256
+	var body := Sprite2D.new()
+	body.name = "Threshold"
+	body.texture = gtex
+	body.position = Vector2(0.0, centre_y)
+	body.scale = Vector2(208.0 / 256.0, 452.0 / 256.0)
+	body.z_index = 0
+	root.add_child(body)
+
+	# REALM 2 ITSELF, photographed: r2_gateway_view.png is a tall crop of the built
+	# level whose aspect already matches this passage, taken over the part of R2 with
+	# the most readable content — a lit mushroom cap, moss banks, fireflies, depth.
+	# (The two earlier bakes cropped dark forest floor, which through an opening this
+	# size is just a violet smudge.) See tools/bake_gateway_view.py.
+	var win := Sprite2D.new()
+	win.name = "PortalWindow"
+	win.texture = load("res://assets/realms/realm1_door/r2_gateway_view.png")
+	var wh: float = 392.0
+	var ws: float = wh / float(win.texture.get_height())
+	win.scale = Vector2(ws, ws)
+	win.position = Vector2(0.0, centre_y)
+	win.z_index = 1
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/portal_window.gdshader")
+	mat.set_shader_parameter("centre", Vector2(0.5, 0.5))
+	mat.set_shader_parameter("radius", Vector2(0.44, 0.45))
+	mat.set_shader_parameter("feather", 0.42)
+	mat.set_shader_parameter("brightness", 1.25)
+	win.material = mat
+	root.add_child(win)
+	# the other side breathes — a slow drift and a whisper of zoom
+	var drift := create_tween().set_loops()
+	drift.tween_property(win, "position:x", 6.0, 13.0) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	drift.tween_property(win, "position:x", -6.0, 13.0) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var breathe := create_tween().set_loops()
+	breathe.tween_property(win, "scale", Vector2(ws * 1.06, ws * 1.06), 9.0) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	breathe.tween_property(win, "scale", Vector2(ws, ws), 9.0) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+## R2's fireflies crossing over: they rise inside the opening and wander out past the
+## frame into R1's cave air. Additive, tiny, and never in step with each other.
+func _r2_fireflies(root: Node2D) -> void:
+	var tex: Texture2D = load(R2DIR + "firefly.png")
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3607
+	for i in range(9):
+		var f := Sprite2D.new()
+		f.texture = tex
+		var s: float = rng.randf_range(0.13, 0.26)
+		f.scale = Vector2(s, s)
+		var px: float = rng.randf_range(-R2_OPEN_HALF, R2_OPEN_HALF)
+		var py: float = rng.randf_range(R2_OPEN_TOP + 40.0, R2_FLOOR - 20.0)
+		f.position = Vector2(px, py)
+		f.modulate = Color(0.86, 0.80, 1.0, rng.randf_range(0.45, 0.9))
+		f.z_index = 5
+		f.material = mat
+		root.add_child(f)
+		# out through the opening and back — a slow figure the eye can't predict
+		var per: float = rng.randf_range(3.4, 7.8)
+		var out_x: float = px + rng.randf_range(-150.0, 150.0)
+		var out_y: float = py - rng.randf_range(30.0, 130.0)
+		var w := create_tween().set_loops()
+		w.tween_property(f, "position", Vector2(out_x, out_y), per) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		w.tween_property(f, "position", Vector2(px, py), per * 1.2) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		var b := create_tween().set_loops()
+		b.tween_interval(rng.randf_range(0.0, 1.4))
+		b.tween_property(f, "modulate:a", 0.12, rng.randf_range(1.1, 2.3)) \
+				.set_trans(Tween.TRANS_SINE)
+		b.tween_property(f, "modulate:a", 0.9, rng.randf_range(1.1, 2.3)) \
+				.set_trans(Tween.TRANS_SINE)
+
+
 ## The portal tears itself out of the ground: the art plays ONCE, the light comes up
 ## with it, and it holds on its final frame as the standing door.
 const DOOR_BIRTH := 5.0        # seconds for the ground to give the arch up
@@ -1118,8 +1552,12 @@ func _erupt_door() -> void:
 	_door_revealed = true
 	_door.visible = true
 	_door.modulate.a = 0.0
-	_door.frame = 0
-	_door.play("erupt")
+	# the painted set plays its eruption frames; the R2 assembly has no frames — its
+	# birth is the growth tween alone (the forest pushing the arch up through the floor).
+	var painted := _door as AnimatedSprite2D
+	if painted != null:
+		painted.frame = 0
+		painted.play("erupt")
 	# it CLIMBS out: scaled from a seam in the floor to full height over DOOR_BIRTH,
 	# easing IN so it strains at first and then comes fast — and always rooted, since
 	# the growth keeps its contact row pinned to the floor line.
@@ -1226,7 +1664,7 @@ func _door_aura() -> void:
 func _grow_door(f: float) -> void:
 	if _door == null:
 		return
-	var s: float = DOOR_SCALE * f
+	var s: float = _door_scale * f
 	_door.scale = Vector2(s, s)
 	_door.position = Vector2(DOOR_POS.x, FLOOR_TOP - DOOR_CONTACT * s)
 	_door.modulate.a = clampf(f * 2.2, 0.0, 1.0)
@@ -1325,7 +1763,9 @@ func _on_door_erupted() -> void:
 	if _door == null or _door_ready:
 		return
 	_grow_door(1.0)                 # exactly full size, exactly on the floor line
-	_door.play("standing")
+	var painted := _door as AnimatedSprite2D
+	if painted != null:
+		painted.play("standing")
 	_door_ready = true
 	if _door_trigger != null:
 		_door_trigger.monitoring = true
