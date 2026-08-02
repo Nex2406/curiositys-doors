@@ -297,13 +297,16 @@ func _physics_process(delta: float) -> void:
 		# get bounced back up before it lands (Advika: it bounced then rolled)
 		velocity.y = minf(velocity.y + gravity * delta, 700.0)
 
-	# A woken golem only gets AWAKE_LIFE seconds of HUNTING before it burrows away —
-	# and waiting for her to come down off a platform is not hunting, so the clock
-	# only runs while he is actually rolling or gathering himself to roll again.
-	if _awake_t >= 0.0 and _state != S.RETREAT and _state != S.DYING \
-			and (_state == S.ROLLING or _player_on_my_ground()):
+	# A woken golem gets AWAKE_LIFE seconds of hunting and then burrows away — BUT NOT
+	# WHILE SHE IS STILL HERE (Advika 2026-08-02: level 1 is too easy and "it feels
+	# boring"). He used to give up on a timer no matter what, so the whole encounter
+	# could be solved by standing on a ledge and counting to seven. Now the clock runs
+	# the moment he is awake, and expiring only sends him home once she has actually
+	# left his range. You leave, or you kill him; you cannot outwait him.
+	if _awake_t >= 0.0 and _state != S.RETREAT and _state != S.DYING:
 		_awake_t += delta
-		if _awake_t >= AWAKE_LIFE and (_state == S.ROLLING or _state == S.RECOVERY):
+		if _awake_t >= AWAKE_LIFE and _player_dist() > detect_range \
+				and (_state == S.ROLLING or _state == S.RECOVERY):
 			_enter(S.RETREAT)
 
 	match _state:
@@ -332,7 +335,12 @@ func _do_dormant(_delta: float) -> void:
 		var tw := create_tween()
 		tw.tween_property(_visual, "position:x", 1.5, 0.1)
 		tw.tween_property(_visual, "position:x", 0.0, 0.1)
-	if _player_dist() <= detect_range and _player_on_my_ground():
+	# HE WAKES FOR HER BEING NEAR, not for her being on his floor (Advika 2026-08-02:
+	# level 1 is too easy, "platforms are a safe zone" — and they were absolute. This
+	# used to also require _player_on_my_ground(), so a player who stayed on the
+	# platforms never woke a single ground golem in the whole level and could walk the
+	# cave end to end without meeting one).
+	if _player_dist() <= detect_range:
 		_enter(S.WAKING)
 
 
@@ -366,11 +374,21 @@ func _do_rolling(delta: float) -> void:
 
 
 func _do_cling() -> void:
-	# hangs camouflaged in the ceiling; drops when Curiosity walks under it
+	# Hangs camouflaged in the ceiling; drops when Curiosity is under it. The window
+	# was 200px, which on a level this wide meant most passes went by untouched — and
+	# the ceiling golem is the ONLY thing in the cave that can reach her up on the
+	# platforms, so it is the answer to "platforms are a safe zone". Widened, and it
+	# leads her: it drops where she is GOING, not where she was, so simply running
+	# through no longer beats it.
 	if _player == null or not is_instance_valid(_player):
 		return
-	if absf(_player.global_position.x - global_position.x) < 200.0 \
-			and _player.global_position.y > global_position.y:
+	if _player.global_position.y <= global_position.y:
+		return                                   # she is above it; nothing to drop onto
+	var dx: float = _player.global_position.x - global_position.x
+	var lead: float = 0.0
+	if _player is CharacterBody2D:
+		lead = (_player as CharacterBody2D).velocity.x * 0.35
+	if absf(dx + lead) < 320.0:
 		_start_ceiling_drop()
 
 
@@ -470,10 +488,14 @@ func _do_recovery(_delta: float) -> void:
 		_play("idle")
 		_visual.speed_scale = 1.0
 	if _t >= 0.75:
-		# THE LAUNCH RULE: he charges the instant she is on his ground and in range.
-		# Off the ground she is out of reach, and he simply waits, however long that
-		# takes — the wait costs him nothing (his life clock only runs while hunting).
-		if _player_dist() <= detect_range and _player_on_my_ground():
+		# THE LAUNCH RULE. He charges when she is in range and roughly over his lane —
+		# NOT only when she is standing on his floor. A charge that passes under her
+		# platform still costs her the landing: she cannot drop where he is, and he is
+		# already moving when she does. Waiting on a ledge is no longer free.
+		var dx: float = 1e9
+		if _player != null and is_instance_valid(_player):
+			dx = absf(_player.global_position.x - global_position.x)
+		if _player_dist() <= detect_range and dx <= roll_distance:
 			_enter(S.ROLLING)
 		elif _player_dist() > detect_range * 1.7:
 			_enter(S.DORMANT)                    # clearly gone: re-burrow

@@ -1,5 +1,61 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-07-31_
+_Last updated: 2026-08-02_
+
+## 2026-08-02 — THE DOORWAY WRITES ITSELF DOWN, AND THE CAVE STOPS BEING SAFE
+The Realm 1 → Realm 2 doorway was rebuilt beat by beat against Advika's eye, and the
+cave's two oldest cheats were found and closed.
+- **The birth is no longer an eruption.** Nothing inflates and nothing climbs out of
+  the floor: the doorway WRITES ITSELF DOWNWARD (`_assemble_door`). Every piece appears
+  exactly where it belongs, ordered by final Y — crown first, then shoots, posts,
+  curtain, and last the rock — each dropping ~45px into place so the sweep has weight.
+  An earlier pass had the fragments materialise scattered in the cave air and fly home;
+  it was built, shot, and rejected ("instead of the canopy fragments in air let it
+  appear from top to bottom in the level").
+- **The quake IS the door landing.** Four staged shakes on their own clock never
+  matched a continuous sweep. Now every piece kicks the camera as it seats, weighted by
+  its own size and how far down the sweep it landed (`_quake_kick` / `_quake_step`, an
+  accumulator in `_process` — NOT tweens, which would each stomp the last one's offset
+  instead of adding). The floor only breaks when the base actually arrives.
+- **The far side is an APERTURE, not an image.** Three attempts failed before the cause
+  was measured rather than guessed: `PORTAL_PROBE=1` proved the alpha ramp really did
+  run, cleanly, over 3.2s. Alpha was simply the wrong instrument — a rectangle at 20%
+  opacity is still a rectangle. The MASK opens instead (`_open_portal`): clipped to a
+  small soft chink at the centre of the passage, widening to fill it, with the feather
+  blooming from 0.85 down to its real value (it is a FRACTION of radius, so at 12% size
+  the normal value was a few pixels and the chink came out as a hard little box). It
+  starts only after the doorway has finished landing, and the rim is fbm-warped
+  (`edge_noise`) so it never resolves into a perfect rectangle.
+- **`portal_window.gdshader`** now carries `boxiness` (0 = the painted arch's ellipse,
+  1 = the grown doorway's full opening), `edge_noise` + `noise_scale` for the ragged
+  rim, and `uv_pan` so the forest drifts inside a mask that stays put.
+- **The gateway capture was re-baked WIDE** (480x688, was 280x680). Filling the whole
+  interior meant the old tall crop was being magnified ~1.9x and went to mush.
+- **The canopy sways** — pivot-wrapped per piece ("t" for anything that hangs, "b" for
+  anything that stands), no two sharing a period, started only once the door locks so
+  the sway never fights the assembly's own rotation tween.
+- **THE GROUND WAS A REAL BUG, not a look problem.** The near-black backing slab sat at
+  `z 0` while the five rows of deep rock sat at `-1..-5`, so the slab painted over
+  every one of them — those rows had been built and never once drawn. Fixed the order,
+  started the rows above the cobble line (a bare strip showed between), and gave them
+  their own ramp (`_deep_mat`): the old one faded to 0.16 over a material already
+  capped at 0.175, i.e. ~0.028 — real rock, mathematically black.
+- **REALM 1'S DIFFICULTY CHEATS, both closed** (`BoulderGolem.gd`). A ground golem's
+  wake test required `_player_on_my_ground()`, so a player who stayed on the platforms
+  **never woke a single one in the entire level**. And his life clock only ran while
+  hunting, so the encounter was solvable by standing on a ledge and counting to seven.
+  Now: he wakes on proximity; he charges whenever she is in range and over his lane;
+  the clock runs from the moment he wakes and expiring only sends him home once she has
+  LEFT his range. Ceiling golems widened 200→320px and now LEAD her.
+- **The wizard falls in 6 strikes** (was 10; the "five" in the 07-27 entry was stale).
+- **Found, not fixed:** Realm 1 has a whole painted parallax stack — three fused strips,
+  shafts, mist sheets, motes, drips — built every run and switched off since the
+  07-22 correction ("re-enabled in step 4" never happened). `R1_BANDS=1` turns it on and
+  it is a different cave. Left OFF by Advika's call: it swings the palette olive, and
+  that is baked into the strip ART, not the tints (re-tinting warm was tried and did
+  almost nothing) — matching today's warm gold means re-cutting the strips.
+- Harnesses added: `PLAT_SIT=door` now has on-screen instructions + SPACE to replay
+  (and no longer heaps rubble every loop), `GROUND_TINT=1` colours each floor layer,
+  `PORTAL_PROBE=1` prints the far side's alpha, `R1_BANDS=1` / `R1_FOG=1`.
 
 ## 2026-07-31 — THE OPENING: a prologue that types, then one card, then the cave
 The game now has a front-to-back opening. **There is no hub in the flow any more** —

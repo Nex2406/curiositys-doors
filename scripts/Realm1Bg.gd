@@ -120,6 +120,11 @@ static func build(host: Node2D) -> void:
 	host.add_child(pb)
 	_backdrop(pb)
 	_bg_near(host, pb)
+	# NOTE if these are ever switched back on: they swing the whole cave olive, and the
+	# tints here are not the cause. Re-tinting band_far/band_spires warm was tried and
+	# changed almost nothing — the STRIP ART is olive, baked from the 2026-07-22 cave
+	# reference, and a multiply cannot pull olive to warm gold. Making them fit the
+	# level's current warm palette means re-cutting the strips, not re-tinting them.
 	_strip(pb, cache, 0.15, "band_far.png", 1.03, 0.12, Vector3(1.0, 1.2, 0.75))
 	_strip(pb, cache, 0.35, "band_spires.png", 0.85, 0.65, Vector3(1.10, 0.95, 0.80))
 	_shafts(host, pb)
@@ -139,14 +144,24 @@ static func build(host: Node2D) -> void:
 	# wanders only a whisper so shadows creep without reading as a spotlight
 	# STEP 1 CORRECTION (Advika): only the backdrop shows. Every other
 	# background/midground layer hidden (NOT deleted) — re-enabled in step 4.
-	fog_layer.visible = false
-	for child in pb.get_children():
-		if child.name != "bg_backdrop" and child.name != "bg_backdrop_far" \
-				and child.name != "bg_backdrop_mid" and child.name != "bg_near" \
-				and not str(child.name).begins_with("bg_columns") \
-				and not str(child.name).begins_with("bg_dust") \
-				and not str(child.name).begins_with("bg_haze"):
-			child.visible = false
+	# R1_BANDS=1 puts the fused painted strips (band_far / band_spires / band_mid), the
+	# shafts, the mist sheets and the drips BACK on. They have been built and then
+	# hidden on every run since the 2026-07-22 correction, and nothing has looked at
+	# them since. Behind a flag so the two can be SHOT side by side rather than argued
+	# about — the standing ask is "more parallax", and there is a whole painted stack
+	# in here that is currently switched off.
+	var show_bands: bool = OS.get_environment("R1_BANDS") != ""
+	# separately switchable: the fog-spill sheet is what swings the whole cave from
+	# warm gold to olive, and that is a palette decision, not a depth one
+	fog_layer.visible = OS.get_environment("R1_FOG") != ""
+	if not show_bands:
+		for child in pb.get_children():
+			if child.name != "bg_backdrop" and child.name != "bg_backdrop_far" \
+					and child.name != "bg_backdrop_mid" and child.name != "bg_near" \
+					and not str(child.name).begins_with("bg_columns") \
+					and not str(child.name).begins_with("bg_dust") \
+					and not str(child.name).begins_with("bg_haze"):
+				child.visible = false
 	_depth_columns(pb, cache)
 	_depth_dust(pb)
 	_cave_mist(host, noise)

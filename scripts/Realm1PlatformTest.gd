@@ -172,6 +172,13 @@ var _door_prompt: Label
 var _leaving: bool = false          # the quote card has taken over; ignore further input
 var _door_armed: bool = false       # every jade gathered — it erupts once she's near
 var _door_aura_nodes: Array = []    # the scattered light, in world space (not on the door)
+var _door_rubble: Array = []        # the heap the rupture leaves — cleared between replays
+var _door_replay := false           # PLAT_SIT=door: SPACE asked for the beat again
+var _door_flicker: Tween            # the standing portal's breath, killed before it restarts
+var _sway_rng := RandomNumberGenerator.new()   # phases + periods for the doorway's air
+var _sway_specs: Array = []        # pivots waiting to be set moving once the door stands
+var _sway_started := false
+var _sway_tweens: Array = []       # the running loops, stopped while the door reassembles
 
 
 func _ready() -> void:
@@ -489,6 +496,7 @@ func _rock_wall(wall_x: float, top_y: float, bottom_y: float) -> void:
 
 
 func _process(delta: float) -> void:
+	_quake_step(delta)          # the doorway's arrival, felt through the camera
 	if _cam == null:
 		return
 	# half the visible world width, live (so it holds under any window resize)
@@ -740,7 +748,8 @@ func _add_plat_collision(a: Node2D, pname: String, is_mover: bool, _origin: Vect
 ## PLAT_SIT=door: replay the eruption forever so the beat can be judged on its own —
 ## born, settled, held, gone, born again.
 func _door_loop() -> void:
-	await get_tree().create_timer(1.2).timeout
+	_door_sit_label()
+	await _door_wait(1.2)
 	while is_inside_tree():
 		_door_revealed = false
 		_door_ready = false
@@ -749,16 +758,58 @@ func _door_loop() -> void:
 		if _door_trigger != null:
 			_door_trigger.monitoring = false
 		_erupt_door()
-		await get_tree().create_timer(11.0).timeout
+		await _door_wait(11.0)
 		if _door != null:
 			_door.visible = false
 			if _door_light != null:
 				_door_light.energy = 0.0
-		for n in _door_aura_nodes:            # the loose aura goes with it
-			if is_instance_valid(n):
-				n.queue_free()
-		_door_aura_nodes.clear()
-		await get_tree().create_timer(1.2).timeout
+		_door_teardown()
+		await _door_wait(1.2)
+
+
+## Wait, but let SPACE cut the wait short so the beat can be re-fired on her timing
+## instead of on an 11-second clock.
+func _door_wait(sec: float) -> void:
+	var left := sec
+	while left > 0.0 and is_inside_tree():
+		if _door_replay:
+			_door_replay = false
+			return
+		await get_tree().process_frame
+		left -= get_process_delta_time()
+
+
+## Everything the last birth left lying in the world: the scattered aura and the heap
+## of rock the rupture threw up. Without this the base grows a new pile every replay
+## and by the third pass you are judging a rubbish tip, not the door.
+func _door_teardown() -> void:
+	for n in _door_aura_nodes:
+		if is_instance_valid(n):
+			n.queue_free()
+	_door_aura_nodes.clear()
+	for r in _door_rubble:
+		if is_instance_valid(r):
+			r.queue_free()
+	_door_rubble.clear()
+
+
+## On-screen instructions, because a rig you have to be told how to drive is a rig
+## you will mis-judge.
+func _door_sit_label() -> void:
+	var lay := CanvasLayer.new()
+	lay.layer = 60
+	add_child(lay)
+	var l := Label.new()
+	l.text = "THE ERUPTION, on its own  —  SPACE: play it again   ·   ESC: quit"
+	l.add_theme_font_size_override("font_size", 22)
+	l.add_theme_color_override("font_color", Color(0.91, 0.78, 0.54))
+	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
+	l.add_theme_constant_override("shadow_outline_size", 6)
+	l.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	l.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.position = Vector2(0.0, 26.0)
+	lay.add_child(l)
 
 
 ## A LIVING GLIMPSE OF REALM 2 inside the arch (Advika 2026-07-26: "the player could
@@ -1244,17 +1295,26 @@ func _r2_canopy(root: Node2D) -> void:
 	# Bulk comes from big DIM tufts sunk behind the crown instead, and the top edge is
 	# broken by R2's upward shoots poking out of it at uneven heights, so the dome
 	# never closes into a clean curve.
+	# BEDDED INTO THE CROWN (Advika 2026-08-02: "gaps in air not what i want"). These
+	# used to be planted at y-252..-338 and stand 68-116px tall, which put their tips up
+	# around y-450 — well clear of the crown, with nothing behind them, so between every
+	# pair of shoots you were looking straight through the top of the canopy at the
+	# cave. Their feet are now sunk into the crown mass and they are shorter, so they
+	# break the top edge without ever standing free of it.
 	var shoots: Array = [
-		["plant1/frame_000.png", -188.0, -282.0, 86.0], ["plant_wind/frame_007.png", -126.0, -318.0, 104.0],
-		["plant1/frame_014.png", -58.0, -336.0, 92.0], ["plant_wind/frame_021.png", 16.0, -324.0, 116.0],
-		["plant1/frame_009.png", 88.0, -338.0, 82.0], ["plant_wind/frame_003.png", 152.0, -300.0, 98.0],
-		["plant1/frame_026.png", 210.0, -272.0, 74.0], ["plant_wind/frame_017.png", -232.0, -252.0, 68.0],
+		["plant1/frame_000.png", -188.0, -232.0, 64.0], ["plant_wind/frame_007.png", -126.0, -258.0, 76.0],
+		["plant1/frame_014.png", -58.0, -272.0, 68.0], ["plant_wind/frame_021.png", 16.0, -264.0, 84.0],
+		["plant1/frame_009.png", 88.0, -274.0, 62.0], ["plant_wind/frame_003.png", 152.0, -246.0, 72.0],
+		["plant1/frame_026.png", 210.0, -224.0, 56.0], ["plant_wind/frame_017.png", -232.0, -210.0, 52.0],
 	]
 	for sh: Array in shoots:
-		_r2_piece(root, String(sh[0]), float(sh[3]),
+		# the shoots stand tallest and catch the most air — the widest arc in the crown
+		_sway(_r2_piece(root, String(sh[0]), float(sh[3]),
 				Vector2(float(sh[1]), float(sh[2])), 2, "b",
 				rng.randf() < 0.5, rng.randf_range(-0.16, 0.16),
-				Color(0.64, 0.62, 0.78))
+				Color(0.64, 0.62, 0.78)),
+				"b", _sway_rng.randf_range(0.030, 0.052),
+				_sway_rng.randf_range(4.1, 6.8))
 	# tufts as the crown itself: clustered, not spaced — pairs sit close and leave
 	# gaps between them, and the size range is deliberately extreme (a 48px clump next
 	# to a 146px one) so no rhythm forms.
@@ -1271,10 +1331,13 @@ func _r2_canopy(root: Node2D) -> void:
 	]
 	for sp: Array in spots:
 		var dim: float = rng.randf_range(0.66, 1.0)
-		_r2_piece(root, files[rng.randi() % 3], float(sp[2]),
+		# the crown clumps stir, they do not swing — they are the mass the rest hangs off
+		_sway(_r2_piece(root, files[rng.randi() % 3], float(sp[2]),
 				Vector2(float(sp[0]), float(sp[1])), int(sp[3]), "c",
 				rng.randf() < 0.5, rng.randf_range(-0.42, 0.42),
-				Color(dim, dim * 0.98, dim * 1.06))
+				Color(dim, dim * 0.98, dim * 1.06)),
+				"c", _sway_rng.randf_range(0.016, 0.030),
+				_sway_rng.randf_range(4.6, 7.4))
 	# and a dim back mass of oversized tufts, filling the gaps between the crown's
 	# clusters so daylight from the cave never shows through the middle of it
 	var backs: Array = [
@@ -1282,10 +1345,18 @@ func _r2_canopy(root: Node2D) -> void:
 		[52.0, -268.0, 176.0], [166.0, -240.0, 158.0],
 	]
 	for b: Array in backs:
-		_r2_piece(root, files[rng.randi() % 3], float(b[2]),
+		# the dim back mass barely moves: it is bulk, and bulk that sways reads as cloth
+		_sway(_r2_piece(root, files[rng.randi() % 3], float(b[2]),
 				Vector2(float(b[0]), float(b[1])), 1, "c",
 				rng.randf() < 0.5, rng.randf_range(-0.3, 0.3),
-				Color(0.40, 0.39, 0.50))
+				Color(0.40, 0.39, 0.50)),
+				"c", _sway_rng.randf_range(0.008, 0.015),
+				_sway_rng.randf_range(6.2, 8.6))
+	# (Two passes of adding dim bulk ABOVE the crown to plug the gaps between the shoots
+	# were built and thrown out: at 142-194px tall it grew a second crown, and shortened
+	# it read as a ring hanging over the first with a dark gap under it. Adding mass up
+	# there is the wrong lever — the fix is that nothing should be standing that far out
+	# in the air to begin with. See the shoots above, now bedded into the crown.)
 
 
 ## THE CURTAIN — beards, ferns and vines hanging out of the canopy's underside into
@@ -1309,8 +1380,11 @@ func _r2_curtain(root: Node2D) -> void:
 		["hang_fern_0.png", 202.0, -204.0, 152.0, false],
 	]
 	for s: Array in strands:
-		_r2_piece(root, String(s[0]), float(s[3]),
+		# hanging strands swing the most, and the longer the strand the slower it goes
+		var sp := _r2_piece(root, String(s[0]), float(s[3]),
 				Vector2(float(s[1]), float(s[2])), 6, "t", bool(s[4]))
+		_sway(sp, "t", _sway_rng.randf_range(0.028, 0.050),
+				_sway_rng.randf_range(3.8, 5.4) + float(s[3]) / 90.0)
 
 
 ## THE BASE — the rock pile both posts are planted in, and the loose rock scattered
@@ -1356,13 +1430,23 @@ func _r2_front_growth(root: Node2D) -> void:
 			true, -0.12, Color(0.80, 0.76, 0.92))
 	_r2_piece(root, "vine_dark.png", 186.0, Vector2(96.0, -20.0), 9, "t",
 			false, 0.07, Color(0.72, 0.69, 0.85))
-	# leaf clusters over the posts at staggered heights, none of them level
-	_r2_piece(root, "hang_fern_2.png", 132.0, Vector2(-136.0, -74.0), 9, "t", true)
-	_r2_piece(root, "hang_fern_4.png", 106.0, Vector2(-86.0, 22.0), 9, "t")
-	_r2_piece(root, "hang_fern_3.png", 92.0, Vector2(-158.0, 44.0), 9, "t", true)
-	_r2_piece(root, "hang_fern_1.png", 124.0, Vector2(142.0, -52.0), 9, "t")
-	_r2_piece(root, "hang_fern_0.png", 98.0, Vector2(98.0, 40.0), 9, "t", true)
-	_r2_piece(root, "hang_fern_2.png", 84.0, Vector2(176.0, 30.0), 9, "t")
+	# Leaf clusters over the posts at staggered heights, none of them level. TINTED
+	# (Advika 2026-08-02, circling one of them: "blend in this leaf") — these six were
+	# the only front pieces drawn at full art strength while every vine beside them
+	# carried a 0.70-0.80 tint, so the fern art's near-black greens sat on the lit
+	# purple as flat cut-out shapes instead of as growth in the same light.
+	_r2_piece(root, "hang_fern_2.png", 132.0, Vector2(-136.0, -74.0), 9, "t", true,
+			0.0, Color(0.74, 0.71, 0.87))
+	_r2_piece(root, "hang_fern_4.png", 106.0, Vector2(-86.0, 22.0), 9, "t", false,
+			0.0, Color(0.70, 0.68, 0.84))
+	_r2_piece(root, "hang_fern_3.png", 92.0, Vector2(-158.0, 44.0), 9, "t", true,
+			0.0, Color(0.76, 0.73, 0.89))
+	_r2_piece(root, "hang_fern_1.png", 124.0, Vector2(142.0, -52.0), 9, "t", false,
+			0.0, Color(0.72, 0.69, 0.86))
+	_r2_piece(root, "hang_fern_0.png", 98.0, Vector2(98.0, 40.0), 9, "t", true,
+			0.0, Color(0.75, 0.72, 0.88))
+	_r2_piece(root, "hang_fern_2.png", 84.0, Vector2(176.0, 30.0), 9, "t", false,
+			0.0, Color(0.71, 0.68, 0.85))
 	# curls tucked where post meets canopy, softening both joins
 	_r2_piece(root, "hang_curl_0.png", 74.0, Vector2(-132.0, -164.0), 9, "c",
 			false, 0.18, Color(0.74, 0.70, 0.86))
@@ -1374,6 +1458,22 @@ func _r2_front_growth(root: Node2D) -> void:
 	_r2_piece(root, "tuft_0.png", 50.0, Vector2(118.0, R2_FLOOR + 2.0), 9, "b")
 	_r2_piece(root, "tuft_2.png", 40.0, Vector2(184.0, R2_FLOOR + 6.0), 9, "b", true)
 	_r2_piece(root, "tuft_1.png", 36.0, Vector2(-214.0, R2_FLOOR + 8.0), 9, "b", true)
+	# The front layer is what the eye lands on, so it gets the air too — hangers swing
+	# from where they grip, the moss at the foot only stirs. Read off the node list
+	# rather than by hand so a piece added later is never left stiff among moving ones.
+	var front: Array[Sprite2D] = []
+	for c in root.get_children():
+		var s2 := c as Sprite2D
+		if s2 != null and s2.z_index == 9:
+			front.append(s2)
+	# collected FIRST: _sway slips a pivot in where the sprite was, so swaying while
+	# walking root's children would be editing the list mid-iteration
+	for sp in front:
+		var hangs: bool = sp.position.y < R2_FLOOR - 40.0
+		_sway(sp, "t" if hangs else "b",
+				_sway_rng.randf_range(0.024, 0.044) if hangs
+						else _sway_rng.randf_range(0.010, 0.020),
+				_sway_rng.randf_range(3.9, 6.6))
 
 
 ## The lit span of a trunk, as a source region (see R2_TRUNK_LIT).
@@ -1424,6 +1524,66 @@ func _r2_piece(root: Node2D, file: String, h: float, pos: Vector2, z: int,
 
 
 
+## GENTLE SWAY (Advika 2026-08-02: "make the leaves/other elements on the canopy sway
+## gently"). A piece rotated about its own centre shears — a hanging fern would swing
+## its anchor point through the canopy it grows out of. So the sprite is slipped under
+## a pivot Node2D placed at the end it is ATTACHED by ("t" for anything that hangs,
+## "b" for anything that stands, "c" for a free clump) and the PIVOT is what turns.
+##
+## Nothing shares a period. Equal periods would have the whole crown breathing in
+## unison inside ten seconds, which reads as one object wobbling rather than air
+## moving through leaves.
+func _sway(sp: Sprite2D, pivot: String, amp: float, period: float) -> void:
+	if sp == null:
+		return
+	var src_h: float = sp.region_rect.size.y if sp.region_enabled \
+			else float(sp.texture.get_height())
+	var drawn_h: float = src_h * absf(sp.scale.y)
+	var off := 0.0
+	if pivot == "t":
+		off = -drawn_h * 0.5      # hangs: pivot at the top, swings at the tip
+	elif pivot == "b":
+		off = drawn_h * 0.5       # stands: pivot at the foot, sways at the crown
+	var parent := sp.get_parent()
+	var piv := Node2D.new()
+	piv.position = sp.position + Vector2(0.0, off)
+	# swapped by hand rather than with reparent(), which requires the node to already
+	# be inside the tree — the doorway is assembled before it is ever shown
+	var idx := sp.get_index()
+	parent.remove_child(sp)
+	parent.add_child(piv)
+	parent.move_child(piv, idx)      # hold its place in the draw order
+	piv.add_child(sp)
+	sp.position = Vector2(0.0, -off)
+	# The tween is NOT started here. The assembly flies these same pivots home by
+	# tweening their rotation, and a sway already looping on that property would fight
+	# it the whole way in. Registered now, started by _start_sway once the door locks.
+	piv.rotation = 0.0
+	_sway_specs.append({"piv": piv, "amp": amp, "period": period})
+
+
+## Set the doorway's air moving. Idempotent — the door can lock more than once in the
+## PLAT_SIT=door rig, and a second set of loops on the same pivots would double the arc.
+func _start_sway() -> void:
+	if _sway_started:
+		return
+	_sway_started = true
+	for spec: Dictionary in _sway_specs:
+		var piv: Node2D = spec.piv
+		if not is_instance_valid(piv):
+			continue
+		var amp: float = spec.amp
+		var period: float = spec.period
+		# each starts somewhere in its own arc, so they are out of step immediately
+		piv.rotation = _sway_rng.randf_range(-amp, amp)
+		var t := create_tween().set_loops()
+		t.tween_property(piv, "rotation", amp, period * 0.5) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		t.tween_property(piv, "rotation", -amp, period * 0.5) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		_sway_tweens.append(t)
+
+
 ## An animated R2 plant (30-frame folders: flower / plant1 / plant_wind), bedded by
 ## its bottom edge like `_r2_piece`'s "b" anchor.
 func _r2_anim(root: Node2D, sub: String, h: float, pos: Vector2, z: int,
@@ -1449,25 +1609,50 @@ func _r2_anim(root: Node2D, sub: String, h: float, pos: Vector2, z: int,
 ## R1's cave showing through the gap, and over it the forest itself — a real capture
 ## of Realm 2, masked to a soft ellipse so it dissolves into the frame instead of
 ## ending on a straight edge.
+## An 8x8 block of one flat colour, for anything that just needs to be a solid field.
+func _flat_tex(c: Color) -> Texture2D:
+	var img := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	img.fill(c)
+	return ImageTexture.create_from_image(img)
+
+
+## The interior, in door-local units: the whole area the far realm has to fill. It runs
+## from up under the canopy (behind the curtain) down behind the base rocks, and WIDER
+## than the clear passage on both sides — it carries on behind the posts, so there is
+## no seam where the view stops and the frame starts. Everything that bounds it (posts
+## z2/z4, curtain z6, base z3/z5, front growth z9) is drawn over the top.
+const R2_VIEW_W := 300.0
+const R2_VIEW_H := 430.0
+const R2_VIEW_Y := -15.0            # its centre, door-local
+
 func _r2_threshold(root: Node2D) -> void:
-	var centre_y: float = (R2_FLOOR + R2_OPEN_TOP) * 0.5
-	var grad := Gradient.new()
-	grad.set_color(0, Color(0.16, 0.09, 0.24, 0.98))
-	grad.set_color(1, Color(0.03, 0.02, 0.05, 0.0))
-	grad.add_point(0.62, Color(0.09, 0.05, 0.15, 0.85))
-	var gtex := GradientTexture2D.new()
-	gtex.gradient = grad
-	gtex.fill = GradientTexture2D.FILL_RADIAL
-	gtex.fill_from = Vector2(0.5, 0.5)
-	gtex.fill_to = Vector2(0.5, 0.0)
-	gtex.width = 256
-	gtex.height = 256
+	# The membrane is FLAT, not a radial gradient. A gradient behind a uniformly-filled
+	# view reads as an oval bruise through the gaps in the leaves — the exact thing the
+	# view was widened to kill. All it has to do is stop R1's cave showing through.
 	var body := Sprite2D.new()
 	body.name = "Threshold"
-	body.texture = gtex
-	body.position = Vector2(0.0, centre_y)
-	body.scale = Vector2(208.0 / 256.0, 452.0 / 256.0)
+	body.texture = _flat_tex(Color(0.13, 0.07, 0.20))
+	body.position = Vector2(0.0, R2_VIEW_Y)
+	body.scale = Vector2((R2_VIEW_W + 28.0) / 8.0, (R2_VIEW_H + 28.0) / 8.0)
 	body.z_index = 0
+	# It gets the same soft-edged box as the view. A flat ColorRect behind a feathered
+	# window still ends on four hard corners, and THAT is what read as "just a rectangle
+	# plopping itself onto my screen" (Advika 2026-08-02) — the membrane was drawing the
+	# outline the view had been carefully softened out of.
+	var bmat := ShaderMaterial.new()
+	bmat.shader = load("res://shaders/portal_window.gdshader")
+	bmat.set_shader_parameter("centre", Vector2(0.5, 0.5))
+	bmat.set_shader_parameter("radius", Vector2(0.5, 0.5))
+	bmat.set_shader_parameter("feather", 0.42)
+	bmat.set_shader_parameter("brightness", 1.0)
+	bmat.set_shader_parameter("boxiness", 1.0)
+	# a coarser, deeper wander than the view's: the membrane is the outer edge, so its
+	# rim is the one that must never be a straight line
+	bmat.set_shader_parameter("edge_noise", 0.34)
+	bmat.set_shader_parameter("noise_scale", 3.6)
+	bmat.set_shader_parameter("uv_pan", Vector2.ZERO)
+	body.material = bmat
+	_portal_parts.append({"node": body, "mat": bmat, "radius": Vector2(0.5, 0.5)})
 	root.add_child(body)
 
 	# REALM 2 ITSELF, photographed: r2_gateway_view.png is a tall crop of the built
@@ -1478,29 +1663,42 @@ func _r2_threshold(root: Node2D) -> void:
 	var win := Sprite2D.new()
 	win.name = "PortalWindow"
 	win.texture = load("res://assets/realms/realm1_door/r2_gateway_view.png")
-	var wh: float = 392.0
-	var ws: float = wh / float(win.texture.get_height())
+	# Scaled to COVER the interior on width; it overhangs top and bottom and the mask
+	# crops it, so the forest is never stretched to fit the hole.
+	var ws: float = R2_VIEW_W / float(win.texture.get_width())
+	var drawn_h: float = float(win.texture.get_height()) * ws
 	win.scale = Vector2(ws, ws)
-	win.position = Vector2(0.0, centre_y)
+	win.position = Vector2(0.0, R2_VIEW_Y)
 	win.z_index = 1
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/portal_window.gdshader")
 	mat.set_shader_parameter("centre", Vector2(0.5, 0.5))
-	mat.set_shader_parameter("radius", Vector2(0.44, 0.45))
-	mat.set_shader_parameter("feather", 0.42)
+	# radius is HALF the lit box as a fraction of the drawn sprite — full width, and
+	# only the middle R2_VIEW_H of the tall capture.
+	var win_radius := Vector2(0.5, (R2_VIEW_H / drawn_h) * 0.5)
+	mat.set_shader_parameter("radius", win_radius)
+	# a wide feather: solid across the middle so the far realm still fills the opening
+	# evenly, but dissolving into the posts and the growth instead of ending on an edge
+	mat.set_shader_parameter("feather", 0.30)
 	mat.set_shader_parameter("brightness", 1.25)
+	mat.set_shader_parameter("boxiness", 1.0)
+	# the rim wanders, so the far realm never resolves into a rectangle — finer than the
+	# membrane's so the two edges break at different frequencies instead of tracing
+	# each other
+	mat.set_shader_parameter("edge_noise", 0.30)
+	mat.set_shader_parameter("noise_scale", 5.4)
+	# set once so the uniform exists as a property — a shader param that has never been
+	# assigned cannot be tweened ("does not exist in object ShaderMaterial")
+	mat.set_shader_parameter("uv_pan", Vector2.ZERO)
 	win.material = mat
+	_portal_parts.append({"node": win, "mat": mat, "radius": win_radius})
 	root.add_child(win)
-	# the other side breathes — a slow drift and a whisper of zoom
+	# The other side breathes — but the MASK holds still and the forest drifts inside
+	# it, so the lit area never swims against the posts.
 	var drift := create_tween().set_loops()
-	drift.tween_property(win, "position:x", 6.0, 13.0) \
+	drift.tween_property(mat, "shader_parameter/uv_pan", Vector2(0.016, -0.008), 13.0) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	drift.tween_property(win, "position:x", -6.0, 13.0) \
-			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	var breathe := create_tween().set_loops()
-	breathe.tween_property(win, "scale", Vector2(ws * 1.06, ws * 1.06), 9.0) \
-			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	breathe.tween_property(win, "scale", Vector2(ws, ws), 9.0) \
+	drift.tween_property(mat, "shader_parameter/uv_pan", Vector2(-0.016, 0.008), 13.0) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
@@ -1551,23 +1749,24 @@ func _erupt_door() -> void:
 		return
 	_door_revealed = true
 	_door.visible = true
-	_door.modulate.a = 0.0
-	# the painted set plays its eruption frames; the R2 assembly has no frames — its
-	# birth is the growth tween alone (the forest pushing the arch up through the floor).
 	var painted := _door as AnimatedSprite2D
 	if painted != null:
+		# THE PAINTED SET keeps its original birth: the frames play and it CLIMBS out,
+		# scaled from a seam in the floor to full height, rooted the whole way because
+		# the growth keeps its contact row pinned to the floor line.
+		_door.modulate.a = 0.0
 		painted.frame = 0
 		painted.play("erupt")
-	# it CLIMBS out: scaled from a seam in the floor to full height over DOOR_BIRTH,
-	# easing IN so it strains at first and then comes fast — and always rooted, since
-	# the growth keeps its contact row pinned to the floor line.
-	_grow_door(0.18)
-	var g := create_tween()
-	g.tween_method(_grow_door, 0.18, 1.0, DOOR_BIRTH) \
-			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	g.tween_callback(_on_door_erupted)
-	# the ground answers: shakes staged across the birth, rubble at the moment it tears
-	_quake_sequence()
+		_grow_door(0.18)
+		var g := create_tween()
+		g.tween_method(_grow_door, 0.18, 1.0, DOOR_BIRTH) \
+				.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		g.tween_callback(_on_door_erupted)
+		_quake_sequence()
+	else:
+		# THE GROWN DOORWAY assembles out of the air instead — see _assemble_door.
+		_door.modulate.a = 1.0
+		_assemble_door()
 	_door_aura()
 	if _door_light != null:
 		var t := create_tween()
@@ -1575,10 +1774,252 @@ func _erupt_door() -> void:
 				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
 
+## THE DOORWAY WRITES ITSELF DOWN THE LEVEL (Advika 2026-08-02: the single scale-up
+## "doesnt gel"; then, having seen the fragments hanging in the cave air — "instead of
+## the canopy fragments in air let it appear from top to bottom in the level").
+##
+## So: no scatter, no flight, nothing tumbling through the room. Every piece appears
+## exactly WHERE IT BELONGS, and the reveal travels DOWNWARD — the crown of the canopy
+## first, then the shoots and clusters under it, the posts, the hanging curtain, and
+## last the rock bedding it into the floor. Each piece drops the final few pixels into
+## place as it lands, so the sweep has weight instead of being a fade.
+##
+## Ordering is by final Y, not by z: z is draw order and would reveal the thing back to
+## front, which from the front reads as random.
+const ASM_SWEEP := 3.5         # crown to floor
+const ASM_LAND := 0.55         # one piece's own arrival
+const ASM_DROP := 46.0         # how far above its place a piece starts
+const ASM_SETTLE := 0.55       # a beat after the base lands, before it is a door
+
+var _asm_final: Array = []     # the true resting transforms, captured once
+var _asm_tweens: Array = []    # in-flight, killed if the beat is replayed
+
+func _assemble_door() -> void:
+	_grow_door(1.0)            # the root sits at full size on the floor the whole time
+	for t in _asm_tweens:
+		if t != null and (t as Tween).is_valid():
+			(t as Tween).kill()
+	_asm_tweens.clear()
+	# the air stops while the doorway takes itself apart: a sway still looping on a
+	# pivot's rotation would fight the flight-home tween on the very same property
+	for st in _sway_tweens:
+		if st != null and (st as Tween).is_valid():
+			(st as Tween).kill()
+	_sway_tweens.clear()
+	_sway_started = false
+	_quake = 0.0               # a replay must not inherit the last landing's tremor
+	_quake_on = false
+	if _cam != null:
+		_cam.offset = Vector2.ZERO
+	# Captured ONCE. On a replay the pieces are wherever the last run left them, so
+	# re-reading them as "final" would let the doorway drift a little further from
+	# itself every time it played.
+	if _asm_final.is_empty():
+		var kids: Array = []
+		for c in _door.get_children():
+			var n2 := c as Node2D
+			if n2 != null:
+				kids.append(n2)
+		kids.sort_custom(func(a: Node2D, b: Node2D) -> bool:
+				return a.position.y < b.position.y)   # topmost first: the sweep runs down
+		for n2: Node2D in kids:
+			# drawn height, used to weight the piece's thud — a swayed piece keeps its
+			# sprite one level down under its pivot
+			var sp2 := n2 as Sprite2D
+			if sp2 == null and n2.get_child_count() > 0:
+				sp2 = n2.get_child(0) as Sprite2D
+			var dh := 0.0
+			if sp2 != null and sp2.texture != null:
+				var src_h: float = sp2.region_rect.size.y if sp2.region_enabled \
+						else float(sp2.texture.get_height())
+				dh = src_h * absf(sp2.scale.y)
+			_asm_final.append({
+				"node": n2, "pos": n2.position, "rot": n2.rotation,
+				"scale": n2.scale, "alpha": n2.modulate.a, "h": dh,
+			})
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260802
+	var n: int = _asm_final.size()
+	var last: float = float(maxi(n - 1, 1))
+	for i in range(n):
+		var rec: Dictionary = _asm_final[i]
+		var node: Node2D = rec.node
+		if not is_instance_valid(node):
+			continue
+		var f_pos: Vector2 = rec.pos
+		var f_rot: float = rec.rot
+		var f_scl: Vector2 = rec.scale
+		var f_a: float = rec.alpha
+		# where this piece sits in the top-to-bottom sweep
+		var at: float = ASM_SWEEP * float(i) / last
+		# The far side is NOT a piece of the frame. Threshold and PortalWindow are
+		# full-bleed planes filling the opening; they never move, and they bleed in
+		# only once the frame is mostly built — Realm 2 shows through when there is
+		# something for it to show through.
+		if node.name == "Threshold" or node.name == "PortalWindow":
+			node.position = f_pos
+			node.rotation = f_rot
+			node.scale = f_scl
+			node.modulate.a = 0.0
+			# handled together in _open_portal — the far side is an APERTURE, not a
+			# piece of the frame, and both of its layers have to open as one
+			node.modulate.a = 0.0
+			continue
+		# It starts a little ABOVE its place, slightly small, and comes down onto it.
+		# Rotation is left exactly as designed: a piece that spins into place reads as
+		# debris, and this is meant to read as the doorway being written downward.
+		node.position = f_pos - Vector2(rng.randf_range(-7.0, 7.0),
+				ASM_DROP * rng.randf_range(0.7, 1.3))
+		node.rotation = f_rot
+		node.scale = f_scl * rng.randf_range(0.86, 0.95)
+		node.modulate.a = 0.0
+		# the drop and the fade are two tweens on purpose: chaining a parallel block
+		# onto an interval binds the first parallel tweener to the WAIT, so the piece
+		# would start moving during its own delay
+		var ft := create_tween()
+		ft.tween_interval(at)
+		ft.tween_property(node, "modulate:a", f_a, ASM_LAND * 0.8) \
+				.set_trans(Tween.TRANS_SINE)
+		_asm_tweens.append(ft)
+		var mt := create_tween()
+		mt.tween_interval(at)
+		mt.chain().tween_property(node, "position", f_pos, ASM_LAND) \
+				.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		# BACK overshoots a hair and settles, so each piece seats itself
+		mt.parallel().tween_property(node, "scale", f_scl, ASM_LAND) \
+				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		# ...and THIS is where the cave feels it: the piece seats, the ground answers.
+		# Weighted by the piece's own size and by how far down the sweep it landed, so
+		# the tremor grows as the mass does and is heaviest under the rock at the base.
+		var weight: float = clampf(float(rec.h) / 300.0, 0.16, 1.0)
+		var depth: float = 0.30 + 0.95 * float(i) / last
+		mt.chain().tween_callback(func() -> void:
+				_quake_kick(1.9 * weight * depth))
+		_asm_tweens.append(mt)
+	_quake_on = true
+	_open_portal()
+	if OS.get_environment("PORTAL_PROBE") != "":
+		_portal_probe()
+	# the floor breaks when the doorway actually reaches it, not on a timer
+	var rup := create_tween()
+	rup.tween_interval(ASM_SWEEP + ASM_LAND * 0.75)
+	rup.tween_callback(func() -> void:
+			_quake_kick(QUAKE_MAX)
+			_ground_rupture(false))   # it settles onto the floor; nothing bursts out of it
+	_asm_tweens.append(rup)
+	var done := create_tween()
+	done.tween_interval(ASM_SWEEP + ASM_LAND + ASM_SETTLE)
+	done.tween_callback(_on_door_erupted)
+	_asm_tweens.append(done)
+
+
+## THE SHAKE IS THE DOOR LANDING (Advika 2026-08-02: "the quaking doesnt match the door
+## appearing"). It used to be four staged shakes on a clock of their own while the
+## doorway arrived as a continuous sweep of eighty pieces, so the two were never
+## describing the same event.
+##
+## Now every piece that seats itself kicks the camera, and the kick is weighted by how
+## big that piece is and how far down the sweep it landed. The tremor therefore starts
+## as almost nothing under the first tufts of the crown, thickens as the canopy and the
+## posts arrive, and peaks under the rock at the bottom — because that is exactly what
+## is happening on screen. Nothing is scheduled; it is all consequence.
+const QUAKE_DECAY := 21.0      # px/sec the tremor falls off when nothing is landing
+const QUAKE_MAX := 34.0
+
+var _quake := 0.0              # live shake amplitude, applied in _process
+var _quake_on := false         # while true the assembly owns _cam.offset
+
+func _quake_kick(amount: float) -> void:
+	_quake = minf(_quake + amount, QUAKE_MAX)
+
+
+## Called every frame while the doorway is arriving. Deliberately NOT a tween: the
+## kicks overlap and accumulate, and a tween per kick would have each one stomping the
+## last one's offset instead of adding to it.
+func _quake_step(delta: float) -> void:
+	if not _quake_on:
+		return
+	if _quake <= 0.01:
+		_quake = 0.0
+		_quake_on = false
+		if _cam != null:
+			_cam.offset = Vector2.ZERO
+		return
+	if _cam != null:
+		_cam.offset = Vector2(randf_range(-_quake, _quake), randf_range(-_quake, _quake))
+	_quake = maxf(0.0, _quake - QUAKE_DECAY * delta)
+
+
 ## End-to-end proof that the door connects the realms: she is placed in the arch,
 ## the portal is armed and erupts, and once it STANDS a real "interact" press is
 ## injected — so the level's own [Y] handler, its overlap test and the handover to
 ## QuoteTransition all run exactly as they do under a player's hands.
+## THE WAY THROUGH OPENS (Advika 2026-08-02, on the third go: "the spawning in of the
+## preview of lvl2 its just not right it just shows up no fade in nothing"). It was
+## measured: the alpha ramp really did run, cleanly, over 3.2 seconds. Fading alpha was
+## simply the wrong instrument. A rectangle at 20% opacity is still a rectangle, so all
+## the ramp ever did was make a fully-formed rectangle brighter — which the eye reads
+## as an image being switched on, not as a passage opening.
+##
+## So the MASK opens instead. Both layers start clipped to a small soft patch at the
+## centre of the passage and widen out to fill it, brightening as they go. The far
+## realm therefore arrives the way light through a door does: a chink, then a gap,
+## then the whole opening. It begins only after the doorway itself has finished
+## landing, which is what she asked for and which still holds.
+const PORTAL_OPEN := 3.1       # how long the aperture takes to widen
+const PORTAL_SEED := 0.12      # the chink it starts as, as a fraction of full
+
+var _portal_parts: Array = []  # {node, mat, radius} for the membrane and the view
+
+func _open_portal() -> void:
+	var delay: float = ASM_SWEEP + ASM_LAND + ASM_SETTLE + 0.3
+	for p: Dictionary in _portal_parts:
+		var node: CanvasItem = p.node
+		var mat: ShaderMaterial = p.mat
+		if not is_instance_valid(node):
+			continue
+		var full: Vector2 = p.radius
+		node.modulate.a = 0.0
+		mat.set_shader_parameter("radius", full * PORTAL_SEED)
+		var full_feather: float = float(mat.get_shader_parameter("feather"))
+		mat.set_shader_parameter("feather", 0.85)
+		var at := create_tween()
+		at.tween_interval(delay)
+		at.chain().tween_property(mat, "shader_parameter/radius", full, PORTAL_OPEN) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		# The feather is a FRACTION of the radius, so at 12% size the standard 0.30 is
+		# only a few pixels and the chink comes out as a hard little box. It starts
+		# almost entirely feather — a soft glow with no edge at all — and tightens to
+		# the real value as the hole grows into it.
+		at.parallel().tween_property(mat, "shader_parameter/feather",
+				full_feather, PORTAL_OPEN * 0.8) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		_asm_tweens.append(at)
+		# the light comes up faster than the hole widens, so the chink is already
+		# glowing before it is big enough to see the forest through
+		var ft := create_tween()
+		ft.tween_interval(delay)
+		ft.chain().tween_property(node, "modulate:a", 1.0, PORTAL_OPEN * 0.55) \
+				.set_trans(Tween.TRANS_SINE)
+		_asm_tweens.append(ft)
+
+
+## PORTAL_PROBE=1 — prints what the far side's alpha is ACTUALLY doing, every 0.2s.
+## Written because "it just shows up, no fade in" kept being reported against a tween
+## that on paper runs for 3.2 seconds; measure it rather than argue with it.
+func _portal_probe() -> void:
+	var win: Node = _door.find_child("PortalWindow", false, false)
+	var mem: Node = _door.find_child("Threshold", false, false)
+	var t := 0.0
+	while t < 10.0 and is_inside_tree():
+		if win is CanvasItem:
+			print("PORTAL t=%.2f  window=%.3f  membrane=%.3f" % [t,
+					(win as CanvasItem).modulate.a,
+					(mem as CanvasItem).modulate.a if mem is CanvasItem else -1.0])
+		await get_tree().create_timer(0.2).timeout
+		t += 0.2
+
+
 func _door_press_probe() -> void:
 	await get_tree().create_timer(0.3).timeout
 	if _player == null or not is_instance_valid(_player):
@@ -1691,12 +2132,17 @@ func _quake_sequence() -> void:
 ## The floor tearing open: chips of cave rock thrown up out of the seam, and a low
 ## band of rubble left heaped around the base afterwards, so the portal reads as
 ## something that RIPPED through the ground rather than something placed on it.
-func _ground_rupture() -> void:
+## `throw_chips` is false for the grown doorway (Advika 2026-08-02: "why do floor
+## particles just shoot up thats so unecessary?"). They were written for the PAINTED
+## arch, which tears its way up out of the floor — chips flying off the seam is the
+## floor breaking outward. The grown doorway is assembled downward and set onto the
+## ground, so rock leaping upward out of it describes an event that is not happening.
+## The settled heap stays either way: that is what beds the doorway into the ground.
+func _ground_rupture(throw_chips: bool = true) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 8801
 	var base := Vector2(DOOR_POS.x, FLOOR_TOP - 6.0)
-	# thrown chips
-	for i in range(26):
+	for i in range(26 if throw_chips else 0):
 		var chip := Polygon2D.new()
 		var r: float = rng.randf_range(2.5, 8.0)
 		var pts := PackedVector2Array()
@@ -1739,6 +2185,7 @@ func _ground_rupture() -> void:
 		rock.z_index = 9
 		rock.modulate.a = 0.0
 		add_child(rock)
+		_door_rubble.append(rock)   # so a replayed birth doesn't heap on the last one
 		var rt := create_tween()
 		rt.tween_interval(rng.randf_range(0.0, 0.5))
 		rt.tween_property(rock, "modulate:a", 1.0, 0.5)
@@ -1767,6 +2214,7 @@ func _on_door_erupted() -> void:
 	if painted != null:
 		painted.play("standing")
 	_door_ready = true
+	_start_sway()                   # the doorway is standing; now let it breathe
 	if _door_trigger != null:
 		_door_trigger.monitoring = true
 	if _door_prompt != null:
@@ -1779,7 +2227,10 @@ func _on_door_erupted() -> void:
 func _start_door_flicker() -> void:
 	if _door_light == null:
 		return
+	if _door_flicker != null and _door_flicker.is_valid():
+		_door_flicker.kill()   # a replayed birth must not stack a second breath on the first
 	var flick := create_tween().set_loops()
+	_door_flicker = flick
 	flick.tween_property(_door_light, "energy", 0.9 + 0.12, 1.1) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	flick.tween_property(_door_light, "energy", 0.9 - 0.12, 1.1) \
@@ -1789,6 +2240,15 @@ func _start_door_flicker() -> void:
 ## [Y] in the standing portal's mouth. Dead until the eruption has finished — there
 ## is no prompt and no input before that.
 func _unhandled_input(event: InputEvent) -> void:
+	# PLAT_SIT=door drives the beat by hand: SPACE re-fires it, ESC closes the rig.
+	if _sit == "door" and event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_SPACE:
+			_door_replay = true
+			get_viewport().set_input_as_handled()
+			return
+		if event.keycode == KEY_ESCAPE:
+			get_tree().quit()
+			return
 	if not _door_ready or _door_trigger == null:
 		return
 	if not event.is_action_pressed("interact"):
@@ -1990,10 +2450,22 @@ func _plant(parent: Node2D, key: String, pos: Vector2, sc: float,
 func _ground() -> void:
 	var g := _assembly(Vector2.ZERO)
 	g.z_index = 6
+	# GROUND_TINT=1 repaints each floor layer a different loud colour — SET, not
+	# modulated: the floor is near-black, and multiplying black by red is still black
+	# (the first attempt at this proved nothing). Green = the solid backing slab,
+	# yellow = cobble row, red = mound ridge, blues = the five deep rows. Anything in
+	# the floor band still dark is provably built somewhere else.
+	var tint: bool = OS.get_environment("GROUND_TINT") != ""
 	var base := ColorRect.new()
 	base.position = Vector2(-2700, 470)
 	base.size = Vector2(13100, 1100)   # deep enough that no window sees under it
-	base.color = Color(0.020, 0.016, 0.013)
+	base.color = Color(0.0, 0.9, 0.2) if tint else Color(0.020, 0.016, 0.013)
+	# BEHIND the deep rows, not over them. It was left at the default z0 while the five
+	# rows below the walk line sit at -1..-5, so the slab painted straight over every
+	# one of them and the whole area under the floor came out as one flat panel —
+	# Advika 2026-08-02: "the ground needs to be all rock, i dont like this inconsistent
+	# gap at all". The rows were always being built; nothing ever saw them.
+	base.z_index = -6            # deepest row draws at -5, so this clears it by one
 	g.add_child(base)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
@@ -2010,7 +2482,9 @@ func _ground() -> void:
 		s0.position = Vector2(x, 486.0 - tex.get_height() * sc * 0.30
 				+ rng.randf_range(-4.0, 4.0))
 		s0.scale = Vector2(-sc if rng.randf() < 0.5 else sc, sc)
-		s0.material = _floor_mat()
+		s0.material = null if tint else _floor_mat()
+		if tint:
+			s0.modulate = Color(1.0, 0.95, 0.1)
 		s0.z_index = 1
 		g.add_child(s0)
 		x += tex.get_width() * sc * 0.80
@@ -2031,7 +2505,9 @@ func _ground() -> void:
 		mnd.scale = Vector2(-msc if rng.randf() < 0.5 else msc, msc)
 		mnd.position = Vector2(mx + rng.randf_range(-18.0, 18.0),
 				494.0 - mh * rng.randf_range(0.30, 0.46))
-		mnd.material = _floor_mat()
+		mnd.material = null if tint else _floor_mat()
+		if tint:
+			mnd.modulate = Color(1.0, 0.1, 0.1)
 		mnd.z_index = 0
 		g.add_child(mnd)
 		mx += mtex.get_width() * msc * rng.randf_range(0.40, 0.56)  # heavy overlap
@@ -2044,23 +2520,34 @@ func _ground() -> void:
 	# window instead. Rows go BEHIND the ridge (negative z within the assembly).
 	# 5 rows for the same reason the roof got 5: a fullscreen or tall window shows
 	# more world below the walk line, and 3 rows ran out into a flat dark band.
-	for row in range(5):
-		var row_y: float = 600.0 + float(row) * 150.0
-		var row_dim := Color(1, 1, 1) * maxf(0.16, 0.74 - 0.13 * float(row))
+	# Rows start ABOVE the cobble line and step in tight, because the old 600/150 ladder
+	# left a bare strip of slab between the cobbles and the first row — the rocks are
+	# jittered ±26 and 200..330 tall, so the first row's top could land at y526, well
+	# under the cobbles at 486. Starting at 545 with 240..360 heights guarantees the
+	# first row's top clears 486 even at its shortest, and every row overlaps the next.
+	#
+	# They are also no longer dimmed into nothing: the old ramp fell to 0.16, and the
+	# floor material already caps at 0.175, so the bottom rows rendered at ~0.028 — real
+	# rock that was mathematically black. That is what read as a flat panel even once
+	# the rows were visible at all. Now they recede to 0.52 and stay legible as ROCK.
+	for row in range(6):
+		var row_y: float = 545.0 + float(row) * 135.0
+		var row_dim := Color(1, 1, 1) * maxf(0.52, 1.0 - 0.10 * float(row))
 		row_dim.a = 1.0
 		var rx := -2800.0
 		var ri := row
 		while rx < 10400.0:
 			var rtex := _tex(CUT, mound_pool[ri % mound_pool.size()])
-			var rh2 := rng.randf_range(200.0, 330.0) * (1.0 + 0.15 * float(row))
+			var rh2 := rng.randf_range(240.0, 360.0) * (1.0 + 0.15 * float(row))
 			var rsc := rh2 / float(rtex.get_height())
 			var rock := Sprite2D.new()
 			rock.texture = rtex
 			rock.scale = Vector2(-rsc if rng.randf() < 0.5 else rsc, rsc)
 			rock.position = Vector2(rx + rng.randf_range(-24.0, 24.0),
 					row_y + rng.randf_range(-26.0, 26.0))
-			rock.material = _floor_mat()
-			rock.modulate = row_dim          # deeper rows sink into the dark
+			rock.material = null if tint else _deep_mat()
+			rock.modulate = Color(0.1, 0.45 + 0.13 * float(row), 1.0) if tint \
+					else row_dim             # deeper rows sink into the dark
 			rock.z_index = -1 - row
 			g.add_child(rock)
 			rx += rtex.get_width() * rsc * rng.randf_range(0.42, 0.60)
@@ -2108,6 +2595,22 @@ func _ground() -> void:
 			false, false, true, 12.0)
 	lit.play("default")
 	g.add_child(lit)
+
+
+## The rock BELOW the walk line needs its own ramp. `_floor_mat` exists to keep the
+## floor a dark graphic shape against the bright fog backdrop — but under the walk line
+## there is no bright backdrop to read against, so the same ramp renders black rock on
+## black and the whole area collapses into the flat gap Advika keeps seeing. A higher
+## cap and a near-linear gamma let the mass read AS ROCK while still receding.
+var _deep_ramp: ShaderMaterial
+
+func _deep_mat() -> ShaderMaterial:
+	if _deep_ramp == null:
+		_deep_ramp = ShaderMaterial.new()
+		_deep_ramp.shader = load("res://shaders/plat_ramp.gdshader")
+		_deep_ramp.set_shader_parameter("cap", Color(0.265, 0.212, 0.142))
+		_deep_ramp.set_shader_parameter("gamma_v", 1.05)
+	return _deep_ramp
 
 
 func _floor_mat() -> ShaderMaterial:
