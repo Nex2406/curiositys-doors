@@ -108,8 +108,7 @@ var _moth_timer := -1.0        # counts down to the next arrival while > 0
 var _moth_phase_begun := false # first moth has arrived at least once
 var _moth_side := 0            # entry sides cycle: left, right, below
 var _soak := false             # R2_TRIAL_LOG: deaths don't spend lifelines
-var _hp_fill: ColorRect       # the ember health strip under the lifeline eyes
-var _hp_track: ColorRect
+var _lantern: LanternHUD      # her health, as her own lantern (top-left)
 
 
 func _ready() -> void:
@@ -987,10 +986,8 @@ func _build_player() -> void:
 		_curi.died.connect(_die)
 	if _curi.has_signal("health_changed"):
 		_curi.health_changed.connect(func(h: int, m: int) -> void:
-			if _hp_track == null:
-				return
-			_hp_track.visible = h < m
-			_hp_fill.size.x = 240.0 * clampf(float(h) / float(m), 0.0, 1.0))
+			if _lantern != null:
+				_lantern.set_health(h, m))
 
 
 func _build_camera() -> void:
@@ -1028,21 +1025,18 @@ func _build_ui() -> void:
 	_lbl.add_theme_color_override("font_color", Color(0.78, 0.73, 0.92, 0.6))
 	cl.add_child(_lbl)
 
-	# Her health, as a slim ember strip under the lifeline eyes — the same
-	# warm fill the enemy bars use, and the same manners: invisible at full
-	# health (near-zero UI), it appears the moment something hurts her
-	# (Advika: dives/chip damage were unreadable with only the eyes showing).
-	_hp_track = ColorRect.new()
-	_hp_track.position = Vector2(42, 112)
-	_hp_track.size = Vector2(240, 6)
-	_hp_track.color = Color(0.10, 0.03, 0.05, 0.9)
-	_hp_track.visible = false
-	cl.add_child(_hp_track)
-	_hp_fill = ColorRect.new()
-	_hp_fill.position = Vector2.ZERO
-	_hp_fill.size = Vector2(240, 6)
-	_hp_fill.color = Color(0.95, 0.36, 0.26)
-	_hp_track.add_child(_hp_fill)
+	# HER HEALTH IS HER LANTERN. The ember strip is gone — a red bar is the one
+	# piece of UI this game had that belonged to a different game entirely.
+	# Two reads in one object: the oil is the precise one, the flame is the one
+	# you feel. It never shows a number and never leaves its own silhouette.
+	_lantern = LanternHUD.new()
+	# on the left, UNDER the lifeline eyes (their centres are at y 54, so this
+	# clears them), and dark until the trial actually starts
+	_lantern.hud_position = Vector2(40, 104)
+	# R2_LANTERN_NOW=1 lights it at once — judging how it LOOKS should not cost
+	# a walk to the liftoff and a wait for the wizard
+	_lantern.start_hidden = OS.get_environment("R2_LANTERN_NOW") == ""
+	cl.add_child(_lantern)
 
 
 func _self_screenshot(path: String) -> void:
@@ -1109,6 +1103,14 @@ func _self_screenshot(path: String) -> void:
 	# fall mode needs the ride guard (1s) + death beat (0.45s) to play out first
 	var delay := 2.5 if OS.get_environment("R2_SHOT_FALL") != "" else 1.0
 	await get_tree().create_timer(delay).timeout
+	# R2_HP=<0..100> — park her health at a given value so the lantern can be
+	# shot in a named state. It drives the REAL signal path, not the HUD
+	# directly, so what lands in the png is what a player would see.
+	if OS.get_environment("R2_HP") != "":
+		_curi.health = int(OS.get_environment("R2_HP"))
+		_curi.health_changed.emit(_curi.health, _curi.max_health)
+		# let the oil tween finish (0.5s) and the flame settle out of its flare
+		await get_tree().create_timer(1.1).timeout
 	print("SHOT curi=", _curi.global_position, " island=", _chunk.global_position,
 			" state=", _chunk.state, " visible=", _curi.visible)
 	get_viewport().get_texture().get_image().save_png(path)
@@ -1176,6 +1178,10 @@ func _unhandled_input(event: InputEvent) -> void:
 func _spawn_wizard(instant := false) -> void:
 	if _wizard != null:
 		return
+	# the island is up and he has come — NOW she needs to know what she has
+	# left. Before this beat there is nothing in the level that can hurt her.
+	if _lantern != null:
+		_lantern.appear()
 	_wizard = WIZARD_SCENE.instantiate()
 	_wizard.scale = Vector2(WIZARD_SCALE, WIZARD_SCALE)
 	_wizard.hover_amplitude = 0.0  # planted on the moss — the island carries him

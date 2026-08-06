@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cl4nt3rnt35t01"]
+
+[ext_resource type="Script" path="res://scripts/LanternTest.gd" id="1_lant"]
+
+[node name="LanternTest" type="Node2D"]
+script = ExtResource("1_lant")
