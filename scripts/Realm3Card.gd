@@ -27,14 +27,20 @@ const SPORE := "res://assets/realms/realm3_fungal/mushroomglow17.png"
 const QMARK := "res://assets/realms/realm3_fungal/question_mark.png"
 
 
-## THE OPENING CARD — a mushroom and a question mark, and nothing else (Advika:
+## THE OPENING CARD — THE WITNESS (Advika picked it over THE SPORE). The realm's
+## whole spine is being watched: the lights notice her, what falls from the roof
+## is theirs, and the thing at the end has been studying how she fights. Naming
+## the card after the mushroom named the obstacle; naming it after the watching
+## sets up THE MIRROR five minutes before it arrives.
+##
+## A mushroom and a question mark, and nothing else (Advika:
 ## *"only the mushroom and a question mark as images"*). The realm's whole first
 ## act is "there are lights in this wood and you do not know why"; naming the
 ## six, or the thing past them, would spend the only surprise it has.
 static func open() -> TarotReading:
 	var card := TarotReading.new()
 	card.numeral = "III"
-	card.card_title = "THE SPORE"
+	card.card_title = "THE WITNESS"
 	card.portrait = load(SPORE)
 	card.second_art = load(QMARK)
 	card.verses = [
