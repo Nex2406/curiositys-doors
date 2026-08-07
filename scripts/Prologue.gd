@@ -106,6 +106,14 @@ const STANZAS: Array = [
 ## `tests/test_prologue_parse.gd` runs under `--headless --script`, where autoloads like
 ## `Haptics` do not exist, so Realm 1 failed to compile and printed two errors into a passing
 ## test run. As scene data the dependency is declared exactly where it is used.
+## Stanzas to speak instead of `STANZAS`. Empty = the prologue's own.
+@export var stanzas_override: Array = []
+## Leave the ending to whoever hosted this instead of loading `next_scene`.
+@export var suppress_exit := false
+
+signal stanza_started(index: int)
+signal stanzas_done
+
 @export var next_scene: PackedScene
 
 ## THE QUOTE BETWEEN. When the voice stops, one card is held on the black before the game
@@ -253,11 +261,22 @@ func _run() -> void:
 	_free_menu()
 	await _wait(black_beat)
 
-	for i in STANZAS.size():
+	# THE VOICE IS REUSABLE, THE WORDS ARE NOT. The endgame speaks in exactly this
+	# system — same pause tokens, same punctuation pauses, same accumulating
+	# stanza reveal, same font, same tick — so `Realm3Epilogue` hands its own
+	# stanzas in here rather than growing a second copy of all of it.
+	var script_: Array = stanzas_override if not stanzas_override.is_empty() else STANZAS
+	for i in script_.size():
 		if _aborted:
 			break
-		await _play_stanza(STANZAS[i], i == STANZAS.size() - 1)
+		stanza_started.emit(i)
+		await _play_stanza(script_[i], i == script_.size() - 1)
 
+	stanzas_done.emit()
+	# the epilogue's exit is an eye OPENING, not a fade to a scene — it takes
+	# over from here
+	if suppress_exit:
+		return
 	_exit()
 
 

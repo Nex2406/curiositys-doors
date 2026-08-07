@@ -3351,6 +3351,12 @@ func _open_the_way() -> void:
 	_exit_door = null
 	_at_exit = false
 	print("[R3] the boss is dead, the colour is home, and there is no door")
+	# and the game ends. No door to walk to and no card to dismiss: the eye
+	# closes on the standing forest, the prologue's voice finishes what it
+	# started, and the eye opens on the menu. `Realm3Epilogue` owns all of it.
+	_leaving = true
+	_clock_stopped = true
+	get_tree().root.add_child(EPILOGUE.new())
 	# the headless run has no hands: it presses the last button itself, so the
 	# closing card is proven to build rather than assumed to
 	if OS.get_environment("R3_END_AUTO") != "":
@@ -3742,6 +3748,7 @@ func _tick_checkpoint() -> void:
 ## pixels, then a boss — ten minutes left room to wander between them, and this
 ## realm is not a place to wander. The card says the number out loud, because a
 ## time limit the player only discovers by losing is a trick, not a rule.
+const EPILOGUE := preload("res://scripts/Realm3Epilogue.gd")
 const TIMEOUT_CARD := preload("res://scripts/Realm3Timeout.gd")
 const LEVEL_SECONDS := 420.0   # 7:00 (Advika: "it'll be hard to win lol")
 var _time_left := LEVEL_SECONDS
