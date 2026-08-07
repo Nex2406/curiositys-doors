@@ -1014,7 +1014,13 @@ func _build_player() -> void:
 	# mid moss (11), its front row (12) and the whole Realm 3 gateway (14). The
 	# gateway's own comment even claimed it sat "behind the hero"; it never did.
 	# Above all of those, below the doorway's prompt (24) and the fireflies (40).
-	_curi.z_index = 20
+	# 11, NOT 20. Twenty put her in front of the island's front fern row (z12)
+	# and she read as standing ON the deck like a sticker (Advika: *"curiosity
+	# sits ontop of the thing... he needs to be INSIDE this, the ferns need to
+	# cover a portion of him"*). At 11 she is in front of the mid moss (added
+	# before her, so tree order wins the tie) and BEHIND the front row, which is
+	# what puts growth across her shins.
+	_curi.z_index = 11
 	add_child(_curi)
 
 	# the SAME eye lifeline counter as Realm 1 — shared scene, same rules
@@ -1474,7 +1480,11 @@ func _grow_r3_gateway() -> void:
 	_r3_gate.position = Vector2(R3_GATE_X,
 			R3_GATE_DECK_Y - R3_GATEWAY.FLOOR * R3_GATE_SCALE)
 	_r3_gate.scale = Vector2(R3_GATE_SCALE, R3_GATE_SCALE)
-	_r3_gate.z_index = 14           # over the deck dressing, behind the hero
+	# and the gateway drops UNDER her rather than her climbing over the deck to
+	# clear it — that was the other half of the same mistake. At 10 the deck's
+	# own moss beds its base, which is where a thing growing out of the island
+	# should sit anyway.
+	_r3_gate.z_index = 10
 	_chunk.add_child(_r3_gate)
 	_r3_gate.build()
 
