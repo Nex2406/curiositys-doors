@@ -49,6 +49,7 @@ static func open() -> TarotReading:
 		"They notice; what falls from the roof is theirs",
 		"Dash what you cannot outrun — K",
 		"Your lantern is your life. Watch it",
+		"You have seven minutes",
 	]
 	_palette(card)
 	card.foot_art_scale = 0.62

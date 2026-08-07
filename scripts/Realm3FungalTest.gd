@@ -3738,7 +3738,12 @@ func _tick_checkpoint() -> void:
 # twelve seconds back. At 0:00 it is standing where she is standing. Nothing
 # needs to announce a failure — being caught IS running out of time.
 
-const LEVEL_SECONDS := 600.0   # 10:00 (Advika: "it'll be hard to win lol")
+## 7:00, down from 10:00 (Advika). Six mushrooms spread over twelve thousand
+## pixels, then a boss — ten minutes left room to wander between them, and this
+## realm is not a place to wander. The card says the number out loud, because a
+## time limit the player only discovers by losing is a trick, not a rule.
+const TIMEOUT_CARD := preload("res://scripts/Realm3Timeout.gd")
+const LEVEL_SECONDS := 420.0   # 7:00 (Advika: "it'll be hard to win lol")
 var _time_left := LEVEL_SECONDS
 var _glass: HourglassTimer
 var _profile_lbl: Label
@@ -3781,13 +3786,15 @@ func _tick_clock(delta: float) -> void:
 	_glass.set_time(_clock_total - _time_left, _clock_total)
 	if _time_left <= 0.0:
 		_timed_out = true
-		# There is no second fail rule to explain. At zero the delay is four
-		# tenths of a second, which is another way of saying it is standing
-		# where she is standing — so the clock running out kills her through
-		# the SAME door as being caught, and keeps doing it until her last eye
-		# is gone. Running out of time IS being caught.
+		# RUNNING OUT OF TIME IS NOT BEING CAUGHT ANY MORE (Advika). It used to
+		# route through `_die()`, which spent one eye and let her carry on
+		# against a clock that was already at zero — a punishment rather than a
+		# rule, and one that could be absorbed twice before it meant anything.
+		# The realm simply starts again, and says one thing on its way out.
 		if not _dying and not _leaving:
-			_die()
+			_leaving = true
+			_clock_stopped = true
+			get_tree().root.add_child(TIMEOUT_CARD.new())
 
 
 ## R3_ECHO_PROBE=<seconds> — the mechanic, proved instead of assumed.

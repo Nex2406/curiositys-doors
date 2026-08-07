@@ -23,6 +23,9 @@ class_name Sporeling
 
 signal popped
 
+## the breath from Realm 1's jade pickup set — see `_sprout`
+const SPROUT_SFX: AudioStream = preload("res://assets/audio/jade/jade_pickup_4_breath.wav")
+
 const SPORE_TEX := "res://assets/realms/realm2_moss/spore.png"
 const HALO := "res://assets/effects/lantern_halo.png"
 ## the only red in the realm
@@ -332,6 +335,13 @@ func debug_state() -> String:
 ## it breaks ground: a squat nub shoves up out of the meadow, overshoots,
 ## settles — and only then does it have eyes, weight and a hitbox
 func _sprout() -> void:
+	# THE GROUND GIVES ONE UP (Advika: *"a lil sound effect when each mushroom
+	# spawns, smth similar to the jade collecting thing"*). Same family as
+	# Realm 1's jade chime on purpose, but the BREATH rather than its spark:
+	# this realm's collectible-shaped beat is a thing waking up, not a thing
+	# being taken. Well under the music, because six of these go off across the
+	# walk and one loud one would turn the wood into a doorbell.
+	AudioManager.play_sfx(SPROUT_SFX, -9.0)
 	_awake = true
 	_rising = true
 	_visual.visible = true
