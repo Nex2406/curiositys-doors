@@ -20,7 +20,7 @@ class_name Realm3Timeout
 
 ## exactly `NarratorLine`'s: EB Garamond 30, its warm cream, its line spacing
 const FONT := "res://assets/fonts/eb_garamond.ttf"
-const FONT_SIZE := 30
+const FONT_SIZE := 64   # bigger than the prologue: this line is the whole screen
 const INK := Color(0.910, 0.784, 0.541, 1.0)
 const TICK := "res://assets/audio/ui/type_tick.wav"
 const LINE := "Curiosity never dies"
@@ -66,13 +66,22 @@ func _ready() -> void:
 	_label.add_theme_font_size_override("normal_font_size", FONT_SIZE)
 	_label.add_theme_color_override("default_color", INK)
 	_label.add_theme_constant_override("line_separation", 4)
-	# centred in the frame rather than at the prologue's fixed offsets — that
-	# scene is authored at one size, this has to sit correctly in whatever the
-	# realm was being played at
-	_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_label.offset_top = 460.0
+	# A `fit_content` RichTextLabel has NO minimum width, and a CenterContainer
+	# hands a child exactly its minimum — the first attempt shrank the line to
+	# one character per row and drew it as a vertical thread down the middle of
+	# the screen. The block is given a width; `[center]` then centres inside it.
+	_label.custom_minimum_size = Vector2(1500.0, 0.0)
 	_label.modulate.a = 0.0
-	add_child(_label)
+	# DEAD CENTRE, via a CenterContainer rather than the prologue's fixed
+	# offsets. That scene is authored at one size; this has to land in the
+	# middle of whatever resolution the realm was being played at, and a
+	# `fit_content` label grows DOWNWARD — anchored by hand it drifts off centre
+	# the moment the text or the window changes.
+	var centre := CenterContainer.new()
+	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
+	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(centre)
+	centre.add_child(_label)
 
 	_tick_stream = load(TICK)
 	_type.cps = CPS
