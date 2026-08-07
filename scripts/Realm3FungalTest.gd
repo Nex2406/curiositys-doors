@@ -76,9 +76,15 @@ const FLOOR_Y := 420.0
 ## curiosity a little further into the forest post the qoute scene"*). At -40
 ## she landed a thousand pixels off the west wall, and the camera clamp
 ## (`WORLD_L + 600`) put that wall on screen — so the first frame of Realm 3,
-## arrived at through a doorway and a card, was the end of the level. From here
-## the view is forest in both directions and the walk has somewhere to come from.
-const SPAWN := Vector2(1400.0, FLOOR_Y - 140.0)
+## arrived at through a doorway and a card, was the end of the level.
+##
+## 385 IS THE FRAME SHE PICKED, not a guess at "a bit further". A first pass put
+## her at 1400; she walked back west and sent a screenshot of where she actually
+## wanted to stand, and this is that frame read off its landmarks — the rock
+## pile and its cup mushrooms just off her right shoulder, the orange cap above
+## them, the twin clubs standing at the right edge. Nothing about it is round,
+## because it was measured rather than chosen.
+const SPAWN := Vector2(385.0, FLOOR_Y - 140.0)
 const WORLD_L := -1050.0
 const WORLD_R := 26000.0
 # anchor x of each generated climbing arc down the long walk
