@@ -72,7 +72,13 @@ const FORE_Z := 8
 const DRAINED_LIFT := 89
 
 const FLOOR_Y := 420.0
-const SPAWN := Vector2(-40.0, FLOOR_Y - 140.0)
+## FURTHER IN THAN THE EDGE (Advika, having watched the handover: *"spawn
+## curiosity a little further into the forest post the qoute scene"*). At -40
+## she landed a thousand pixels off the west wall, and the camera clamp
+## (`WORLD_L + 600`) put that wall on screen — so the first frame of Realm 3,
+## arrived at through a doorway and a card, was the end of the level. From here
+## the view is forest in both directions and the walk has somewhere to come from.
+const SPAWN := Vector2(1400.0, FLOOR_Y - 140.0)
 const WORLD_L := -1050.0
 const WORLD_R := 26000.0
 # anchor x of each generated climbing arc down the long walk
