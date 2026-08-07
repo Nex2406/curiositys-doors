@@ -2803,7 +2803,14 @@ func _build_camera() -> void:
 ## roughly 23 seconds of walking between encounters — long enough that the
 ## level forgot it had enemies. ~2700px is about 13s: still room to breathe,
 ## but the forest stays dangerous. The last two stay a pair.
-const SPORE_XS: Array[float] = [1600.0, 4300.0, 7000.0, 9700.0,
+## The first one is set BACK from the rest of the run's spacing on purpose
+## (Advika: *"curiosity spawns too close to the mushroom at the start — move it
+## a lil later so it doesnt come charging through when the player walks into the
+## realm"*). These break ground when she nears them, and moving SPAWN in to 385
+## left the first barely a screen away: she arrived out of a quote card and was
+## immediately being charged, before the opening card had even shown. 2400 puts
+## it outside its own wake radius at spawn, so the realm gets its quiet beat.
+const SPORE_XS: Array[float] = [2400.0, 4300.0, 7000.0, 9700.0,
 		12300.0, 12900.0]
 ## how many must die before the forest gives up its colour
 const MUSHROOMS_TO_KILL := 6
