@@ -278,6 +278,13 @@ func _ready() -> void:
 	# Divine Echo, on loop, from the moment she arrives (the loop flag lives in
 	# the .ogg's import settings, same as Realm 2's Moonlight).
 	_play_track(DIVINE_ECHO, "realm3_divine", 3.0)
+	# THE OPENING CARD, FIVE SECONDS IN (Advika). Not on arrival: she comes out
+	# of a quote card into this realm, and stacking a second card straight onto
+	# the first makes the doorway feel like a menu. Five seconds is long enough
+	# to see the forest breathing before the game says anything about it.
+	get_tree().create_timer(5.0).timeout.connect(func() -> void:
+		if is_inside_tree():
+			add_child(Realm3Card.open()))
 	# hazy blue-grey ambient — a soft cool dim over the world (the backdrop
 	# CanvasLayer is unaffected, so the mist keeps glowing behind everything
 	# and the lantern's ADDED light stays the one warm thing)
@@ -2886,7 +2893,14 @@ const DROP_FIRST := 5.0        # a beat of clean duel before the roof opens
 ## the pause between clearing a wave and the roof opening again
 const DROP_GAP_MIN := 2.6
 const DROP_GAP_MAX := 4.4
-const DROP_WAVE := 4           # and never more than this on the floor at once
+## HOW MANY COME DOWN, ROLLED FRESH EVERY WAVE (Advika: *"spawn 4 sometimes
+## then maybe 3 one round or 4 again — you need to be random w it just like the
+## void moth"*). A fixed four made the roof a metronome: after two waves she
+## knew exactly how much work was coming and could pre-commit to fighting or
+## running before any of them landed. Three or four takes that certainty away
+## without ever changing what a wave IS.
+const DROP_WAVE_MIN := 3
+const DROP_WAVE_MAX := 4       # and never more than this on the floor at once
 ## never dead on top of her, never off screen — it has to be a place she can
 ## see it land and choose to leave
 const DROP_NEAR_MIN := 190.0
@@ -2934,7 +2948,7 @@ func _tick_droppers(delta: float) -> void:
 	if _drop_t > 0.0:
 		return
 	_drop_t = _rng.randf_range(DROP_GAP_MIN, DROP_GAP_MAX)
-	for k in DROP_WAVE:
+	for k in _rng.randi_range(DROP_WAVE_MIN, DROP_WAVE_MAX):
 		# alternate sides so a wave always brackets her rather than piling up on
 		# one flank, which she could simply walk away from
 		_spawn_dropper(1.0 if k % 2 == 0 else -1.0)
@@ -3215,6 +3229,13 @@ func _spawn_mirror() -> void:
 		_mirror.health = 80
 	# it arrives, is looked at, and only then is allowed to move
 	_mirror.arrive(2.6)
+	# THE MIRROR CARD, ONE SECOND AFTER IT STANDS UP (Advika). Deliberately not
+	# on the drain and not on the kill: the level names what she is fighting only
+	# once she has seen it, so the card confirms a thing she has already begun to
+	# suspect rather than spoiling it.
+	get_tree().create_timer(1.0).timeout.connect(func() -> void:
+		if is_inside_tree():
+			add_child(Realm3Card.mirror()))
 	# R3_END_AUTO=1 — nobody is holding the controller in a headless run, so
 	# the fight has to end itself for the ending after it to be provable.
 	if OS.get_environment("R3_END_AUTO") != "":
@@ -3309,35 +3330,20 @@ func _on_mirror_died() -> void:
 ## crosses back, so the two events are one event: the forest lives, and the
 ## forest lets her go.
 func _open_the_way() -> void:
-	if _exit_root == null or _curi == null:
-		return
-	var side: float = 1.0 if _curi.global_position.x < WORLD_R - 2000.0 else -1.0
-	_exit_root.position = Vector2(_curi.global_position.x + side * ENDING_DOOR_GAP,
-			FLOOR_Y + 8.0 - _exit_lift)
-	_exit_root.modulate.a = 0.0
-	print("[R3] the way out opened at x %.0f (she is at %.0f)"
-			% [_exit_root.position.x, _curi.global_position.x])
-	var vis: Node2D = _exit_root.get_node_or_null("Visual")
-	var glow: PointLight2D = null
-	if vis != null:
-		glow = vis.get_node_or_null("Glow")
-	var base_energy: float = glow.energy if glow != null else 1.1
-	if glow != null:
-		glow.energy = 0.0
-	var tw := create_tween()
-	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	# slow: this is the last thing the level asks her to walk toward
-	tw.tween_interval(2.4)
-	tw.tween_property(_exit_root, "modulate:a", 1.0, 4.5)
-	if glow != null:
-		tw.parallel().tween_property(glow, "energy", base_energy, 5.5)
-	# it is not a "Return" any more — there is nothing to go back to. The
-	# prologue's last two words were "go on", and this is the one place in the
-	# game they can be paid off.
-	_exit_door.prompt_text = "[Y] Go on"
-	for c in _exit_door.get_children():
-		if c is Label:
-			(c as Label).text = "[Y] Go on"
+	# EXCEPT IT DOES NOT ANY MORE (Advika: *"get rid of the purple door once we
+	# kill the boss"*). It was built out of Realm 2's art — violet, in a realm
+	# that has spent this whole fight being teal — and standing it up at the one
+	# moment the colour comes home put the wrong palette in the last frame of
+	# the realm. What replaces it is the black screen Advika is writing.
+	#
+	# It is FREED, not hidden: the walk's own copy is the same node, so leaving
+	# it invisible-but-present would leave a door she can still walk into.
+	if _exit_root != null and is_instance_valid(_exit_root):
+		_exit_root.queue_free()
+	_exit_root = null
+	_exit_door = null
+	_at_exit = false
+	print("[R3] the boss is dead, the colour is home, and there is no door")
 	# the headless run has no hands: it presses the last button itself, so the
 	# closing card is proven to build rather than assumed to
 	if OS.get_environment("R3_END_AUTO") != "":
