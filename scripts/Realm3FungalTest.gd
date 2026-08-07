@@ -71,6 +71,12 @@ const FORE_Z := 8
 ## legs while she and the mirror are riding above the drain
 const DRAINED_LIFT := 89
 
+## REALM 3'S TWO TRACKS. Divine Echo carries the living forest; Whispers Beyond
+## takes over as it drains and holds through the boss. `AudioManager.play_ambient`
+## already crossfades — asking for the second one IS the fade-out of the first.
+const DIVINE_ECHO := "res://assets/audio/realm3_divine_echo.ogg"
+const WHISPERS_BEYOND := "res://assets/audio/realm3_whispers_beyond.ogg"
+
 const FLOOR_Y := 420.0
 ## FURTHER IN THAN THE EDGE (Advika, having watched the handover: *"spawn
 ## curiosity a little further into the forest post the qoute scene"*). At -40
@@ -269,6 +275,9 @@ func _ready() -> void:
 	_build_echo()
 	_build_drain()
 	_build_ui()
+	# Divine Echo, on loop, from the moment she arrives (the loop flag lives in
+	# the .ogg's import settings, same as Realm 2's Moonlight).
+	_play_track(DIVINE_ECHO, "realm3_divine", 3.0)
 	# hazy blue-grey ambient — a soft cool dim over the world (the backdrop
 	# CanvasLayer is unaffected, so the mist keeps glowing behind everything
 	# and the lantern's ADDED light stays the one warm thing)
@@ -3092,6 +3101,12 @@ func _begin_shift() -> void:
 	# the air stops living with it — the spores and glow motes let go. Each
 	# bank's own alpha is remembered first: they are seeded random (0.10-0.15)
 	# and killing the boss puts the air back, which it cannot do from zero.
+	# THE TRACK TURNS WITH THE FOREST. Divine Echo has been looping since she
+	# arrived; it leaves as the colour does, and Whispers Beyond is all the way
+	# up before the thing in the mirror is standing there. The crossfade is
+	# deliberately shorter than the 9s sweep — the new track has to be
+	# ESTABLISHED when the boss spawns, not arriving with it.
+	_play_track(WHISPERS_BEYOND, "realm3_whispers", 6.5)
 	_fog_alpha.clear()
 	for f in _fogs:
 		_fog_alpha.append(f.modulate.a if is_instance_valid(f) else 0.0)
@@ -3115,6 +3130,17 @@ func _begin_shift() -> void:
 ## can no longer be greyed BY it, it is greyed by hand: each sprite's own
 ## colour, flattened to its luminance and pushed cold, which is what the shader
 ## does to everything else. Handing it back at the end is just the inverse.
+## Ambient by PATH, not `preload`. These two tracks are dropped into
+## `assets/audio/` by hand, and a `preload` of a file that is not there yet is a
+## PARSE error — it takes the whole realm down on a cold checkout and on CI. A
+## quiet realm is a far smaller failure than one that will not boot.
+func _play_track(path: String, track_name: String, fade: float) -> void:
+	if not ResourceLoader.exists(path):
+		push_warning("[R3] ambient track missing, running silent: %s" % path)
+		return
+	AudioManager.play_ambient(load(path), track_name, fade)
+
+
 func _drain_front_growth(on: bool) -> void:
 	if on and _front_base_tint.is_empty():
 		for s in _front_growth:

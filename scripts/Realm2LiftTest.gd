@@ -1594,11 +1594,18 @@ func _enter_realm3() -> void:
 	# names where it is from, and both belong on the card.
 	q.attribution = "(Written by Silence – Advika Kohli)"
 	q.next_scene = "res://scenes/realms/Realm3FungalTest.tscn"
-	# Realm 3 has no ambient bed of its own yet, so there is nothing to cross
-	# into — Moonlight simply bleeds out under the card and the fungal cavern is
-	# arrived at in silence. When R3 gets its track this is where it gets named.
-	q.next_track = null
-	q.next_track_name = "realm3"
+	# DIVINE ECHO COMES UP UNDER THE CARD (Advika: *"the fade in of first audio
+	# will start with the qoute screen itself"*). `QuoteTransition` already owns
+	# this beat — Moonlight bleeds out over 11s while the next track rises from
+	# 4s over 8s, so for most of the card both are sounding and she is already
+	# inside Realm 3's sound before she can see it.
+	#
+	# The name has to match the one `Realm3FungalTest._ready()` asks for, or the
+	# realm restarts the track from zero the instant it loads. `play_ambient`
+	# no-ops on a same-named track that is already playing, which turns that
+	# call into a safety net: booting straight into R3 still gets music.
+	q.next_track = load("res://assets/audio/realm3_divine_echo.ogg")
+	q.next_track_name = "realm3_divine"
 	get_tree().root.add_child(q)
 
 
