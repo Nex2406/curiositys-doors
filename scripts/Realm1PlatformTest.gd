@@ -148,6 +148,7 @@ var _static_obs: Array = []
 var _jade_rng := RandomNumberGenerator.new()
 var _hud: CanvasLayer
 var _lives_hud: CanvasLayer
+var _lantern: LanternHUD
 var _jade_total: int = 0
 var _jade_got: int = 0
 ## playable layer
@@ -296,6 +297,12 @@ func _ready() -> void:
 		var z: float = 1.5 if _sit == "door" else 2.4
 		_cam.zoom = Vector2(z, z)
 		_cam.position = sit_focus
+	# PLAT_SHOT=<path> — capture a frame and quit. Every other realm has had one
+	# of these for weeks; this one did not, which meant any change to the cave
+	# could only be judged by opening it and walking. PLAT_SHOT_AT=<seconds>
+	# holds first.
+	if OS.get_environment("PLAT_SHOT") != "":
+		_realm1_shot(OS.get_environment("PLAT_SHOT"))
 	if OS.get_environment("PLAT_CAM_X") != "":
 		_cam.position.x = float(OS.get_environment("PLAT_CAM_X"))
 	if OS.get_environment("PLAT_CAM_Y") != "":
@@ -660,6 +667,14 @@ func _place_jade(a: Node2D, pname: String) -> void:
 
 
 ## Build the two HUD counters (jade + eye-lives), recoloured to the cave palette.
+func _realm1_shot(path: String) -> void:
+	var wait: float = float(OS.get_environment("PLAT_SHOT_AT"))
+	await get_tree().create_timer(wait if wait > 0.05 else 1.2).timeout
+	get_viewport().get_texture().get_image().save_png(path)
+	print("PLAT SHOT saved ", path)
+	get_tree().quit()
+
+
 func _setup_hud() -> void:
 	_hud = PLAYER_HUD.instantiate()
 	add_child(_hud)
@@ -673,6 +688,23 @@ func _setup_hud() -> void:
 	var eye_mat := _recolor_mat(EYE_LO, EYE_HI, 2.0)
 	for eye in _lives_hud._eyes:
 		eye.material = eye_mat
+
+	# HER HEALTH IS HER LANTERN, IN THE CAVE TOO (Advika). Realms 2 and 3 have
+	# carried this since the red strip was cut; Realm 1 still showed only the
+	# three lifeline eyes, so the damage INSIDE a life — the golem charges, the
+	# fall — had no read at all. Same object, warmed to this cave's ember rather
+	# than re-authored.
+	_lantern = LanternHUD.new()
+	_lantern.hud_position = Vector2(40, 104)
+	_lantern.hue = Color(1.0, 0.66, 0.30)
+	_lantern.start_hidden = false
+	var lan_layer := CanvasLayer.new()
+	lan_layer.layer = 20
+	add_child(lan_layer)
+	lan_layer.add_child(_lantern)
+	# NOTE the wiring is NOT here — `_setup_hud` runs from `_ready` long before
+	# the level builds Curiosity, so `_player` is still null at this point. It is
+	# connected where she is actually created.
 
 
 func _on_jade_collected() -> void:
@@ -985,6 +1017,16 @@ func _setup_play() -> void:
 	if pcam != null:
 		pcam.enabled = false        # the level's clamped camera drives the view
 	_player.died.connect(_on_player_died)
+	# the lantern is built in `_setup_hud` but can only be WIRED here, once she
+	# exists. Pushing the current value matters: Curiosity emits
+	# `health_changed` from her own `_ready`, which `add_child(_player)` above
+	# has already run — so the one emit that says "full" is always missed and
+	# the lantern would sit at its default fill for the whole cave.
+	if _lantern != null and _player.has_signal("health_changed"):
+		_player.health_changed.connect(func(h: int, m: int) -> void:
+			if _lantern != null and is_instance_valid(_lantern):
+				_lantern.set_health(h, m))
+		_lantern.set_health(_player.health, _player.max_health)
 	# boulder golems along the walk — dormant/camouflaged until Curiosity nears,
 	# then they roll-charge her. GOLEM_SIT=<x> parks the FIRST one where a contact
 	# harness is looking, and drops the rest, so a shot stays readable.

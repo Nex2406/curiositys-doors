@@ -1,5 +1,238 @@
 # Current State (auto-narrative — update at end of every session)
-_Last updated: 2026-08-02_
+_Last updated: 2026-08-07_
+
+## 2026-08-07 (pt. 2) — REALM 3'S LOOK, REDONE (UNCOMMITTED)
+Advika, both levels open side by side: *"level2 is so maximalist flowy cohesive
+looks perfectly built and then level 3 is so subpar"*, plus two rules —
+**only the R3 pack** (the R2 moss stays, for the floor only) and **R3 and R2 are
+different realms**. So this took Realm 2's CRAFT, not its look: the cavern is
+still teal, still roofed, still made of mushrooms.
+- **THE VALUE LAW (`_depth`)** is the whole fix. Realm 2 coheres because depth
+  is the only thing value means in it. Realm 3 had that exactly backwards — its
+  giant background caps wore saturated mint hues and additive auras, so the most
+  distant objects were the BRIGHTEST on screen; its ceiling teeth were painted
+  near-white and hung down as fangs; its boulders were pale grey; and the near
+  layer was flat black. `_depth(t)` is now the only tint source in the
+  environment (`SIL_FAR` / `SIL_MID` / `CAP_HUES` deleted), with two named
+  off-ramp values — `PLAY_STONE` / `PLAY_GROWTH` — because the layer she is
+  standing on has to read and on a pure ramp "here" means black.
+- **A THIRD BAND, and it is the loudest.** `_hills_near` at cam*0.32 carries the
+  big masses a few metres behind her, with the haze glimpsed between them. R3's
+  nearest background used to be 600px away and the same brightness as the sky.
+- **EVERY SHAPE CROSSES THE FRAME NOW (`_column`).** R3's background was
+  horizontal ellipses stacked on horizontal ellipses — every shape agreed with
+  the frame's own direction, which is what makes a background read as wallpaper.
+  `fungalfrond` 5-15 are single curving tendrils and at 6-12x they are leaning
+  trunks; `fungalhill` 2/5 are radial bursts and one on top is the crown. Built
+  from R3's pack, so it reads as giant fungus, not as Realm 2's trees.
+- **`_ember`** — this realm's own amber-capped glowers standing at every depth,
+  with breathing additive halos. Realm 2 stitches its bands with gold points
+  seen near and far; R3 cut its fireflies (07-15) and never replaced what they
+  were doing, so its bands had nothing in common but hue. Not insects.
+- **SHE WALKS THROUGH THE MOSS NOW, AND THE BUG WAS DEAD CODE.** `_walk_fringe()`
+  — the builder whose entire job was drawing growth across her shins, carrying
+  three paragraphs of notes about getting exactly that right — **was never called
+  from `_ready()`**. That is why she read as standing ON the moss no matter what
+  got tuned. Deleted; its job belongs to `_build_foreground`'s front row.
+- **The bottom third of the frame was a black rectangle** — floor at y 420, view
+  bottom at 770, nothing in between but soil. `BANK_ROWS` is three courses of
+  fungal mass measured against her body (her knee is near y 372), the nearest
+  crossing her shins and the deepest running off the bottom edge. One builder,
+  both problems: the growth she wades in IS the frame's lower mass.
+- **The floating black boxes are gone.** `_hang_chunk` / `_rim_platform` were
+  `_fill_rect` polygons with pebble strips on four straight edges — they read as
+  untextured black slabs, and once rimmed properly, as picture frames (a straight
+  run of stone along a straight edge still describes a rectangle). They are piles
+  of `fungalstoneb` boulders now (`_rock_course`), no rectangle anywhere.
+- **The ceiling was lit backwards** — its deep curtain was the darkest row and
+  its nearest hanging row the brightest, so the roof advanced at you and glowed
+  along the top of every frame.
+- **Gates:** `--headless --import` green, Web export green, `R3_BOOT` and
+  `R3_BOSS` both assemble. Verified by screenshot at nine x positions plus a
+  roof view, not by argument.
+- **OPEN:** density is even end to end — Realm 2 has groves and clearings and
+  this still reads the same on every screen. And the drained/boss palette has
+  not been re-judged against the new ramp.
+
+### later the same day — the notes that came from playing it
+- **THE FLOOR IS A FIELD, NOT ROWS.** The foreground was four bank rows; every
+  clump in a row topped out inside the same 45px window, so each row read as a
+  ruled stripe and the dead air between one row's bodies and the next row's tops
+  was a visible gap. Advika circled three at once. There are no rows now: every
+  clump draws its own depth from a continuous range and its top, base, z and
+  value all slide with that one number, plus a guaranteed continuous sweep at
+  her shins so there is no x where she can read as standing ON the moss.
+- **`band_ground.png` IS OUT.** Two tall fuzzy columns she told me to delete
+  were not placed by anything — they are PAINTED INTO Realm 2's deep-mass strip.
+  Found with `R3_ID=1`, a forensic pass that flat-colours every sprite by art
+  family (magenta = Realm 2). The deep mass is R3's own mounds now.
+- **THE ROCK MASSES ARE ALL GONE** — two hanging chunks, three floating ledges.
+  They broke her own July law (platforms are mushrooms; rock is decor, nothing
+  stands on it) and cost three rebuilds. The high path is giant mushrooms.
+- **MUSHROOM HUES**, one family: a narrow teal-to-moss arc plus the lit species'
+  amber. The first pass gave every species its own colour and she was right that
+  a rainbow is the opposite of cohesion. `_hue()` normalises to luminance 1
+  before multiplying, so colour never touches the depth ramp.
+- **THE LIGHT BUDGET WAS SPENT IN THE FIRST QUARTER.** 24 lights, granted in
+  call order, and the zone builders run before the long walk — so everything
+  past x 6800 had no lights at all. It is spatial now (~31, x -430..24949).
+- **ODDITIES** (`_build_oddities`): arch / fallen giant / cradle / curtain /
+  cairn, one every ~3400px, never near a climbing arc. Each is a visible load
+  path. `_lean_stalk` plants a leaning sprite by its FOOT — Godot rotates about
+  the centre, which is why three earlier attempts left rocks apparently floating.
+- **THE BOSS IS HER FRAMES.** `evil_curiosity/` art is out of the fight: it was
+  drawn separately, so its jump WAS a different jump and no metadata matching
+  could fix that. It plays `curiosity_frames.tres` with a recolour shader.
+  Red eyes are FOUND in her art (bright + desaturated); the lantern is crushed
+  dark by an 8-tap neighbour test, because its flame keeps a white-hot core as
+  neutral as her eyes. No outline — tried, rejected on sight.
+- **It walked, not ran.** Her walk_speed is 200 and run_speed 210, and `run` is
+  her DASH clip — the boss picked animations off a 168 threshold so it sprinted
+  the entire fight. And it now gives ground after every swing (`disengage_time`).
+- **CEILING DROPPERS** (`Sporeling.drop_from`): during the boss fight only, they
+  grip the roof, fade in, shiver, then fall. Same species, new entrance. Max 3
+  alive, ~6s in, every 5-8s. `R3_DROP=0` off.
+- **The lantern health HUD is in Realm 3**, and starts full — Curiosity emits
+  `health_changed` from her own `_ready`, which `add_child` runs before the
+  connection exists, so the one emit that said "full" was always missed.
+- **OPEN:** the boss still MIRRORS rather than OBSERVES. Advika's correction —
+  it should fight at the player's level and target their blind spots, not copy
+  their numbers. `PlayerProfile` already measures the right things; only DECIDE
+  uses them that way. Next up: quote cards + audio.
+
+
+## 2026-08-07 — THE BOSS FIGHTS BACK: it has been reading you all level (UNCOMMITTED)
+Realm 3's phase 3. The mirror used to fade in and stand there; it now fights,
+and what it fights like is a description of the player. Working tree, import
+green, Web export green, nothing committed.
+- **`scripts/Mirror.gd`** — it is HER. `evil_curiosity` frames, and its scale,
+  collider and movement constants are read off the live hero at spawn
+  (`build_from`), so retuning Curiosity retunes the boss and the two can never
+  drift apart. No lantern: she stays the only warm thing on screen. A cold rim
+  light cuts the charcoal silhouette out of the drained forest, and the red
+  eyes FLARE through every windup — the tell is the only red in the level.
+- **Three stages, one per third of its health.** **MIMIC**: it fights with the
+  player's own numbers — their engagement distance, their swing cadence, their
+  jump appetite, their closing speed (a player who never jumps fights something
+  that never jumps). **TIME**: it reads her swing as it happens (off her
+  animation — her state enum is private), gives ground through it and comes
+  back into the recovery. **DECIDE**: the numbers turned around — it steps into
+  the side they always break toward, closes when they habitually back off, and
+  swings inside their own cadence.
+- **THE TAPE IS DELETED.** The first build replayed recorded snippets of the
+  player's movement at them. Advika: "it doesnt replay ur recorded movement, it
+  basically analyses how u play and attacks u on basis of that." The clip ring
+  buffer is gone from `PlayerProfile` entirely; what replaced it is more
+  measurement (`air_fraction`, `attacks_per_minute`) and the live swing-read.
+- **Found by soak, not by theory:** a boss that honoured a cautious player's
+  190px spacing never once came at them — it stood at exactly arm's length for
+  two thirds of its health. Their RHYTHM is now the drumbeat (when it comes in)
+  and their spacing only says where it waits between beats.
+- **The clock stops when the forest drains.** Otherwise a player who spent ten
+  honest minutes finding six mushrooms is killed by the timer during the fight
+  they earned. It freezes on screen mid-fall rather than disappearing.
+- **Killing it gives the forest back** — `realm_drain.gdshader` is run
+  BACKWARDS over its body, the front crossing home the other way, each fog
+  bank restored to the alpha it was seeded with.
+- **Numbers:** 320 hp (8 of her swings), its blow costs her 25 (4 = one eye),
+  reach 118px measured against her own. It gloats on a landed hit — the
+  `celebrate` frames, unused since import.
+- **Rigs:** `scenes/realms/realm3/MirrorTest.tscn` is the fight alone — three
+  mushrooms for it to read you by, then the real handoff in miniature. `B`
+  skip, `1/2/3` force a stage, `F` wears a FAKED player (rusher / camper /
+  spammer) so all three bosses can be seen back to back, `K`/`L` chip it, `TAB`
+  the read. `MIRROR_SOAK=<s>` runs the whole fight headless against a player
+  who really swings; `R3_BOSS=<x>` boots the handoff inside the real level;
+  `R3_BOOT=<s>` now takes a hold time.
+- **THE READ SPANS THE WHOLE GAME** (Advika, end of session): not the forest.
+  `PlayerProfile` now ATTACHES ITSELF to whatever is in the `player` group in
+  any scene, so the cave and the sky-fight are read too and no realm has to be
+  wired up. The reset that used to run on entering Realm 3 is gone — it threw
+  away two realms of evidence; the only wipe left is `MainMenu` BEGIN, because
+  a new run is a new person.
+- **She is BIGGER in Realm 3 only** — `HERO_SCALE` 0.33 against the 0.24 every
+  other realm uses. Nothing about the platforming moves with it (speed, gravity
+  and the 138px jump are world units and do not know her draw scale); her
+  collider does, and so do the sporelings, which are pinned to two-thirds of
+  her by her own law. The mirror reads its size off her, so they stay identical.
+- **OPEN:** the TIME stage's dodge-then-punish is the one thing headless cannot
+  judge. And the fight has no ending beat yet beyond the colour returning.
+
+## 2026-08-03 — REALM 3 HAS A CONCEPT: SHE IS THE ENEMY (UNCOMMITTED)
+Design + the day's rejections in [`docs/SKETCHBOOK.md`](SKETCHBOOK.md)
+(2026-08-03). Everything below is in the working tree, import green, nothing
+committed and no Web export run yet.
+- **`scripts/Echo.gd`** replaces yesterday's `Follower.gd` (deleted). It is a
+  1200-frame ring buffer of her own position/facing/state, replayed `delay`
+  seconds late — no AI, no chase. Before there is that much history it waits at
+  the oldest sample, so it comes out of the spot she came in at. It cannot take
+  her until she has been >500px away once (else it "catches" her on frame one).
+- **THE CLOCK AND THE SHADOW ARE ONE.** `LEVEL_SECONDS` 900 (15:00, Advika).
+  The same 0→1 drives `Echo.pressure`: delay 12s at the start, **0.4s when the
+  clock dies**. Running out of time IS being caught — there is no second fail
+  rule to explain. The readout is centre-top, realm teal, and bleeds to the
+  sporelings' red with a pulse under 60s. `R3_CLOCK_SECS` shortens it for tests.
+- **The echo gate** (`_build_echo_gate`, clear band x 6220–6900): a boulder
+  wall — STONE, because her own law says mushrooms are what you stand on and
+  rock is what you never can — plus a cold-glowing plate at 6220 and a cap at
+  6620 that sinks only while something stands on the plate. `_pressing()` does
+  not care whether that is her or the echo. **However long she stood there is
+  how long the door stays open.** Geometry is measured, not guessed: she jumps
+  138px (356²/2·460), so the cap is 128px up when down and 300px when up.
+- **`scripts/Sporeling.gd`** — one species, evenly spaced 760px from x 1250,
+  phase stepped in fifths so a stretch ripples. Underground and un-hittable
+  until she is within 540px, then it BREAKS GROUND (squash-overshoot tween +
+  soil puff) and every hop after that is aimed at whoever is nearest — her or
+  the echo, it does not tell them apart. Beady red eyes: a hard bead in a small
+  bloom. Group `enemies` + `take_damage` + layer 4, so her existing swing kills
+  them. `R3_SPORE=0` off.
+- **The meadow's ruled line, fixed** — Advika, playing live: "i can see the
+  outline and a clear line where they end." Every clump in `_floor_mat` bottomed
+  out inside a 28px band (`FLOOR_Y+6..34`), so thousands of sprite feet landed
+  on one horizontal cut. Depth now spans `FLOOR_Y+2..118` plus its own ±jitter.
+- **Deleted on her word:** a villain mocked out of `mushroomcap9` (brim = hood,
+  lit stem = face). She wants the background mushroom left alone. What survives
+  is the read: red eyes in shadow under a brim.
+- **Harnesses:** `R3_START_X` boots her straight at whatever is being tested
+  (the gate is 6km down the walk), `R3_FOLLOW=0`, `R3_DELAY`, `R3_SPORE=0`,
+  `R3_CLOCK_SECS`, plus the existing `R3_SHOT` / `R3_SHOT_X` / `R3_SHOT_CAMY`.
+- **NEXT:** the boss — her at full size, no delay, it stops copying and starts
+  deciding. Advika draws it in LAYERS, not frames.
+
+## 2026-08-02 (pt. 2) — SOMETHING WALKS BEHIND HER (Realm 3, UNCOMMITTED)
+Realm 3 got its first idea that Advika actually likes. She wants the level
+**time-bound**; out of eight pitches she took **spore tide** + **someone's
+following you**, and loved the shadow on sight. Design + the day's rejections
+are in [`docs/SKETCHBOOK.md`](SKETCHBOOK.md) (2026-08-02) — read that first.
+- **`scripts/Follower.gd`** (`class_name Follower`) — one rule: IT NEVER RUNS.
+  Constant 150px/s walk (she walks 200, so moving gains ground slowly);
+  `close_speed` 205 while she stands still, which is the whole feeling — it
+  eats the ground you stop giving it. `max_gap` 1400 means it never falls
+  further behind than one screen, so it is ALWAYS there — and that catch-up
+  only ever happens off camera, so she never witnesses it break its own rule.
+  Contact emits `caught` → `_die` (loses an eye, resets it to the edge).
+- **Look:** Curiosity's own `curiosity_frames.tres` walk at `speed_scale` 0.72,
+  scaled 0.29 against her 0.24 (shaped like her, wrong size). Tint lerps from
+  the realm's fog haze at distance to near-black up close, alpha 0.55→1.0, and
+  a **cold** PointLight2D (`COLD`, no gold in it) rises 0.30→0.95 as it closes:
+  warm lantern is her, cold is not. Placeholder, but the two pale eyes coming
+  through the darkened frame read well enough that it may be the answer.
+- **Two bugs found by screenshot, not by theory:** the frames are body-centred,
+  so at `floor_y` it stood buried to the chest (`body_lift` 52); and a hazed
+  dark tint at alpha 0.22 over dark grass was flatly invisible.
+- Wired into `Realm3FungalTest.gd` (`_build_follower`, reset in `_die`).
+  `R3_FOLLOW=0` A/Bs against the quiet forest, `R3_FOLLOW_GAP` sets the leash.
+- **OPEN, answering next session:** she says pure evasion is boring and wants
+  the shadow to be a mechanic. Six options pitched, unanswered — my pick was
+  **use it as a key** (it walks through terrain, so you let it break a blocked
+  path for you) + **hide under glowing caps**.
+- **Final boss = new art Advika draws**, in LAYERS not frames (~8 painted
+  pieces, code-animated) so it costs one illustration session, not the
+  wizard's 96-frame months. What it IS, undecided.
+- **The law that now governs R3's ending:** the player has NOT read the book.
+  No book vocabulary on screen, ever. The 07-16 "Heart of the Hollow" layer did
+  not survive contact — she didn't recognise the name from her own spec.
+- Nothing committed. Working tree carries `scripts/Follower.gd` + the R3 edits.
 
 ## 2026-08-02 — THE DOORWAY WRITES ITSELF DOWN, AND THE CAVE STOPS BEING SAFE
 The Realm 1 → Realm 2 doorway was rebuilt beat by beat against Advika's eye, and the

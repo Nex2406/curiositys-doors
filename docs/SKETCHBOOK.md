@@ -9,6 +9,91 @@ Rules:
 
 ---
 
+## 2026-08-03 — R3's concept landed: YOU ARE THE ENEMY, on a 15-minute clock
+
+Advika: "lvl 3 needs to be better in terms of concept idk what ur gonna do but
+do it." Then, unprompted, mid-build: **"should we make curiosity himself the
+enemy in this level? like the player fights itself."** Same answer from both
+ends — locked.
+
+- **The echo.** The thing behind her is a recording of her own path, replayed a
+  few seconds late. Not AI, not a chase. It walks where she walked, so nowhere
+  she has already been is safe, and it arrives on her schedule.
+- **It is also the only other pair of hands she has.** The gate proves it: a
+  cap that only sinks while something stands on a plate she cannot reach from.
+  She stands there, walks on, and waits for herself to arrive. **However long
+  she stood on it is how long the door stays open.**
+- **THE CLOCK IS THE SHADOW.** Advika: "i want to time lvl 3, 15 mins, cuz then
+  the pressure would be ON." Rather than a separate fail rule, the same value
+  drives the echo's delay: 12s behind at 15:00, standing on her at 0:00.
+  Running out of time IS being caught. One pressure, two faces.
+- **The boss = her at full size**, no delay — it stops copying and starts
+  deciding. Still to build.
+
+**The mushrooms (her spec, three messages, each one a correction):**
+1. "can we make mushroom enemys" → built from the pack, no new art needed.
+2. "pop and bounce throughout the level randomly, uniform and nice, red eyes"
+   → one species: same size, same hop, same rhythm, evenly spaced, only the
+   PHASE stepped so a stretch ripples instead of pulsing in lockstep.
+3. "LEAVE THE LARGE MUSHROOM IN THE BG ALONE. I ONLY WANT FRESH ONES TO SPROUT
+   OUT FROM THE GROUND, BEADY RED EYES, JUMP AND ATTACK TOWARDS CURIOSITY" →
+   they are not in the level until she nears them; they break ground in front
+   of her, then every hop is aimed at her. Eyes are a hard bead in a small
+   bloom, not a soft glow. Red is the realm's only red.
+
+**Killed on her word:** a villain mocked up out of `mushroomcap9` (the big
+background flat-cap — its brim reads as a hood, its lit stem as a face). She
+does not want the background mushroom used. The mock is deleted, not parked.
+The idea that survives from it: red eyes in shadow under a brim.
+
+**Bug she caught by eye, playing live:** "i can see the outline and a clear
+line where they end." Every meadow clump bottomed out inside a 28px band, so a
+few thousand sprite feet landed on what reads as one ruled line across the
+level. Depth now spans ~130px with its own jitter on top.
+
+## 2026-08-02 — R3: time-bound. Advika picked SPORE TIDE + SOMEONE'S FOLLOWING YOU
+
+Advika opened with "I wanna work on lvl3, thinking something time-bound" and it
+took most of the session to get out of the way and let that be the answer.
+
+**What she picked, out of eight pitched ideas:**
+- **Spore tide** — a rolling wall of glowing spores comes down the corridor
+  behind her. Beautiful, slow, does not stop. Fits a sideways level.
+- **Someone's following you** — one hooded figure far back in the fog. Walks,
+  never runs. Never catches up while she keeps moving. Stop to look and it is
+  closer than it should be.
+
+**The fusion (mine, not yet her word):** the follower is the SLOW version and
+the tide is the FAST version of one threat. First half of the forest = just
+someone back there, no damage, no fight — the level teaches *keep moving*
+without a word. Then the boss. Then the tide, and the same forest becomes a
+flat sprint with the figure somewhere inside it.
+
+**Settled by her this session:**
+- The forest does not need a puzzle. It is the calm that gets ruined.
+- **Final boss = something new she draws** (chose it over reusing the wizard or
+  a gauntlet of everything, knowing the cost). My one condition, accepted:
+  drawn in LAYERS, not frames — the wizard's 96 frames are why he took months;
+  ~8 painted pieces animated in code instead. Not yet decided *what* it is;
+  the options on the table were (1) Curiosity, enormous — same cloak, same
+  eyes, wrong scale, (2) the travelers fused into one mass, (3) something
+  rooted and huge. I lean 1: cheapest to draw and legible with zero lore.
+
+**HARD CONSTRAINT she set, applies to the whole ending:** the player has not
+read the book. No book vocabulary ever reaches the screen — not the Hollow,
+not Grief, not the archive, not the Tower. The book stays as the skeleton that
+makes it cohere; the player gets the feeling, never the glossary. A reveal only
+lands if it changes the meaning of something the player already DID.
+
+**Rejected today, explicitly:** a 17-jade giving-back ceremony at the Heart
+("too complicated"). And "the Heart of the Hollow" itself did not survive
+contact — she did not recognise the name from her own 07-16 spec, which is a
+signal about that whole locked-in R3 story layer, not about her memory.
+
+**Process note, mine:** she asked to *work* and I answered with four-option
+menus three times running. When someone is stuck, build the smallest real
+thing and let them look at it.
+
 ## 2026-07-22 — R1 idea sweep ("needs to top realm 2"; golems + 45 jades exist)
 
 Advika asked for ideas that make R1 beat R2's spectacle. Constraint: reuse

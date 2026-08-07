@@ -244,8 +244,14 @@ const GLASS_W_R := 60.0 / 84.0
 const GLASS_H_R := 0.645
 const GLASS_TOP_R := 0.235
 ## how much of the glass the oil occupies at FULL health — the remainder is
-## the air the flame stands up in
-const OIL_MAX_R := 0.58
+## the air the flame stands up in.
+##
+## 0.58 was too mean and Advika read it correctly on sight: a lantern that is
+## barely over half full at 100% health does not say "full", it says "you are
+## already hurt". The flame needs headroom, but it needs far less than 42% of
+## the glass — it stands about a fifth of the glass tall. 0.82 leaves it room
+## and still reads as brim-full.
+const OIL_MAX_R := 1.0
 
 
 func _glass_rect() -> Rect2:
@@ -335,7 +341,17 @@ func _draw() -> void:
 				Color(OIL_TOP.r, OIL_TOP.g, OIL_TOP.b, 0.9))
 
 	# ---- flame, standing on the oil ----
-	_draw_flame(Vector2(w * 0.5, oil_y - 1.0), glass)
+	# At full the oil now fills the glass to the brim (Advika), so the flame has
+	# no surface left above it to stand on. It is floated inside the top of the
+	# glass instead of on the oil line — the oil reads full, and the flame stays
+	# within the lantern instead of poking out of the roof of it.
+	# AT THE BRIM THERE IS NO FLAME (Advika). Full means the glass is solid oil
+	# — a flame drawn over it has nothing to stand on and reads as a smear on
+	# the glass. It appears the moment the level drops, which also makes the
+	# first hit she takes visible as something igniting rather than as a bar
+	# ticking down.
+	if _oil < 0.985:
+		_draw_flame(Vector2(w * 0.5, oil_y - 1.0), glass)
 
 	# ---- two vertical brass bars over the glass ----
 	var bx: float = glass.size.x / 3.0

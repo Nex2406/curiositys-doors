@@ -1027,6 +1027,10 @@ func _commit() -> void:
 ## It goes in as our SIBLING under the tree root, not as our child, so it survives being
 ## handed the job of freeing us — which it does the moment its backdrop reaches full black.
 func _start_prologue() -> void:
+	# A NEW RUN IS A NEW PERSON. The profile that Realm 3's boss is built out of
+	# reads the whole game, so BEGIN is the one place it is allowed to be wiped
+	# — never on entering a level, or the boss would only ever know the forest.
+	PlayerProfile.reset()
 	var menu_root := get_node_or_null("Menu")
 	if menu_root != null:
 		menu_root.visible = false   # the entries go at once; only the painting dims out

@@ -7,6 +7,49 @@ Format: `date | what shipped | what didn't work | next 3 safe candidates`
 
 ---
 
+## 2026-08-07 — Phase 3: the mirror stops standing there and starts fighting you
+
+**Shipped (working tree, NOT committed):** `scripts/Mirror.gd` — the Realm 3
+boss, playable end to end. It is her: evil_curiosity frames, her physics
+constants and collider read off the live hero at spawn, her reach. Three
+stages on its health thirds — **MIMIC** (fights with the player's own numbers:
+their spacing, cadence, jump appetite, closing speed), **TIME** (reads her
+swing live off the animation, gives ground through it, comes back into the
+recovery), **DECIDE** (steps into their habitual dodge side, closes when they
+habitually retreat, swings inside their cadence). 320 hp = 8 of her swings; its
+blow costs her 25. Wired into `Realm3FungalTest` in place of the placeholder
+sprite; the clock now FREEZES when the forest drains (a ten-minute honest run
+was otherwise killed by the timer mid-fight); killing it runs the drain shader
+BACKWARDS so the colour comes home. Isolation rig
+`scenes/realms/realm3/MirrorTest.tscn` — three mushrooms to be read by, then
+the real handoff; `B` skip, `1/2/3` force a stage, `F` wears a faked player
+(rusher / camper / spammer), `TAB` the read. Harnesses: `MIRROR_SOAK` (the
+whole fight unattended, with a player who really swings), `R3_BOSS=<x>` (the
+handoff inside the real level).
+
+**Didn't land:** the first build had the boss REPLAY recorded snippets of the
+player's own movement. Advika: "it doesnt replay ur recorded movement, it
+basically analyses how u play and attacks u on basis of that." The clip ring
+buffer is deleted from `PlayerProfile` outright, not switched off; what
+replaced it is more analysis (air fraction, swings/minute) and a stage that
+reads her swing as it happens. Also killed by the soak, not by theory: a boss
+that respected a cautious player's 190px spacing so faithfully it never once
+came at them — their RHYTHM is the drumbeat now, their spacing only says where
+it waits between beats.
+
+**Two corrections she gave at the close, both applied:** the read runs
+THROUGHOUT the game, not just Realm 3 — `PlayerProfile` now attaches itself to
+anything in the `player` group in any scene, and the per-level reset is deleted
+(only BEGIN wipes it). And Curiosity is bigger, in Realm 3 only: `HERO_SCALE`
+0.33 vs 0.24 elsewhere, with the sporelings following to keep her two-thirds
+law and the mirror taking its size off her.
+
+**Next 3:** 1) her verdict on the TIME stage live — dodge-then-punish either
+reads as smart or as cheap, and only playing it says which; 2) the fight's
+ending beat (right now it dissolves and the colour returns — no lore line, no
+door); 3) tune pass on the numbers she can already see (320 hp, 25 per blow,
+the arrival gap).
+
 ## 2026-07-19 — Realm 1 rebuild: four wrong levels, then the reset to one screen
 
 **Shipped (branch `feat/r1-cave-rebuild`, NOT merged, main untouched):**
