@@ -50,6 +50,21 @@ const MOSS_FRONT_TIP := 30.0
 ## fringe. Two z values, because during the boss fight everything has to climb
 ## over the drain (see `_drain_front_growth`): the world lives under z 90, and
 ## she is lifted above it so the grey does not take her.
+## ---------- THE THREE TIERS (Advika's decoration spec, step 3) ----------
+## One z per tier, no per-sprite exceptions. Before this the realm used NINE
+## different z values with no rule behind them (measured: z0,1,2,3,4,7,8,9,10),
+## which is why nothing had a consistent depth read.
+##
+##   Z_BG      background decor — darkest, most desaturated, behind terrain, sparse
+##   Z_TERRAIN the ground itself and everything standing on it
+##   Z_FORE    foreground accents — fullest colour, in front of her, RARE
+##
+## Curiosity draws at 5, between terrain and foreground, which is what lets the
+## front growth cross her legs without anything else in the level doing so.
+const Z_BG := -2
+const Z_TERRAIN := 2
+const Z_FORE := 8
+
 const FRONT_Z := 7
 const FORE_Z := 8
 ## how far the front growth jumps when the forest dies, so it still covers her
@@ -287,6 +302,23 @@ func _ready() -> void:
 	# every sprite whose bottom edge floats clear of the meadow with nothing
 	# under it. Guessing which builder owns a floating mushroom cost most of
 	# 2026-08-06; this answers it with coordinates instead.
+	# R3_ALPHA=1 — WHAT IS SEE-THROUGH. Walks the finished world and counts every
+	# sprite not at full opacity. Fog, motes and the drain are meant to be
+	# translucent; anything else is the `Color * float` alpha bug (see `_dim`),
+	# and this is how it is proved dead rather than assumed dead.
+	if OS.get_environment("R3_ALPHA") != "":
+		await get_tree().process_frame
+		_audit_alpha()
+		get_tree().quit()
+	# R3_DECOR=1 — HOW CROWDED IS IT, ACTUALLY. Counts what lands inside one
+	# screen at several points down the walk, split by z tier and by art family,
+	# and measures how much neighbouring decor of the SAME family overlaps.
+	# Step 2 of the decoration spec is "audit the placement logic"; this is the
+	# audit, so the density rules get set from measurements instead of taste.
+	if OS.get_environment("R3_DECOR") != "":
+		await get_tree().process_frame
+		_audit_decor()
+		get_tree().quit()
 	if OS.get_environment("R3_AUDIT") != "":
 		await get_tree().process_frame
 		_audit_floaters()
@@ -415,6 +447,26 @@ func _mush_tint(tex_name: String, tint: Color) -> Color:
 		return _hue(lit, _fungal(id, CAP_WARM.has(id)))
 	return _hue(lit, _fungal(id + 7, id <= GLOW_WARM_MAX))
 
+
+
+## SCALE A COLOUR'S BRIGHTNESS WITHOUT TOUCHING ITS ALPHA.
+##
+## THE BUG THIS EXISTS TO KILL: in Godot, `Color * float` multiplies ALL FOUR
+## components, alpha included. So `R2_TEAL * 0.40` — written to mean "this moss
+## is 40% as bright" — actually produced `(0.208, 0.448, 0.376, a=0.40)`, and
+## every sprite tinted that way rendered at FORTY PERCENT OPACITY.
+##
+## Advika saw the symptom before I did: "the decorated terrain renders as an
+## unreadable semi-transparent mass, you can see overlapping sprite rectangles
+## ghosting through each other." That is exactly what a level full of
+## 30-70%-alpha decoration looks like — every clump showing every clump behind
+## it, and the soft PNG edges compounding into a haze instead of a silhouette.
+##
+## It was in nineteen places across the realm and the gateway, including the
+## floor's own moss courses, which is why the ground never looked solid no
+## matter how much of it there was.
+func _dim(c: Color, k: float) -> Color:
+	return Color(c.r * k, c.g * k, c.b * k, c.a)
 
 func _sprite(tex_name: String, pos: Vector2, sc: float, z: int,
 		tint := PLAY_STONE, fh := false, fv := false) -> Sprite2D:
@@ -1074,7 +1126,11 @@ func _floor_mat() -> void:
 	# woven accents at random depths: tiny mushrooms and curled sprouts
 	var ax := WORLD_L + _rng.randf_range(150.0, 400.0)
 	while ax < WORLD_R:
-		var az: int = 4 if _rng.randf() < 0.5 else 6
+		# NEVER above her. She draws at z5, and these accents were picking z6
+		# half the time — so a lit cap could land on her exact x and sit over her
+		# head like a hat. Caught in a screenshot, not by reasoning: the whole
+		# hero was behind a glowing mushroom.
+		var az: int = 1 if _rng.randf() < 0.5 else 4
 		if _rng.randf() < 0.55:
 			var mid: int = [16, 18, 20, 21, 22, 25][_rng.randi() % 6]
 			var mt: Texture2D = load(BASE + "mushroomglow%d.png" % mid)
@@ -1175,10 +1231,10 @@ func _build_platforms() -> void:
 func _boulder_decor(cx: float, fh := false) -> void:
 	_prop("fungalstoneb%d.png" % [6, 4, 1][int(absf(cx)) % 3], cx,
 			FLOOR_Y + 60.0, _rng.randf_range(0.36, 0.44), 3,
-			PLAY_STONE * 0.86, fh)
+			_dim(PLAY_STONE, 0.86), fh)
 	_prop("fungalstoneb%d.png" % [1, 6, 4][int(absf(cx)) % 3], cx + 130.0,
 			FLOOR_Y + 50.0, _rng.randf_range(0.24, 0.30), 4,
-			PLAY_STONE * 0.70, not fh)
+			_dim(PLAY_STONE, 0.70), not fh)
 
 
 ## a giant mushroom rooted in the floor — the cap is the platform.
@@ -1572,7 +1628,7 @@ func _build_dressing() -> void:
 	var amber_b := _prop("mushroomglow4.png", 2060.0, FLOOR_Y + 8.0, 0.34, 3, PLAY_STONE, true)
 	_glow_light(amber_b, GLOW_WARM, 0.3, 1.3)
 	# assembly 4: foreground stalagmites + boulders (ref 3's right edge)
-	_prop("stalagmite7.png", 2250.0, FLOOR_Y + 16.0, 0.5, 3, PLAY_STONE * 0.82)
+	_prop("stalagmite7.png", 2250.0, FLOOR_Y + 16.0, 0.5, 3, _dim(PLAY_STONE, 0.82))
 	_prop("fungalstone1.png", 2360.0, FLOOR_Y + 12.0, 0.45, 4)
 	_prop("mushroomglow11.png", 2300.0, FLOOR_Y + 6.0, 0.28, 4)
 
@@ -1637,7 +1693,7 @@ func _build_dressing() -> void:
 						dmx + 95.0, FLOOR_Y + 10.0, 0.24, 4)
 			2:  # stalagmite pair + boulder
 				_prop("stalagmite%d.png" % ([7, 9, 2][dmi % 3]), dmx,
-						FLOOR_Y + 16.0, 0.5, 3, PLAY_STONE * 0.82)
+						FLOOR_Y + 16.0, 0.5, 3, _dim(PLAY_STONE, 0.82))
 				_prop("fungalstone%d.png" % ([1, 5, 2][dmi % 3]), dmx + 120.0,
 						FLOOR_Y + 12.0, 0.45, 4, PLAY_STONE, dmi % 2 == 1)
 			3:  # moss-green garden
@@ -1911,7 +1967,7 @@ void fragment() {
 		m.centered = false
 		m.scale = Vector2(R2_SCALE, R2_SCALE)
 		m.position = Vector2(WORLD_L - 2000.0 + i * span, FLOOR_Y - 90.0)
-		m.modulate = R2_TEAL * 0.78
+		m.modulate = _dim(R2_TEAL, 0.78)
 		m.z_index = 3
 		add_child(m)
 
@@ -1923,7 +1979,7 @@ void fragment() {
 		c.scale = Vector2(R2_SCALE, R2_SCALE)
 		c.position = Vector2(WORLD_L - 2000.0 - span * 0.25 + i * span,
 				FLOOR_Y - 150.0)
-		c.modulate = R2_TEAL * 0.5
+		c.modulate = _dim(R2_TEAL, 0.5)
 		c.z_index = 2
 		add_child(c)
 
@@ -1940,7 +1996,7 @@ void fragment() {
 		r.scale = Vector2(rsc, rsc)
 		r.flip_h = _rng.randf() < 0.5
 		r.position = Vector2(x, FLOOR_Y - 40.0 + rt.get_height() * rsc * 0.18)
-		r.modulate = R2_TEAL * _rng.randf_range(0.34, 0.58)
+		r.modulate = _dim(R2_TEAL, _rng.randf_range(0.34, 0.58))
 		r.z_index = 3
 		add_child(r)
 		# a tuft or two hugging it, so no mound is a bare shape
@@ -1954,7 +2010,7 @@ void fragment() {
 			t.flip_h = _rng.randf() < 0.5
 			t.position = Vector2(x + _rng.randf_range(-220.0, 220.0),
 					FLOOR_Y + 4.0 - tt.get_height() * tsc * 0.34)
-			t.modulate = R2_TEAL * _rng.randf_range(0.42, 0.70)
+			t.modulate = _dim(R2_TEAL, _rng.randf_range(0.42, 0.70))
 			t.z_index = 4
 			add_child(t)
 		x += _rng.randf_range(420.0, 820.0)
@@ -2029,7 +2085,7 @@ func _meadow_masses() -> void:
 				Vector2(x, base - want_h * 0.5), sc, z, tint, _rng.randf() < 0.5)
 		# NOTHING IS A BARE SHAPE — every mound wears a skirt of growth, which
 		# is the scene-dressing law and also what stops it reading as a decal
-		var skirt: int = 2 + _rng.randi() % 3
+		var skirt: int = 1 + _rng.randi() % 2
 		for k in skirt:
 			var fi: int = fronds[_rng.randi() % fronds.size()]
 			var ft: Texture2D = load(BASE + "fungalfrond%d.png" % fi)
@@ -2110,7 +2166,12 @@ func _meadow_masses() -> void:
 ## everywhere and there is no height at which nothing is drawn.
 ##
 ## `t` is nearness: 0 is the growth she wades through, 1 is the frame edge.
-const FIELD_PASSES := 6
+## MEASURED, NOT GUESSED. `R3_DECOR=1` reported `fungalhill` at 97% mean
+## overlap with its own neighbour across 2,340 sprites — that is the blob. The
+## carpet underneath (Realm 2's moss strips) is what guarantees the ground is
+## covered; these clumps are ACCENTS ON it, and accents at 97% overlap are not
+## accents, they are a hedge. Two passes, and the step below spaces them.
+const FIELD_PASSES := 2
 ## where the tops land at t=0 and t=1. The near end is measured against her:
 ## her feet are on 420, her knee is near 372, her hood near 277.
 const FIELD_TOP_NEAR := 338.0
@@ -2163,11 +2224,12 @@ func _build_foreground() -> void:
 			sp.modulate = _depth(lerpf(0.60, 0.97, t) + _rng.randf_range(-0.04, 0.04))
 			sp.z_index = FRONT_Z + int(t * 3.99)
 			sp.set_meta("air", true)   # it hangs below the floor on purpose
+			sp.material = _growth_sway()
 			add_child(sp)
 			_front_growth.append(sp)
 			# fronds bursting out of the mass — a mound alone is a lump, the
 			# spikes breaking its silhouette are what make it read as growth
-			if _rng.randf() < 0.6:
+			if _rng.randf() < 0.34:
 				var fi: int = FRINGE_TEX[_rng.randi() % FRINGE_TEX.size()]
 				var ft: Texture2D = load(BASE + "fungalfrond%d.png" % fi)
 				var fh: float = body * _rng.randf_range(0.40, 0.80)
@@ -2182,11 +2244,13 @@ func _build_foreground() -> void:
 				f.modulate = _depth(lerpf(0.56, 0.92, t))
 				f.z_index = sp.z_index
 				f.set_meta("air", true)
+				f.material = _growth_sway()
 				add_child(f)
 				_front_growth.append(f)
 			# the step rides depth too: near clumps are big and sparse, far
 			# ones small and tight, which is one more thing that cannot band
-			x += tex.get_width() * sc * _rng.randf_range(0.30, 0.52)
+			# ~20% overlap at most (the spec's number), instead of 70%
+			x += tex.get_width() * sc * _rng.randf_range(0.82, 1.18)
 			i += 1
 
 	_understory()
@@ -2232,7 +2296,7 @@ func _build_foreground() -> void:
 ##
 ## [top_lo, top_hi, body_lo, body_hi, z, depth, step_lo, step_hi]
 const UNDERSTORY: Array = [
-	[328.0, 400.0, 150.0, 250.0, FRONT_Z, 0.60, 0.22, 0.38],
+	[328.0, 400.0, 150.0, 250.0, FRONT_Z, 0.60, 0.78, 1.06],
 ]
 
 
@@ -2282,13 +2346,10 @@ func _understory_mass() -> void:
 	var courses: Array = [
 		[front, 470.0, FORE_Z, 0.46, span * 0.31],
 		[mat, 555.0, FORE_Z, 0.40, 0.0],
-		[front, 660.0, FORE_Z + 1, 0.35, span * 0.63],
 		[mat, 760.0, FORE_Z + 1, 0.30, span * 0.17],
 		# the scan's leftovers sat in a band at world y ~880-1020, so these are
 		# placed FROM the measurement rather than by eye
-		[front, 880.0, FORE_Z + 1, 0.26, span * 0.09],
 		[mat, 990.0, FORE_Z + 2, 0.22, span * 0.48],
-		[front, 1110.0, FORE_Z + 2, 0.19, span * 0.77],
 	]
 	# EVERY COURSE IS LAID CROOKED, ON PURPOSE.
 	#
@@ -2313,7 +2374,7 @@ func _understory_mass() -> void:
 			var wob: float = sin(float(i) * 2.37 + float(ci) * 1.9) * 26.0 					+ sin(float(i) * 0.71 + float(ci) * 4.1) * 17.0 					+ _rng.randf_range(-11.0, 11.0)
 			m.position = Vector2(WORLD_L - 2000.0 - float(c[4]) + i * span,
 					float(c[1]) + wob)
-			m.modulate = R2_TEAL * (float(c[3]) * _rng.randf_range(0.82, 1.24))
+			m.modulate = _dim(R2_TEAL, float(c[3]) * _rng.randf_range(0.82, 1.24))
 			m.z_index = int(c[2])
 			add_child(m)
 			_front_growth.append(m)
@@ -2415,6 +2476,102 @@ func _build_fog_layers() -> void:
 
 
 var _fogs: Array[Sprite2D] = []
+## THE DUST IN THE AIR (Advika: "add those tiny tiny atmospherical dots things
+## for the vibes as well into the r3 map").
+##
+## There was already one mote layer — amber, sparse, all at one depth, one size,
+## one speed. One layer of anything reads as an effect playing over a picture.
+## Four layers at four depths read as AIR, because the eye gets parallax out of
+## them: the far dots barely move and are almost invisible, the near ones cross
+## the screen and are big enough to catch. That difference is the whole trick.
+##
+## They are deliberately TINY. The realm already has big glowing things in it —
+## the caps, the lantern, the embers — and dots that compete with those become
+## snow. These sit at the threshold of being noticed, which is where atmosphere
+## lives.
+##
+## Two hues only, both already in the realm: the amber the glowers carry, and
+## the teal everything else is made of. No third colour.
+const MOTE_LAYERS: Array = [
+	# [z, count_div, size_min, size_max, alpha, speed_min, speed_max, warm]
+	[-7, 190.0, 0.16, 0.30, 0.34, 3.0, 9.0, false],   # far haze grit
+	[-3, 240.0, 0.24, 0.42, 0.42, 6.0, 15.0, true],   # between the bands
+	[4, 300.0, 0.34, 0.60, 0.46, 10.0, 24.0, false],  # the play space
+	[9, 520.0, 0.50, 0.92, 0.30, 18.0, 40.0, true],   # right in front of her
+]
+
+
+func _build_motes() -> void:
+	var span: float = WORLD_R - WORLD_L
+	for cfg in MOTE_LAYERS:
+		var p := CPUParticles2D.new()
+		p.texture = load(MOSS_SPORE)
+		p.amount = maxi(24, int(span / float(cfg[1])))
+		p.lifetime = 26.0
+		p.preprocess = 26.0        # the air is already full when she walks in
+		p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+		p.emission_rect_extents = Vector2(span * 0.5 + 400.0, 560.0)
+		# they DRIFT and they RISE a little — dust that only ever falls reads as
+		# weather, and this cavern has no weather
+		p.direction = Vector2(1.0, -0.18)
+		p.spread = 26.0
+		p.gravity = Vector2(0.0, -3.0)
+		p.initial_velocity_min = float(cfg[5])
+		p.initial_velocity_max = float(cfg[6])
+		p.scale_amount_min = float(cfg[2])
+		p.scale_amount_max = float(cfg[3])
+		# each one fades in and out over its own life, so nothing ever pops
+		var ramp := Gradient.new()
+		ramp.offsets = PackedFloat32Array([0.0, 0.22, 0.78, 1.0])
+		var hue: Color = EMBER if bool(cfg[7]) else Color(0.62, 1.0, 0.94)
+		var a: float = float(cfg[4])
+		ramp.colors = PackedColorArray([
+			Color(hue.r, hue.g, hue.b, 0.0), Color(hue.r, hue.g, hue.b, a),
+			Color(hue.r, hue.g, hue.b, a), Color(hue.r, hue.g, hue.b, 0.0)])
+		# NOTE `CPUParticles2D.color_ramp` takes a Gradient directly — it is
+		# `GPUParticles2D` whose material wants a GradientTexture1D.
+		p.color_ramp = ramp
+		p.position = Vector2((WORLD_L + WORLD_R) * 0.5, FLOOR_Y - 300.0)
+		p.z_index = int(cfg[0])
+		add_child(p)
+
+
+## THE GROWTH BREATHES, and it has to be done on the GPU.
+##
+## Advika asked whether the R3 pack has animation frames to bring the level to
+## life. It does not — checked file by file: every asset in it is a single still
+## PNG, no subfolders, no sequences. (Realm 2's pack has three 30-frame plants;
+## this one has none.) So the life has to come from somewhere else.
+##
+## This is one ShaderMaterial SHARED by every piece of growth in the level. It
+## displaces vertices only — it never writes COLOR — which matters twice over:
+## a canvas shader that writes COLOR discards the node's modulate, and the drain
+## tweens exactly that modulate on every one of these sprites when the forest
+## dies. Phase comes from each sprite's own world position, so thousands of
+## sprites on one material still move independently, at zero CPU cost.
+const SWAY_SHADER := "shader_type canvas_item;
+uniform float amp = 3.2;
+uniform float speed = 0.55;
+void vertex() {
+	// world position of this sprite drives its phase, so neighbours differ
+	float ph = MODEL_MATRIX[3][0] * 0.013 + MODEL_MATRIX[3][1] * 0.021;
+	// only the TOP of a clump moves; its feet are in the ground
+	float w = 1.0 - UV.y;
+	VERTEX.x += sin(TIME * speed + ph) * amp * w * w;
+}"
+
+var _sway_mat: ShaderMaterial
+
+
+func _growth_sway() -> ShaderMaterial:
+	if _sway_mat == null:
+		var sh := Shader.new()
+		sh.code = SWAY_SHADER
+		_sway_mat = ShaderMaterial.new()
+		_sway_mat.shader = sh
+	return _sway_mat
+
+
 func _build_atmosphere() -> void:
 	# local fog banks: deep teal, faint — no bright haze anywhere
 	var nfog := int((WORLD_R - WORLD_L + 1800.0) / 950.0) + 1
@@ -2449,6 +2606,7 @@ func _build_atmosphere() -> void:
 	add_child(motes)
 	# (fireflies removed — Advika 2026-07-15: not in this level. The spore
 	# motes + mushroom glows carry the living-air feel here.)
+	_build_motes()
 	# corner vignette — dark teal-black (purple is Curiosity's, not the cave's)
 	var cl := CanvasLayer.new()
 	cl.layer = 15
@@ -3356,6 +3514,110 @@ func _settle_floaters() -> void:
 			moved += 1
 	if moved > 0:
 		print("R3 SETTLE — dropped %d sprites onto the ground under them" % moved)
+
+
+func _audit_alpha() -> void:
+	var total := 0
+	var faded := 0
+	var worst: Array = []
+	var stack: Array = [self]
+	while not stack.is_empty():
+		var cur: Node = stack.pop_back()
+		for c in cur.get_children():
+			stack.append(c)
+		if not (cur is Sprite2D):
+			continue
+		var sp := cur as Sprite2D
+		if sp.texture == null:
+			continue
+		var p: String = sp.texture.resource_path
+		# the things that are SUPPOSED to be see-through
+		if p.contains("fog") or p.contains("spore") or p.contains("halo") 				or p == "":
+			continue
+		total += 1
+		if sp.modulate.a < 0.99:
+			faded += 1
+			if worst.size() < 10:
+				worst.append("%s a=%.2f" % [p.get_file(), sp.modulate.a])
+	print("R3 ALPHA — %d opaque-by-design sprites, %d BELOW full opacity"
+			% [total, faded])
+	for w in worst:
+		print("   ", w)
+
+
+func _audit_decor() -> void:
+	var items: Array = []
+	var stack: Array = [self]
+	while not stack.is_empty():
+		var cur: Node = stack.pop_back()
+		for c in cur.get_children():
+			stack.append(c)
+		if not (cur is Sprite2D):
+			continue
+		var sp := cur as Sprite2D
+		if sp.texture == null:
+			continue
+		var p: String = sp.texture.resource_path
+		if p.contains("fog") or p.contains("spore") or p.contains("halo"):
+			continue
+		var fam := "other"
+		for f in ["fungalhill", "fungalfrond", "mushroomcap", "mushroomglow",
+				"fungalstone", "stalagmite", "moss_", "rock_moss", "tuft"]:
+			if p.contains(f):
+				fam = f
+				break
+		items.append({"x": sp.global_position.x, "y": sp.global_position.y,
+				"z": sp.z_index, "fam": fam,
+				"w": absf(sp.texture.get_width() * sp.scale.x)})
+	print("R3 DECOR — %d decoration sprites in the level" % items.size())
+	for probe in [1200.0, 6300.0, 13400.0, 20000.0]:
+		var here: Array = []
+		for it in items:
+			if absf(float(it["x"]) - probe) < 960.0:
+				here.append(it)
+		var by_z := {}
+		var by_fam := {}
+		for it in here:
+			by_z[it["z"]] = int(by_z.get(it["z"], 0)) + 1
+			by_fam[it["fam"]] = int(by_fam.get(it["fam"], 0)) + 1
+		print("  x=%.0f : %d sprites on screen" % [probe, here.size()])
+		var zs: Array = by_z.keys()
+		zs.sort()
+		var zline := ""
+		for z in zs:
+			zline += "z%d=%d " % [z, by_z[z]]
+		print("      tiers: ", zline)
+		var fline := ""
+		for f in by_fam:
+			fline += "%s=%d " % [f, by_fam[f]]
+		print("      family: ", fline)
+	# how badly does same-family decor overlap its neighbour?
+	var fams := {}
+	for it in items:
+		if not fams.has(it["fam"]):
+			fams[it["fam"]] = []
+		(fams[it["fam"]] as Array).append(it)
+	# MEASURED PER BAND, not globally. Sorting every sprite of a family by x
+	# regardless of height compares the ceiling curtain against the floor field
+	# and reports overlap that does not exist on screen. Only sprites within
+	# 120px of each other in Y are actually neighbours.
+	for f in fams:
+		var arr: Array = fams[f]
+		if arr.size() < 40:
+			continue
+		arr.sort_custom(func(a, b): return float(a["x"]) < float(b["x"]))
+		var over := 0.0
+		var n := 0
+		for i in range(1, arr.size()):
+			if absf(float(arr[i]["y"]) - float(arr[i - 1]["y"])) > 120.0:
+				continue        # different band: not neighbours
+			var gap: float = float(arr[i]["x"]) - float(arr[i - 1]["x"])
+			var w: float = maxf(1.0, (float(arr[i]["w"]) + float(arr[i - 1]["w"])) * 0.5)
+			over += clampf(1.0 - gap / w, 0.0, 1.0)
+			n += 1
+		if n > 0:
+			print("  %-14s n=%-5d mean same-family overlap %.0f%%"
+					% [f, arr.size(), over / float(n) * 100.0])
 
 
 func _audit_floaters() -> void:

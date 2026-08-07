@@ -128,6 +128,39 @@ func _ready() -> void:
 	AudioManager.play_ambient(preload("res://assets/audio/realm2_moonlight.ogg"), "realm2")
 	if OS.get_environment("R2_SHOT") != "":
 		_self_screenshot(OS.get_environment("R2_SHOT"))
+	# R2_GATE=1 — STRAIGHT TO THE DOORWAY. The Realm 3 gateway only grows on the
+	# wizard's defeat, which is a walk, a liftoff, a storm and a boss fight away
+	# from the spawn — far too long a loop to judge a five-second animation by.
+	# This puts her on the deck at the top and fells the wizard on the spot, so
+	# the beat that is actually being looked at starts about two seconds in.
+	if OS.get_environment("R2_GATE") != "":
+		_jump_to_gateway()
+
+
+## Fast-forward to the finale: island at the top, hovering, wizard gone.
+func _jump_to_gateway() -> void:
+	await get_tree().create_timer(1.2).timeout
+	if _chunk == null:
+		return
+	# lift it to where the real climb would have ended, then hand it the state
+	# the ascent would have left it in — `stop_levitation()` only fires
+	# `arrived` from RISING, and `arrived` is what grows the doorway
+	_chunk.position.y = LIFT_TOP_Y
+	_chunk.state = LevitatingIsland.State.RISING
+	# put her on the deck, not in the air under it
+	if _curi != null:
+		_curi.global_position = Vector2(CHUNK_X - 120.0, LIFT_TOP_Y - 200.0)
+		_curi.velocity = Vector2.ZERO
+	if _wizard != null and is_instance_valid(_wizard):
+		_wizard.queue_free()
+	await get_tree().create_timer(0.8).timeout
+	_chunk.stop_levitation()
+	# R2_GATE_ENTER=1 — and then walk through it. The quote card only exists on
+	# the far side of a keypress, so without this the only way to look at the
+	# handover is to play the trial and press Y by hand.
+	if OS.get_environment("R2_GATE_ENTER") != "":
+		await get_tree().create_timer(9.0).timeout
+		_enter_realm3()
 
 
 func _build_ground() -> void:
@@ -974,6 +1007,14 @@ func _build_player() -> void:
 	_curi.scale = Vector2(0.24, 0.24)
 	# this level jumps slightly higher (Advika) — the wizard's orbs must be clearable
 	_curi.jump_velocity *= JUMP_BOOST
+	# IN FRONT OF THE DECK, AND IN FRONT OF THE DOORWAY (Advika: *"curiosity is
+	# behind all the moss and stuff so thats not a good thing, put him in front
+	# so that the player can see they're entering the door"*). `Curiosity.tscn`
+	# carries no z_index at all, so she was drawing at 0 — behind the island's
+	# mid moss (11), its front row (12) and the whole Realm 3 gateway (14). The
+	# gateway's own comment even claimed it sat "behind the hero"; it never did.
+	# Above all of those, below the doorway's prompt (24) and the fireflies (40).
+	_curi.z_index = 20
 	add_child(_curi)
 
 	# the SAME eye lifeline counter as Realm 1 — shared scene, same rules
@@ -1102,6 +1143,24 @@ func _self_screenshot(path: String) -> void:
 		return
 	# fall mode needs the ride guard (1s) + death beat (0.45s) to play out first
 	var delay := 2.5 if OS.get_environment("R2_SHOT_FALL") != "" else 1.0
+	# ...and R2_GATE has to outwait the whole finale: the jump-to-gateway wait
+	# (2s), the doorway writing itself down (2.4s + landing) and the passage
+	# opening as an aperture (3.2s). Shooting at 1s catches an empty deck.
+	if OS.get_environment("R2_GATE") != "":
+		delay = 13.0
+		await get_tree().create_timer(delay).timeout
+		# and park her IN the doorway's trigger, so the shot proves the floating
+		# "[Y] Enter" actually shows rather than proving she was standing too far
+		# away to ask
+		# parked at the LEFT-HAND EDGE of the opening, not dead centre — that is
+		# where she was standing when the prompt failed to show, so it is the
+		# position the shot has to prove
+		if _r3_door != null and is_instance_valid(_r3_door) and _curi != null:
+			_curi.global_position = _r3_door.global_position + Vector2(-150.0, 52.0)
+			_curi.velocity = Vector2.ZERO
+			await get_tree().physics_frame
+			await get_tree().physics_frame
+		delay = 0.6
 	await get_tree().create_timer(delay).timeout
 	# R2_HP=<0..100> — park her health at a given value so the lantern can be
 	# shot in a named state. It drives the REAL signal path, not the HUD
@@ -1167,6 +1226,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("ui_cancel"):
 		_return_to_hub()
+	# [Y] AT THE DOORWAY (Advika: "it should have that press Y thing that the
+	# other door has on top, which leads the player to r3 directly").
+	#
+	# `Door.gd` shows its own prompt and knows how to travel, but it does NOT
+	# listen for the key — in the Hub, `Hub.gd` is what calls `trigger()` on
+	# interact. Nothing was calling it here, so the prompt would have appeared
+	# over the gateway and pressing Y would have done nothing at all.
+	if _r3_near and _r3_door != null and is_instance_valid(_r3_door) \
+			and event.is_action_pressed("interact"):
+		get_viewport().set_input_as_handled()
+		_enter_realm3()
 	if event is InputEventKey and event.pressed and event.keycode == KEY_R:
 		get_tree().reload_current_scene()
 
@@ -1360,8 +1430,176 @@ func _set_phase(p: Phase) -> void:
 		Phase.RIDE:
 			_trauma = 1.0
 		Phase.DONE:
-			_lbl.text = "the wizard falls — the storm relents   (R restart · ESC hub)"
+			_lbl.text = "the wizard falls — the storm relents"
 			print("trial complete")
+			_grow_r3_gateway()
+
+
+## THE WAY ON. Realm 2 ended by hovering — the wizard fell, the storm relented,
+## and the only exit was ESC to the Hub, which is not an ending, it is a menu.
+##
+## It is the Realm 1 doorway's recipe one realm further (Advika: "the principle
+## remains the same, just like how we made a gateway for r2"): the doorway is
+## built out of the realm it LEADS to, so a thing made of Realm 3's fungus grows
+## on Realm 2's mossy island and you know where it goes before anything says so.
+## `Realm3Gateway` owns the construction; this only decides when and where.
+##
+## It is parented to the ISLAND, not to the level, so it rides the hover's sway
+## and bob. A doorway hanging in stable air over a deck that is still moving
+## under it would read as pasted onto the screen.
+const R3_GATE_DECK_Y := -120.0     # the deck's walkable top, island-local
+const R3_GATE_X := 210.0           # off to one side: she should walk TO it
+const R3_GATE_SCALE := 1.32
+
+## PRELOADED, not referenced by class name. `Door.gd` has no `class_name` at
+## all, and a `class_name` that was only just added is not in the global class
+## cache until the project is reimported — so naming either type directly here
+## is a parse error on a cold checkout, which is exactly the kind of thing that
+## passes locally and breaks CI.
+const R3_GATEWAY := preload("res://scripts/Realm3Gateway.gd")
+const DOOR_SCRIPT := preload("res://scripts/Door.gd")
+
+var _r3_gate: Node2D
+var _r3_door: Area2D
+var _r3_near := false
+
+
+func _grow_r3_gateway() -> void:
+	if _r3_gate != null or _chunk == null:
+		return
+	_r3_gate = R3_GATEWAY.new()
+	_r3_gate.name = "Realm3Gateway"
+	# BIGGER (Advika). At 0.8 it was a garden feature on a deck 1100px wide; a
+	# doorway between realms should be the largest thing standing on the island.
+	_r3_gate.position = Vector2(R3_GATE_X,
+			R3_GATE_DECK_Y - R3_GATEWAY.FLOOR * R3_GATE_SCALE)
+	_r3_gate.scale = Vector2(R3_GATE_SCALE, R3_GATE_SCALE)
+	_r3_gate.z_index = 14           # over the deck dressing, behind the hero
+	_chunk.add_child(_r3_gate)
+	_r3_gate.build()
+
+	# THE SAME SPAWN AS REALM 1's DOORWAY (Advika). Nothing inflates: it writes
+	# itself downward, crown first, each piece dropping into its own place, and
+	# only once the base rock has landed does the passage open as an aperture.
+	# `Realm3Gateway.assemble()` owns that whole beat.
+	_r3_gate.assemble()
+
+	# and the way through it — Realm 1's exact Door.gd recipe, so the prompt,
+	# the highlight and the transition are the same object in every realm
+	_r3_door = Area2D.new()
+	_r3_door.set_script(DOOR_SCRIPT)
+	_r3_door.name = "R3Door"
+	_r3_door.target_realm = "realm_3"
+	_r3_door.door_id = "door_3"
+	# REALM 1's DOORWAY LINE, VERBATIM (Advika sent the Realm 1 prompt back with
+	# *"this is what i want on top of the gate"*): "Press Y to enter" in EB
+	# Garamond, dim cream, no outline — the tarot card's voice, which is the
+	# game's voice for asking. Not "[Y] Enter" in a HUD label with a black rim.
+	_r3_door.prompt_text = "Press Y to enter"
+	_r3_door.prompt_font = load("res://assets/fonts/eb_garamond.ttf")
+	# GOLD, not the cave prompt's cream (Advika: *"the text needs to be in gold
+	# the same one used for the door in r1"*). This is Realm 1's warm gold — the
+	# tarot card's lit lines, the colour its doorway glows — and it is already
+	# `Realm3Gateway.GLOW_WARM`, so the line over the doorway and the glowers
+	# burning in its base are the same gold.
+	#
+	# Realm 1 draws this at 0.55 alpha, 20px, on a 1.05 camera in a cave. This
+	# level's camera sits much further back and the sky behind the crown is a
+	# lit violet rather than black, so the same numbers came out as a smudge —
+	# stepped up until it lands at the same READ, which is what was being copied.
+	_r3_door.prompt_color = Color(1.0, 0.84, 0.52, 0.92)
+	_r3_door.prompt_outline_size = 0
+	_r3_door.prompt_font_size = 34
+	# ON TOP OF THE GATE, not inside it. Three positions inside the passage were
+	# shot and thrown out — down in the threshold growth, and square on the lit
+	# mint cap in the middle of the far view (cream type on the brightest pixels
+	# in the frame). Above the crown it has open forest behind it and it reads as
+	# what it is: the doorway asking.
+	# and CLEAR of the crown, not tucked into it (Advika: *"i want it ABOVE the
+	# door so its more visible"*) — at -790 it sat down among the mushroom clubs
+	# and the eye had to find it in the growth.
+	_r3_door.prompt_offset = Vector2(0.0, -920.0)
+	_r3_door.position = Vector2(R3_GATE_X, R3_GATE_DECK_Y - 60.0)
+	# OVER THE DOORWAY, NOT UNDER IT. `Door.gd` parents its floating "[Y] Enter"
+	# label to itself, and this Area2D was left at the default z=0 while the
+	# gateway it belongs to stands at z=14 — so the prompt appeared exactly where
+	# it should and was drawn behind three hundred pixels of fungus every time.
+	# Above the hero too (z=20): a prompt she can stand in front of is no prompt.
+	_r3_door.z_index = 24
+	var cs := CollisionShape2D.new()
+	var box := RectangleShape2D.new()
+	# AS WIDE AS THE PASSAGE ITSELF. Advika stood in the left-hand side of the
+	# opening, saw no prompt and sent back *"cant find it"* — the box was 230
+	# wide on a doorway whose clear span is 350, so a third of the threshold she
+	# can physically stand in was dead ground. Anywhere she can be framed by this
+	# doorway now asks her the question. Tall enough to catch her mid-jump, too.
+	box.size = Vector2(2.0 * R3_GATEWAY.OPEN_HALF * R3_GATE_SCALE + 120.0, 320.0)
+	cs.shape = box
+	_r3_door.add_child(cs)
+	_chunk.add_child(_r3_door)
+	# THE PROMPT IS NOT A PROXIMITY PROMPT ANY MORE (Advika: *"the press Y thing
+	# comes the second the door is finished building itself, no matter where the
+	# player is standing it must be there"*). Overlap prompts are right for the
+	# hub, where five doors compete and the prompt tells you WHICH one you are
+	# addressing. Here there is one doorway, it is the end of the realm, and the
+	# only question is whether it is open yet — so `monitoring` stays off for
+	# good and the line simply comes up when the doorway finishes building.
+	#
+	# Off the ASSEMBLED SIGNAL, not a 6.4s guess. `Realm3Gateway.assemble()`
+	# emits it once the base rock has landed and the aperture has begun to open,
+	# which is the actual moment being waited for; the old timer was a number
+	# that happened to be longer than the animation.
+	_r3_door.monitoring = false
+	# by name, not `_r3_gate.assembled` — `_r3_gate` is typed Node2D here (see the
+	# preload note above), and reaching for a Realm3Gateway signal through that
+	# type is a parse error, not a runtime one
+	_r3_gate.connect("assembled", func() -> void:
+		if is_instance_valid(_r3_door):
+			_r3_door.call("set_active", true)
+			_r3_near = true)
+
+
+## THE WAY OUT OF REALM 2 IS A CARD, NOT A CUT.
+##
+## Realm 1 ends by handing the tree root a `QuoteTransition` — black, a line held
+## in it, the next realm loaded underneath so you arrive already inside — and
+## Realm 2's ending is the same beat one realm on. `Door.gd.trigger()` would have
+## gone straight to `Transition.transition_to`, which is the hub's behaviour: a
+## fade. A fade between realms throws away the only place the game gets to speak.
+##
+## The card goes on the TREE ROOT, not on this level: `change_scene_to_file`
+## frees the running scene, so a card parented here dies mid-transition and the
+## black never lifts. That was learned the expensive way at Realm 1's door.
+func _enter_realm3() -> void:
+	if _leaving:
+		return
+	_leaving = true
+	print("[Door] Entering realm_3 via door_3")
+	# the same bookkeeping `Door.gd` would have done on the way through
+	Transition.last_door_id = "door_3"
+	SaveManager.mark_door_opened("door_3")
+	var q := QuoteTransition.new()
+	# Advika's line, verbatim and unbroken — the line breaks ARE the poem, so
+	# each one is its own entry rather than one string left to wrap.
+	q.quote_lines = PackedStringArray([
+		"It waits, knowing I will ask questions,",
+		"knowing I will test boundaries,",
+		"knowing I will step through myself",
+		"even though it has already seen the answer.",
+	])
+	q.speaker = "— Curiosity"
+	# no book credit on this one. Every other card in the game carries "(Written
+	# by Silence – Advika Kohli)" because its line comes out of the novel; this
+	# one is Curiosity's own voice, and crediting it to the book would be a
+	# claim about where it came from that nobody made.
+	q.attribution = ""
+	q.next_scene = "res://scenes/realms/Realm3FungalTest.tscn"
+	# Realm 3 has no ambient bed of its own yet, so there is nothing to cross
+	# into — Moonlight simply bleeds out under the card and the fungal cavern is
+	# arrived at in silence. When R3 gets its track this is where it gets named.
+	q.next_track = null
+	q.next_track_name = "realm3"
+	get_tree().root.add_child(q)
 
 
 func _physics_process(delta: float) -> void:

@@ -1,7 +1,60 @@
 # Current State (auto-narrative — update at end of every session)
 _Last updated: 2026-08-07_
 
-## 2026-08-07 (pt. 2) — REALM 3'S LOOK, REDONE (UNCOMMITTED)
+## 2026-08-07 (pt. 3) — THE DOORWAY OUT OF REALM 2 IS FINISHED AND WIRED
+The Realm 2 → Realm 3 gateway (`Realm3Gateway.gd`) now stands on the island at
+the end of the trial, opens onto a real capture of Realm 3, and is walked
+through. It is Realm 1's doorway recipe one realm on, and the same three laws
+did all the work.
+- **THE JAMBS ARE TWO FUNGAL HILLS EACH, NOT A STACK.** Advika: *"replace these
+  leaves on the side with [`fungalhill1` and `fungalhill4`] — just shift them
+  vertically and attach them."* The vine bundles that were there flipped to
+  climb read as tall dark FERNS. Two passes stacked the hills SMALL — nine a
+  side at a fixed step, then fourteen with step/width/squeeze/value all
+  re-rolled — and both came back a LADDER. They had to: each hill is a
+  horizontal arch, so any vertical run of them is rungs and jitter only makes
+  the rungs untidy. Two hills a side, blown up to doorpost height and squeezed
+  narrow, cannot form a rhythm.
+- **THE SEAM GOES DEEP AND THE UPPER PIECE GOES NARROW.** These hills are solid
+  for roughly their bottom half (`JAMB_SOLID`). Seated halfway up, the upper
+  one's flat base landed in fringe tips and showed as a slab with a ruled edge;
+  sized by height alone it came out WIDER than the hill it sits in and poked out
+  at the ends. Both fixes generalise — it is the same bug as the crown's bar.
+- **`JAMB_TOP`** — the posts stop *inside* the crown row's solid body. Running
+  to -371 they finished above it as a separate bush each side, which is the
+  *"hedge on the top"* Advika circled.
+- **NOT ONE PIECE OF REALM 2 IS LEFT IN IT.** The hem's eight `hang_curl` /
+  `hang_beard` / `hang_fern` / `vine_dark` strands are gone (*"remove ... these
+  purple leaves"*): they are painted violet, and multiplying violet by teal only
+  makes duller violet. Realm 3 fronds at the same anchors and lengths.
+- **THE WAY THROUGH.** `Phase.DONE` → `_grow_r3_gateway()`; `Door.gd` maps
+  `realm_3`. Three real bugs were in that path: the door `Area2D` sat at z=0
+  under a z=14 gateway so the prompt drew *behind* the doorway (z=24 now); the
+  trigger box was 230 wide on a 350-wide passage, so a third of the threshold
+  was dead ground (it is the passage's own span now); and the `[Y]` check had
+  tabs where a line-continuation belonged.
+- **THE PROMPT IS NOT A PROXIMITY PROMPT.** Advika: *"it must be there no matter
+  where the player is standing."* One doorway, end of the realm — it comes up on
+  `Realm3Gateway.assembled` and stays. "Press Y to enter", EB Garamond, no
+  outline, in Realm 1's warm gold, which is already `GLOW_WARM`, so the line and
+  the glowers in the doorway's base are the same gold. `Door.gd` gained
+  `prompt_font` / `prompt_color` / `prompt_outline_size` / `prompt_font_size`,
+  all defaulting to the old look, so the hub is untouched.
+- **CURIOSITY DRAWS IN FRONT NOW.** `Curiosity.tscn` carries no `z_index` at
+  all, so she rendered at 0 — behind the island's moss rows (11/12) and the
+  whole gateway. The gateway's own comment claimed it sat "behind the hero"; it
+  never did.
+- **THE HANDOVER IS A CARD, NOT A CUT** — a `QuoteTransition` carrying
+  Curiosity's own four lines, no book credit, into `Realm3FungalTest`.
+- **Gates:** `--headless --import` green, Web export green (exit 0), R3 boots
+  clean. Verified by screenshot at every step, including the quote card.
+- **OPEN:** the black bar across the crown's lintel. One attempt at it grew into
+  a crown restructure and was reverted whole on Advika's word (*"i only wanted
+  one hedge from the top removed"*). It is the crown row's flat bases lining up;
+  the jamb fixes above are the shape of the answer. Realm 3 has no ambient bed,
+  so the arrival is silent.
+
+## 2026-08-07 (pt. 2) — REALM 3'S LOOK, REDONE
 Advika, both levels open side by side: *"level2 is so maximalist flowy cohesive
 looks perfectly built and then level 3 is so subpar"*, plus two rules —
 **only the R3 pack** (the R2 moss stays, for the floor only) and **R3 and R2 are

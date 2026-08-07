@@ -963,12 +963,46 @@ func _unhandled_input(event: InputEvent) -> void:
 	if k == KEY_R and OS.is_debug_build():
 		_replay_opener()
 		return
+	# THE WARP KEYS. 1 / 2 / 3 on the menu drop straight into that realm.
+	#
+	# Advika: *"how do i enter r3 straight from the intro page."* Until now the
+	# only route to Realm 3 on the deployed build was BEGIN, play far enough
+	# into Realm 1 to write a save, quit to the menu, CONTINUE, cross the Hub,
+	# and take Door 3 — a five-step round trip every time she wanted to look at
+	# a level we are actively working on.
+	#
+	# NOT gated on `OS.is_debug_build()`, deliberately: an exported release
+	# build reports false, and the whole point is that these work on the live
+	# link. They are undocumented on screen, cost nothing, and can be pulled in
+	# one line when the game ships.
+	if k >= KEY_1 and k <= KEY_3:
+		_warp(k - KEY_1)
+		return
 	if event.is_action("ui_down") or k == KEY_S:
 		_step(1)
 	elif event.is_action("ui_up") or k == KEY_W:
 		_step(-1)
 	elif event.is_action("ui_accept") or event.is_action("interact"):
 		_commit()
+
+
+## Straight into a realm, skipping the prologue and the Hub entirely.
+## The profile is wiped exactly as BEGIN wipes it, so a warped-in run reads the
+## player from scratch rather than inheriting whoever was measured last.
+const WARP_SCENES: Array[String] = [
+	"res://scenes/realms/realm1/Realm1PlatformTest.tscn",
+	"res://scenes/realms/Realm2LiftTest.tscn",
+	"res://scenes/realms/Realm3FungalTest.tscn",
+]
+
+
+func _warp(idx: int) -> void:
+	if idx < 0 or idx >= WARP_SCENES.size():
+		return
+	_committed = true
+	if PlayerProfile != null:
+		PlayerProfile.reset()
+	Transition.transition_to(WARP_SCENES[idx])
 
 
 ## Walk to the next entry that can actually be chosen — a disabled CONTINUE is a sign, not

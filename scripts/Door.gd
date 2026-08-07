@@ -16,6 +16,23 @@ signal left_door(door)
 @export_group("Prompt")
 @export var prompt_offset: Vector2 = Vector2(0, -120)
 @export var prompt_text: String = "[Y] Enter"
+## Hub doors are read from a couple of body-lengths away; a realm's exit doorway
+## is a hundred-times bigger object and the same 22px reads as a caption on it.
+## Per-door, so raising it for one never touches the hub.
+@export var prompt_font_size: int = 22
+## THE GAME'S OWN PROMPT VOICE, when a door wants it: EB Garamond, dim cream,
+## NO outline — the line Realm 1's doorway wears and the tarot card's "click or
+## press any key to begin" before it (Advika, 2026-07-26: *"the press y font is
+## completely wrong"*, and again on the Realm 3 gateway: *"this is what i want
+## on top of the gate"*). Left null, a door keeps the default HUD-ish label, so
+## the hub is untouched.
+@export var prompt_font: Font = null
+## 0 turns the outline off entirely. The carved-serif voice has none, and the
+## outline was half of what read wrong the first time.
+@export var prompt_outline_size: int = 6
+## dim cream (`EAE6DA` at 0.55) is the carved-serif voice's colour; the default
+## here is the hub's warmer gold
+@export var prompt_color: Color = Color(1.0, 0.93, 0.66, 0.95)
 @export_group("Lore")
 ## Optional single-line lore moment that plays before the transition fade.
 ## Leave empty to skip. Used by realm exits to land an environmental beat
@@ -61,16 +78,26 @@ func _find_glow() -> PointLight2D:
 
 
 func _build_prompt() -> void:
+	# the box grows with the type — and with the STRING, or "Press Y to enter"
+	# centres itself inside a box built for "[Y] Enter" and clips both ends
+	var k: float = float(prompt_font_size) / 22.0
+	var box: Vector2 = _PROMPT_SIZE * k
 	_prompt = Label.new()
 	_prompt.text = prompt_text
-	_prompt.size = _PROMPT_SIZE
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_prompt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_prompt.add_theme_font_size_override("font_size", 22)
-	_prompt.add_theme_color_override("font_color", _PROMPT_COLOR)
-	_prompt.add_theme_color_override("font_outline_color", _PROMPT_OUTLINE)
-	_prompt.add_theme_constant_override("outline_size", 6)
-	_prompt.position = prompt_offset - _PROMPT_SIZE * 0.5
+	if prompt_font != null:
+		_prompt.add_theme_font_override("font", prompt_font)
+		box.x = maxf(box.x, prompt_font.get_string_size(prompt_text,
+				HORIZONTAL_ALIGNMENT_LEFT, -1.0, prompt_font_size).x + 28.0)
+	_prompt.size = box
+	_prompt.add_theme_font_size_override("font_size", prompt_font_size)
+	_prompt.add_theme_color_override("font_color", prompt_color)
+	if prompt_outline_size > 0:
+		_prompt.add_theme_color_override("font_outline_color", _PROMPT_OUTLINE)
+		_prompt.add_theme_constant_override("outline_size",
+				int(float(prompt_outline_size) * k))
+	_prompt.position = prompt_offset - box * 0.5
 	_prompt.visible = false
 	_prompt.modulate.a = 0.0
 	add_child(_prompt)
