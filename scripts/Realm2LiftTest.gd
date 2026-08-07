@@ -1588,11 +1588,11 @@ func _enter_realm3() -> void:
 		"even though it has already seen the answer.",
 	])
 	q.speaker = "— Curiosity"
-	# no book credit on this one. Every other card in the game carries "(Written
-	# by Silence – Advika Kohli)" because its line comes out of the novel; this
-	# one is Curiosity's own voice, and crediting it to the book would be a
-	# claim about where it came from that nobody made.
-	q.attribution = ""
+	# the novel's credit, same as every other card in the game (Advika: *"the
+	# lines will obvs hv book credit"*). The line is Curiosity's voice AND it
+	# comes out of Written by Silence; the speaker names who says it, the credit
+	# names where it is from, and both belong on the card.
+	q.attribution = "(Written by Silence – Advika Kohli)"
 	q.next_scene = "res://scenes/realms/Realm3FungalTest.tscn"
 	# Realm 3 has no ambient bed of its own yet, so there is nothing to cross
 	# into — Moonlight simply bleeds out under the card and the fungal cavern is
