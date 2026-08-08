@@ -102,10 +102,6 @@ const MAX_GOLEMS := 12
 ## randomness decides WHICH six.
 const PLAT_GOLEM_COUNT := 6
 const PLAT_GOLEM_MARGIN := 46.0   # keep the body clear of both lips
-## how far it sits INSIDE the platform while dormant — only its crown shows
-const PLAT_GOLEM_BURY := 30.0
-## how close her feet must be to the rim to count as standing on it
-const PLAT_GOLEM_WAKE_BAND := 46.0
 ## A FLOOR-LENGTH CHARGE, and the fall is the point (Advika: *"the golem on the
 ## platforms need to be the ones on the ground they need to roll off the platform
 ## onto the ground"*). Capping this at 300 kept them politely aboard, which made
@@ -196,7 +192,6 @@ var _spawn_pos := Vector2(-380.0, 360.0)
 ## rock (no float, no sink) on each platform SHAPE, one at a time.
 var _sit := ""
 var _sit_freecam := false       # PLAT_SIT=ceiling*: hold the framing, don't chase her
-var _plat_golems: Array = []   # {g, node, meta} for the ledge-dwellers
 var _plats: Array = []          # {pname, pos} for every standable platform
 ## the Realm 2 portal door at the level end — hidden until every jade is gathered
 var _door: Node2D                   # the doorway root (R2 assembly, or the painted set)
@@ -540,7 +535,6 @@ func _rock_wall(wall_x: float, top_y: float, bottom_y: float) -> void:
 
 func _process(delta: float) -> void:
 	_quake_step(delta)          # the doorway's arrival, felt through the camera
-	_tick_plat_golems()         # the ledge-dwellers, woken only by her landing on them
 	if _cam == null:
 		return
 	# half the visible world width, live (so it holds under any window resize)
@@ -1191,64 +1185,27 @@ func _seed_platform_golems() -> void:
 		var g := BOULDER_GOLEM.new()
 		g.body_tint = GOLEM_TINT
 		g.roll_distance = PLAT_GOLEM_ROLL
-		# IT NEVER ROUSES ITSELF. A radius fires when she walks UNDER the platform just
-		# as readily as when she lands on it, and a thing hiding in a ledge that erupts
-		# while she is still climbing toward it has given itself away for nothing
-		# (Advika: *"they only reveal themselves once the player is ON the platform NOT
-		# before that"*). `_tick_plat_golems()` owns the trigger instead.
-		g.detect_range = 0.0
+		g.detect_range = PLAT_GOLEM_DETECT
 		# THE GROUND VARIANT, explicitly. The ceiling one drops out of the roof and
 		# animates its own fall inside the cell; a plank is something to stand ON
 		# (Advika: *"for planks use ground golem not ceiling"*).
 		g.ceiling_spawner = false
-		# AND IT HAS TO BE ABLE TO STAND ON A PLATFORM. `BoulderGolem` masks 1 alone
-		# unless it is a ceiling one, which masks 3 with the comment "ceiling golems
-		# also land on platforms" -- platforms are layer 2 and the cave floor is layer
-		# 1. So a ground golem woken on a ledge collided with nothing under it and
-		# dropped straight through (Advika: *"when he steps on the platform they fall
-		# right through it??"*). It never showed while they were dormant because a
-		# dormant golem has its collider disabled and runs no physics at all -- the bug
-		# only existed in the one frame after waking.
-		#
-		# With 3 it stands on the ledge, turns on her, and rolls; the charge runs out
-		# over the lip and THEN gravity has it, which is the arc she asked for.
-		g.collision_mask = 3
 		# PARENTED TO THE PLATFORM, not stood on it. A DORMANT golem runs no physics
 		# at all — no gravity, no move_and_slide, collider disabled — so standing one
 		# on a mover carries it exactly nowhere: the platform slid out from under it
 		# and it hung in the air (Advika: *"the golem needs to sit on the platform
 		# blend into it and move with it until triggered"*). As a child of the
 		# assembly it rides the tween for free, which is what scenery should do.
-		# BEDDED INTO THE ROCK, the way the ceiling ones are bedded into the roof
-		# (Advika: *"apply the same principle as the golems on the ground"*). That
-		# trick has never been the tint -- it is that the TERRAIN ART DRAWS OVER THE
-		# GOLEM, so what you see is a hump of the same stone rather than a boulder
-		# someone left on a ledge. These sat at z8 on top of a z5 assembly, which put
-		# them at 13 -- in front of the platform entirely, and no amount of tinting a
-		# thing that is plainly ON something makes it look like part of it.
-		#
-		# Under the slab now (-2 clears the platform fill at -1), and sunk by
-		# PLAT_GOLEM_BURY so only its crown breaks the rim. The rest is inside the
-		# rock and simply not drawn.
 		g.position = Vector2(rng.randf_range(left, right),
-				float(meta[0]) + PLAT_SINK + PLAT_GOLEM_BURY)
-		g.z_index = -2
+				float(meta[0]) + PLAT_SINK)
+		g.z_index = 8
 		p["node"].add_child(g)
 		# and the moment it erupts it leaves the platform's frame for the world's,
 		# keeping its global transform, so its charge is its own and not the
 		# platform's. Deferred: this fires from inside the golem's state machine.
-		# and when it erupts it comes OUT of the rock: up onto the surface it was
-		# buried in, out of the platform's frame into the world's, and up to the
-		# ground golems' own z8 -- it was at -2 to hide inside the slab, and a golem
-		# charging her from behind the scenery would be worse than one that never woke.
 		g.woke.connect(func() -> void:
-			if not is_instance_valid(g):
-				return
-			g.global_position.y -= PLAT_GOLEM_BURY
-			g.z_index = 8
-			if g.get_parent() != self:
+			if is_instance_valid(g) and g.get_parent() != self:
 				g.reparent.call_deferred(self, true))
-		_plat_golems.append({"g": g, "node": p["node"], "meta": meta})
 		placed += 1
 	print("PLATFORM GOLEMS: ", placed, " of ", _plats.size(), " platforms")
 
@@ -2620,42 +2577,6 @@ func _spawn_golem(pos: Vector2, on_platform: bool) -> void:
 ## under that spot, not at the level start), keeping her jade and the golems as they
 ## are, with a mercy invulnerability. The LAST eye: a full reset — jade back to zero,
 ## every golem home, the card again, the track from its first bar.
-
-## THEY WAKE FOR HER STANDING ON THEM, AND NOTHING ELSE.
-##
-## The test is deliberately literal: she must be ON THE FLOOR (not sailing past mid-jump),
-## horizontally inside that platform's own standable span, and her feet within a short
-## band of that platform's rim — which is a real check because the assembly MOVES, so the
-## rim is read live from its global transform rather than from where it was built.
-##
-## Feet, not centre. A body's origin is most of a sprite above its boots, and testing the
-## origin against the rim would have them rouse a moment before she has actually landed.
-func _tick_plat_golems() -> void:
-	if _player == null or not _player.is_on_floor():
-		return
-	# 220.3 = her drawn feet row below the origin (Curiosity.gd's FEET_FROM_CENTRE of
-	# 136 times the Visual's 1.62 scale). Written out because `Curiosity.gd` carries no
-	# class_name, so the constant cannot be reached by type from here.
-	var feet: float = _player.global_position.y + 220.3 * _player.scale.y
-	for e: Dictionary in _plat_golems:
-		var g = e["g"]
-		if not is_instance_valid(g) or g.get_parent() == self:
-			continue          # gone, or already awake and out in the world
-		var node: Node2D = e["node"]
-		if not is_instance_valid(node):
-			continue
-		var meta: Array = e["meta"]
-		var rim: float = node.to_global(Vector2(0.0, float(meta[0]))).y
-		var lx: float = node.to_global(Vector2(float(meta[1]), 0.0)).x
-		var rx: float = node.to_global(Vector2(float(meta[2]), 0.0)).x
-		var px: float = _player.global_position.x
-		if px < lx or px > rx:
-			continue
-		if absf(feet - rim) > PLAT_GOLEM_WAKE_BAND:
-			continue
-		g.wake()
-
-
 func _on_player_died() -> void:
 	if _lives_hud == null:
 		return

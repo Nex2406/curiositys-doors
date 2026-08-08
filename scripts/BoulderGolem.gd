@@ -338,15 +338,6 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 
-## WOKEN BY SOMEBODY ELSE. `detect_range` is a radius, and a radius cannot express
-## "she is standing on THIS platform" — it fires just as happily when she walks under
-## it. A level that wants a different trigger sets `detect_range = 0` so the golem
-## never rouses itself, and calls this when its own condition is met.
-func wake() -> void:
-	if _state == S.DORMANT:
-		_enter(S.WAKING)
-
-
 func _do_dormant(_delta: float) -> void:
 	# a subtle shudder every few seconds so a watching player catches the tell
 	if _t >= _shudder_at:
