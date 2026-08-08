@@ -30,7 +30,15 @@ const IDLE_FRAMES := 20
 const IDLE_FPS := 16.0
 const BLINK_SET := "blink_a"
 const BLINK_FRAMES := 16
-const BLINK_FPS := 24.0          # 16 frames -> ~0.67s vanish/appear
+const BLINK_FPS := 16.0          # 16 frames -> 1.0s vanish/appear.
+                                 # Down from 24 (~0.67s): he went out too quickly to
+                                 # register as a teleport at all (Advika: *"the wizard
+                                 # disappears very fast slow that down a bit"*) — the
+                                 # eye had nothing to follow, he was simply gone. Both
+                                 # the sheet and the alpha fade derive from this one
+                                 # number, and the trial's VANISH/APPEAR states are
+                                 # driven off the clip, so the whole blink stretches
+                                 # together instead of drifting out of step.
 const CAST_FRAMES := 8           # the jump set doubling as the conjure flourish
 const CAST_FPS := 12.0           # was 10 — refills must not dawdle (Advika)
 const CAST_COMMIT_FRAME := 4     # gesture peak: the orb is committed here
