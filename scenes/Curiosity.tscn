@@ -7,7 +7,7 @@
 [ext_resource type="Texture2D" path="res://assets/effects/firefly.png" id="57_firefly"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
-size = Vector2(88, 432)
+size = Vector2(88, 396)
 
 [sub_resource type="Gradient" id="Gradient_halo_alpha"]
 offsets = PackedFloat32Array(0, 0.2, 0.7, 1)
@@ -56,6 +56,7 @@ autoplay = "idle"
 centered = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -18)
 shape = SubResource("RectangleShape2D_body")
 
 [node name="Lantern" type="PointLight2D" parent="."]

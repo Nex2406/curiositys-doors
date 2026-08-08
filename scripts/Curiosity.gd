@@ -107,6 +107,25 @@ const ATTACK_SCALE: float = 1.13
 const ATTACK_SPEED_SCALE: float = 1.5   # play the swing clip faster so the hit lands quicker
 const FEET_FROM_CENTRE: float = 136.0   # content feet row below canvas centre (all clips)
 
+# GROUND SINK — why her collision box deliberately stops short of her painted hem.
+#
+# Her drawn feet row sits FEET_FROM_CENTRE * 1.62 = 220px below the origin. The
+# collision box was 432 tall and centred, so it bottomed out at 216: her hem landed
+# within 4px of the collision plane and she stood exactly ON the surface, in every
+# realm. The pre-c41d86f sprite set carried ~20px of empty canvas beneath its feet
+# (idle_01 drew to 198 below centre, walk_01 to 189), so the old hero sank into the
+# ground for free. The new painterly set draws to its very last row and that free
+# sink vanished — which is the whole of "curiosity is not in the floor, he's above
+# it". It hit every level at once because it lives in the hero, not in any level.
+#
+# So the box is shorter than she is drawn: it stops GROUND_SINK px above her hem and
+# the moss, grass and stone close over her ankles everywhere by default. Levels must
+# not compensate for this one surface at a time — fix it here or not at all.
+#
+# The box top is UNCHANGED at -216, so head clearance under low ceilings is exactly
+# what it was. Scene contract (Curiosity.tscn): size = (88, 396), position = (0, -18).
+const GROUND_SINK: float = 40.0
+
 # Source art faces RIGHT. Default unflipped = facing right; flip_h mirrors to face left.
 var _state: State = State.IDLE
 # She starts facing RIGHT — the way every level runs (Advika 2026-07-26: "when
