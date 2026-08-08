@@ -3280,12 +3280,6 @@ func _spawn_mirror() -> void:
 ## enough that it is plainly for her
 const ENDING_DOOR_GAP := 640.0
 
-## THE LAST WORDS IN THE GAME — Advika's to write, this is a placeholder that
-## obeys the rules: it is defiant, it explains nothing, and it pays off the one
-## thing the player was actually told (the prologue: three doors, one at a
-## time, each opens the next). No name from the book appears in it.
-const CLOSING_LINE := "Three doors, they said."
-const CLOSING_LINE_2 := "Nobody ever said what the third one opens."
 
 var _ending := false
 var _exit_root: Node2D
@@ -3357,30 +3351,16 @@ func _open_the_way() -> void:
 	_leaving = true
 	_clock_stopped = true
 	get_tree().root.add_child(EPILOGUE.new())
-	# the headless run has no hands: it presses the last button itself, so the
-	# closing card is proven to build rather than assumed to
-	if OS.get_environment("R3_END_AUTO") != "":
-		await get_tree().create_timer(12.0).timeout
-		_finish_the_game()
 
 
-## [Y] AT THE END OF EVERYTHING. Not `Door.trigger()` — that resolves a realm
-## and walks her back to the hub, and there is no hub in the flow any more.
-## The game's own handover object carries the last line instead, exactly as it
-## carries Fear's line between Realms 1 and 2 and the prologue's card into
-## Realm 1: black, the words, a held beat, and it waits for a key.
-func _finish_the_game() -> void:
-	_leaving = true
-	var card := QuoteTransition.new()
-	card.quote_lines = PackedStringArray([CLOSING_LINE, CLOSING_LINE_2])
-	card.speaker = ""
-	card.next_scene = "res://scenes/UI/MainMenu.tscn"
-	card.next_track = null
-	card.next_track_name = "menu"
-	# it goes on the TREE ROOT, never on this level: changing scene frees the
-	# running scene, and a card parented here dies mid-transition with the
-	# black still up (the bug that ate an afternoon in Realm 1).
-	get_tree().root.add_child(card)
+## NO CLOSING QUOTE CARD. There used to be a second ending here: press [Y] at the
+## exit door once the mirror was down and a QuoteTransition carried two last lines
+## to the menu. It is redundant now — killing evil Curiosity hands straight to
+## `Realm3Epilogue`, which closes the eye, lets the prologue's voice finish and
+## opens on the menu, and that IS the ending (Advika: *"the fourth qoute isnt
+## needed cuz like it goes to the epilouge once the evil C is killed"*). A card in
+## front of it would have been a third goodbye after the voice had already said one.
+## So the door simply has nothing left to do once the ending is running.
 
 
 # ---------- the echo ----------
@@ -3891,12 +3871,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		_leaving = true
 		Transition.transition_to(HUB_SCENE)
-	if event.is_action_pressed("interact") and _at_exit and _exit_door != null:
-		if _ending:
-			_finish_the_game()
-		else:
-			_leaving = true
-			_exit_door.trigger()
+	# the door is only a way home BEFORE the ending; once the epilogue has the
+	# screen there is nowhere left to go and pressing [Y] does nothing
+	if event.is_action_pressed("interact") and _at_exit \
+			and _exit_door != null and not _ending:
+		_leaving = true
+		_exit_door.trigger()
 	if event is InputEventKey and event.pressed and event.keycode == KEY_R:
 		get_tree().reload_current_scene()
 	if event is InputEventKey and event.pressed and not event.echo:
