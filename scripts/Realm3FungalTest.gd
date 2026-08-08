@@ -1310,15 +1310,27 @@ func _build_ceiling() -> void:
 	# to end: SOIL at the fringe line fading to near-black above. (Advika
 	# 2026-07-15: the old bottom stop was FILL_DARK — the bright terrain
 	# teal — and it glowed as a rectangular band right above the fringe.)
-	var roof_deep := Color(0.016, 0.03, 0.027)   # near-black cave rock
+	# IT BLENDS INTO BLACKNESS, with no plateau on the way (Advika: *"we can blend the
+	# ceiling into blackness at the top"*). It used to fade SOIL -> near-black over
+	# only 440px and then hold that near-black flat the rest of the way up, which is
+	# what she was circling on a jump: the flat part reads as an empty slab rather
+	# than as depth, and the seam where the gradient stopped and the fill began drew a
+	# faint line across the top of the frame. Near-black is also not black — against
+	# the true black outside the level it registered as a lit rectangle.
+	#
+	# One gradient now, ROOF_Y all the way to -1400, ending on actual black. Nothing
+	# is flat until it is genuinely nothing, so there is no plateau to notice and no
+	# edge between the two. The fill above only exists so that pulling the camera back
+	# further can never find a hole.
+	var roof_black := Color(0.0, 0.0, 0.0)
 	var grad_p := Polygon2D.new()
 	grad_p.polygon = PackedVector2Array([
-			Vector2(WORLD_L - 900.0, -820.0), Vector2(WORLD_R + 900.0, -820.0),
+			Vector2(WORLD_L - 900.0, -1400.0), Vector2(WORLD_R + 900.0, -1400.0),
 			Vector2(WORLD_R + 900.0, ROOF_Y), Vector2(WORLD_L - 900.0, ROOF_Y)])
-	grad_p.vertex_colors = PackedColorArray([roof_deep, roof_deep, SOIL, SOIL])
+	grad_p.vertex_colors = PackedColorArray([roof_black, roof_black, SOIL, SOIL])
 	grad_p.z_index = 0
 	add_child(grad_p)
-	_fill_rect(WORLD_L - 900.0, WORLD_R + 900.0, -1400.0, -820.0, 0, roof_deep)
+	_fill_rect(WORLD_L - 900.0, WORLD_R + 900.0, -3000.0, -1400.0, 0, roof_black)
 	_roof_band(WORLD_L - 250.0, WORLD_R + 250.0, ROOF_Y)
 	# THE WHITE FANGS ARE GONE. These were painted at 0.66-0.76 grey, which
 	# made a row of near-white teeth the highest-value thing in the picture
