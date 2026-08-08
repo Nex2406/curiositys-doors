@@ -2928,6 +2928,8 @@ func _build_sporelings() -> void:
 ## whether to fight the boss or the mushrooms, and clearing them BUYS her a
 ## clean stretch of duel. That stretch is the reward, and it is what makes the
 ## next wave land as a beat rather than as noise.
+## the cue that one has gripped the roof — see `_spawn_dropper()`
+const DROP_SFX: AudioStream = preload("res://assets/audio/jade/jade_pickup_5_deep_spark.wav")
 const DROP_FIRST := 5.0        # a beat of clean duel before the roof opens
 ## the pause between clearing a wave and the roof opening again
 const DROP_GAP_MIN := 2.6
@@ -3014,6 +3016,12 @@ func _spawn_dropper(side: float = 0.0) -> void:
 	trig.append(_curi)
 	d.triggers = trig
 	_droppers.append(d)
+	# THE ROOF OPENING HAS A SOUND (Advika: *"during the boss fight when the
+	# mushrooms from the ceiling add a spawn sound"*). One arriving silently above
+	# her, during a duel she is watching the floor for, was information she could
+	# only get by looking up at the wrong moment. Quiet and thin — it is a cue that
+	# something is up there, not a jump scare, and several can be in the air at once.
+	AudioManager.play_sfx(DROP_SFX, -16.0)
 	# it grips the roof line, hangs for a beat, then falls to the meadow
 	d.drop_from(ROOF_Y + 120.0, FLOOR_Y + 4.0, _rng.randf_range(0.7, 1.6))
 

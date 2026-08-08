@@ -25,6 +25,7 @@ signal popped
 
 ## the breath from Realm 1's jade pickup set — see `_sprout`
 const SPROUT_SFX: AudioStream = preload("res://assets/audio/jade/jade_pickup_4_breath.wav")
+const POP_SFX: AudioStream = preload("res://assets/audio/jade/jade_pickup_2_glass.wav")
 
 const SPORE_TEX := "res://assets/realms/realm2_moss/spore.png"
 const HALO := "res://assets/effects/lantern_halo.png"
@@ -341,7 +342,10 @@ func _sprout() -> void:
 	# this realm's collectible-shaped beat is a thing waking up, not a thing
 	# being taken. Well under the music, because six of these go off across the
 	# walk and one loud one would turn the wood into a doorbell.
-	AudioManager.play_sfx(SPROUT_SFX, -9.0)
+	# SOFTER, -15 not -9 (Advika: *"soften mushroom spawning noise"*). Six of these
+	# go off across the walk and at -9 the wood was a doorbell — the sprout should be
+	# something you notice at the edge of hearing, not an announcement.
+	AudioManager.play_sfx(SPROUT_SFX, -15.0)
 	_awake = true
 	_rising = true
 	_visual.visible = true
@@ -454,6 +458,14 @@ func take_damage(_amount: int, _knockback: Vector2 = Vector2.ZERO) -> void:
 	if _dead:
 		return
 	_dead = true
+	# IT MAKES A SOUND WHEN IT GOES (Advika: *"add a noise when i kill it when it
+	# bursts"*, *"i want a soft sound to play when the mushroom bursts"*). Killing one
+	# was silent, so the only feedback was the light spray — you could swing, connect
+	# and not be sure. The glass note rather than the breath the sprout uses: waking
+	# and bursting should not be the same sound, and this one is thinner and shorter.
+	# Quieter than the sprout, because this fires under a swing that already has
+	# its own sound.
+	AudioManager.play_sfx(POP_SFX, -17.0)
 	popped.emit()
 	_spray()
 	_visual.visible = false
