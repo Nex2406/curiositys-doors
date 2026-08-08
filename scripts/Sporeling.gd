@@ -24,7 +24,7 @@ class_name Sporeling
 signal popped
 
 ## blows to fell one — see `take_damage()`
-const HITS_TO_KILL := 3
+const HITS_TO_KILL := 5
 var _pop_hits := 0
 
 ## the breath from Realm 1's jade pickup set — see `_sprout`
@@ -343,6 +343,13 @@ func debug_state() -> String:
 
 ## it breaks ground: a squat nub shoves up out of the meadow, overshoots,
 ## settles — and only then does it have eyes, weight and a hitbox
+## Sprout on command, for a spawner that has already decided this one comes up out
+## of the ground rather than down off the roof — no proximity trigger, no waiting.
+func trigger_now() -> void:
+	if not _awake:
+		_sprout()
+
+
 func _sprout() -> void:
 	# THE GROUND GIVES ONE UP (Advika: *"a lil sound effect when each mushroom
 	# spawns, smth similar to the jade collecting thing"*). Same family as

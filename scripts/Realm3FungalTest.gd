@@ -3042,9 +3042,22 @@ func _spawn_dropper(side: float = 0.0) -> void:
 	# her, during a duel she is watching the floor for, was information she could
 	# only get by looking up at the wrong moment. Quiet and thin — it is a cue that
 	# something is up there, not a jump scare, and several can be in the air at once.
-	AudioManager.play_sfx(DROP_SFX, -16.0)
-	# it grips the roof line, hangs for a beat, then falls to the meadow
-	d.drop_from(ROOF_Y + 120.0, FLOOR_Y + 4.0, _rng.randf_range(0.7, 1.6))
+	# HALF THE WAVE COMES OUT OF THE GROUND INSTEAD.
+	#
+	# Every one of them dropping from the roof meant the whole wave arrived on the
+	# same line, at the same moment, from the same direction — and with the mirror
+	# coming at her too there was one thing to watch and four things doing it
+	# (Advika: *"its messy cuz all 4 mushrooms just come at u and so does the boss so
+	# make some spawn from the ceiling some from the ground"*). Splitting them gives
+	# the wave two arrival times and two places to look, which is what makes it read
+	# as pressure rather than as noise.
+	if _rng.randf() < 0.5:
+		# out of the meadow where she is standing: no roof cue, it simply sprouts
+		d.trigger_now()
+	else:
+		AudioManager.play_sfx(DROP_SFX, -16.0)
+		# it grips the roof line, hangs for a beat, then falls to the meadow
+		d.drop_from(ROOF_Y + 120.0, FLOOR_Y + 4.0, _rng.randf_range(0.7, 1.6))
 
 
 # ---------- the shift ----------
@@ -3995,7 +4008,15 @@ func _die() -> void:
 	var remaining: int = _lives.lose_eye()
 	await get_tree().create_timer(0.45).timeout
 	if remaining <= 0:
-		get_tree().reload_current_scene()
+		# THE SAME BEAT AS RUNNING OUT OF TIME. `Realm3Timeout` types "Curiosity never
+		# dies" across the black in the prologue's own voice and then rebuilds the
+		# realm -- and it was wired to the clock ALONE, so closing the third eye just
+		# hard-reloaded the level with nothing said (Advika: *"that happens when all 3
+		# eyes close OR when u run out of time"*). Both are the same failure and they
+		# get the same answer; the card owns the reload from here.
+		_leaving = true
+		AudioManager.stop_ambient(0.6)
+		get_tree().root.add_child(TIMEOUT_CARD.new())
 		return
 	_curi.global_position = _spawn
 	_curi.velocity = Vector2.ZERO
