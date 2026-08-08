@@ -52,8 +52,9 @@ const QUOTE_WEIGHT := 300
 ##
 ## One entry per line. `speaker` empty means no speaker line is drawn at all and the block
 ## closes up — the Realm 1 opening quote has no speaker.
+## (bare, no quote marks — `QuoteCard` puts those on now, for every card in the game)
 @export var quote_lines: PackedStringArray = PackedStringArray([
-	"“You will not fall, nor rise.”",
+	"You will not fall, nor rise.",
 ])
 @export var speaker: String = "— Fear"
 @export var attribution: String = "(Written by Silence – Advika Kohli)"

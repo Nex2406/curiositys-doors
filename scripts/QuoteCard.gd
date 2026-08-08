@@ -32,6 +32,14 @@ const TypewriterScript := preload("res://scripts/Typewriter.gd")
 @export var speaker := ""
 @export var attribution := ""
 
+## The curly typographic pair, not the typewriter double-prime — this is Cormorant
+## Garamond Italic and a straight " in it reads as a mistake.
+const QUOTE_OPEN := "“"
+const QUOTE_CLOSE := "”"
+## Every card is a quotation, so every card wears the marks (see `_plain_lines`). Left as
+## a knob only so a future card that genuinely is not quoting anyone can say so out loud.
+@export var quote_marks := true
+
 # ---------------------------------------------------------------------------- looks ----
 
 @export var quote_font: Font
@@ -148,11 +156,31 @@ func _face() -> Font:
 	return v
 
 
-## Authored lines with any pause tokens stripped.
+## Authored lines with any pause tokens stripped, wrapped in the card's quote marks.
+##
+## THE MARKS BELONG TO THE CARD, not to whoever writes the words. They were typed into
+## the string by hand for Fear's line and then simply forgotten by every card written
+## afterwards — the prologue's, Curiosity's on the way into Realm 3, and the last two
+## lines of the game all went out bare (Advika: *"the qoute cards need to have "" these
+## in them only lvl2s qoute card has that"*). A card that has to remember its own
+## punctuation is a card that will keep losing it, so it is applied here, once, to every
+## card there is or ever will be: open on the first line, close on the last.
+##
+## Already-marked text is left alone, so an authored line that carries its own marks (or
+## a nested quotation) is never double-wrapped.
 func _plain_lines() -> PackedStringArray:
 	var out := PackedStringArray()
 	for raw in quote_lines:
 		out.append(String(TypewriterScript.parse(String(raw)).text))
+	if not quote_marks or out.is_empty():
+		return out
+	var first := String(out[0])
+	if not first.begins_with(QUOTE_OPEN):
+		out[0] = QUOTE_OPEN + first
+	var last := int(out.size() - 1)
+	var tail := String(out[last])
+	if not tail.ends_with(QUOTE_CLOSE):
+		out[last] = tail + QUOTE_CLOSE
 	return out
 
 
