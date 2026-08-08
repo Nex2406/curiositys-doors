@@ -32,8 +32,9 @@ static func conjure_orb(anchor: Node2D, local_pos: Vector2, orb_parent: Node,
 		orb.scale = Vector2(scale, scale)
 		orb.kill_y = kill_y
 		orb_parent.add_child(orb)
-		# Ball center sits one radius above the ground point it was conjured on.
-		orb.global_position = ground_pos + Vector2(0.0, -RuneOrb.BALL_RADIUS * scale)
+		# Ball centre goes where `RuneOrb` says a resting orb's centre goes — bedded
+		# into the ground point it was conjured on, not balanced on top of it.
+		orb.global_position = Vector2(ground_pos.x, RuneOrb.rest_y(ground_pos.y, scale))
 		orb.set_direction(dir)
 	)
 	return fx

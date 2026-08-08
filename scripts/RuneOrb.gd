@@ -26,6 +26,11 @@ const ROLL_LAST := 12
 const FPS := 14.0
 const BALL_RADIUS := 105.0        # collider: the ball body, NOT the trail
 const PUSH_ZONE_RADIUS := 128.0   # a shade wider so the shove lands before overlap
+## How far the drawn ball beds into whatever it is resting on, in LOCAL px — 70
+## here is ~34 world px at the trial's 0.48 orb scale, a third of the ball's
+## lower curve swallowed by the moss. Anything that wants to place an orb on a
+## surface must go through `rest_y()` rather than subtracting a radius by hand.
+const GROUND_SINK := 70.0
 
 # Same gravity source as the hero (Curiosity.gd's drifting-traveler 460) so the
 # orb falls off an edge with the same weight she does.
@@ -65,6 +70,40 @@ var _leaving := false
 var _push_zone: Area2D
 
 
+## Where an orb's CENTRE goes so it comes to rest bedded into a surface at
+## `surface_y`. The one place that arithmetic lives: the conjure spawn and the
+## island's re-seat both used to write `surface_y - BALL_RADIUS * scale` by hand,
+## which is the tangent — a ball balanced on the moss rather than sitting in it —
+## and the two copies could drift apart besides.
+static func rest_y(surface_y: float, orb_scale: float) -> float:
+	return surface_y - (BALL_RADIUS - GROUND_SINK) * orb_scale
+
+
+## HIS colour, not its own (Advika, 2026-08-08: *"change color pallate of balls
+## to match that of wizards"*). The sheet is a grey crystal in warm gold banding —
+## a warm object in a cold wizard's hands — so `wizard_palette.gdshader` collapses
+## every hue in it onto his indigo. LOCK rather than rotate, because the crystal
+## and the banding sit on opposite sides of the wheel and no single rotation can
+## carry both (the first pass turned them mint and tan). Value and saturation
+## relationships survive the collapse, so the banding still reads as banding.
+##
+## And PUSHED, not merely moved: the crystal is painted nearly grey, so the
+## collapse alone landed a chalky blue-grey pebble beside a wizard in saturated
+## indigo. 1.6 gives it enough of his colour to read as his; the value drop keeps
+## it from going milky under the deck's light.
+##
+## Shared, because the orb and the smoke it arrives in have to be the same
+## conjuring — `OrbConjure` wears this too, and a second copy of these numbers
+## would be a second thing to forget.
+static func conjured_material() -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = load("res://assets/shaders/wizard_palette.gdshader")
+	m.set_shader_parameter("hue_lock", 1.0)
+	m.set_shader_parameter("sat_scale", 1.6)
+	m.set_shader_parameter("value_scale", 0.94)
+	return m
+
+
 func _ready() -> void:
 	# long snap: a climbing/bobbing deck (the lift island) must not shed its
 	# riders between frames — without this the rise outpaced the default
@@ -81,10 +120,19 @@ func _ready() -> void:
 	_visual.sprite_frames = frames
 	add_child(_visual)
 	_visual.play(&"roll")
+	_visual.material = conjured_material()
 
 	var col := CollisionShape2D.new()
 	var ball := CircleShape2D.new()
 	ball.radius = BALL_RADIUS
+	# LIFTED, so the ball beds into what it rests on instead of balancing on top
+	# of it — the same law the hero got, for the same reason. A circle whose
+	# radius matches the drawn ball rests tangent to the surface, which is the
+	# definition of sitting ON something (Advika: *"even the balls the wizard
+	# conjurs need to be IN the moss not ON the moss"*). Raising the shape by
+	# GROUND_SINK sinks that much of the drawn ball into the growth, and because
+	# the offset is in local units it scales with the orb.
+	col.position = Vector2(0.0, -GROUND_SINK)
 	col.shape = ball
 	add_child(col)
 

@@ -130,6 +130,37 @@ var _beam: Sprite2D              # the moth's light-form during the carve
 var _beam_mix := 0.0             # 0 = wings, 1 = light; the morph is a fade
 
 
+## THE MOTH'S COLOUR (Advika, 2026-08-08: *"can we change the void moths color
+## pallate and make it match the wizards cuz like the void moth is too purple"*,
+## then *"make void moths a bit purple"*).
+##
+## This was asked for once before and abandoned, and it is worth saying why this
+## attempt is not that one. The old try was a MODULATE tint — a multiply, which
+## can only ever take colour away. The moth's greens measure near zero (48,16,80),
+## so no multiplier on earth can lift them to the wizard's level (48,48,80); every
+## tint that got the hue closer just made the moth darker and muddier, which is why
+## it was called off and the sheet left alone.
+##
+## `wizard_palette.gdshader` rotates the hue in HSV instead. It can reach a colour
+## the multiply could not, and it leaves the painted values and shading untouched —
+## the same moth, in a different colour family.
+##
+## NOT all the way to his 240 degrees. The full -30 landed it exactly on the wizard
+## and read as his pet rather than as a thing of the void, so it stops half way at
+## -16: hue ~254, between the sheet's violet and his indigo. It belongs to his storm
+## and still keeps some purple of its own. Saturation comes down only part of the way
+## for the same reason.
+##
+## Shared, so the creature in the level and the one painted on the tarot card are one
+## colour — the card was still showing the old violet after the moth had moved.
+static func palette_material() -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = load("res://assets/shaders/wizard_palette.gdshader")
+	m.set_shader_parameter("hue_shift", -0.044)
+	m.set_shader_parameter("sat_scale", 0.78)
+	return m
+
+
 func _ready() -> void:
 	add_to_group("moths")
 	_visual = AnimatedSprite2D.new()
@@ -157,8 +188,7 @@ func _ready() -> void:
 	add_child(_visual)
 	_visual.play(&"fly")
 	_visual.animation_finished.connect(_on_anim_finished)
-	# palette: ORIGINAL sheet colors (Advika tried wizard-match and map-match
-	# tints, then called it — the moth keeps its own void purple)
+	_visual.material = palette_material()
 	# violet dust bleeding off the comet while the attack clip plays — the
 	# sparse sheet reads as a moving image without it (Advika); world-space
 	# motes hang in the carve the way the ghost sprites hang the pose
@@ -177,8 +207,8 @@ func _ready() -> void:
 	_attack_dust.scale_amount_min = 0.14
 	_attack_dust.scale_amount_max = 0.38
 	var dust_fade := Gradient.new()
-	dust_fade.set_color(0, Color(0.66, 0.42, 1.0, 0.85))
-	dust_fade.set_color(1, Color(0.5, 0.3, 0.9, 0.0))
+	dust_fade.set_color(0, Color(0.61, 0.55, 1.0, 0.85))
+	dust_fade.set_color(1, Color(0.46, 0.43, 0.9, 0.0))
 	_attack_dust.color_ramp = dust_fade
 	var dust_add := CanvasItemMaterial.new()
 	dust_add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
@@ -193,7 +223,7 @@ func _ready() -> void:
 	var bgrad := Gradient.new()
 	bgrad.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
 	bgrad.colors = PackedColorArray([Color(1.0, 0.95, 1.0, 1.0),
-			Color(0.66, 0.42, 1.0, 0.55), Color(0.4, 0.25, 0.9, 0.0)])
+			Color(0.61, 0.55, 1.0, 0.55), Color(0.39, 0.41, 0.9, 0.0)])
 	var bt := GradientTexture2D.new()
 	bt.gradient = bgrad
 	bt.fill = GradientTexture2D.FILL_RADIAL
@@ -450,7 +480,7 @@ func _shed_ghost(delta: float) -> void:
 		return
 	var g := Sprite2D.new()
 	g.texture = tex
-	g.modulate = Color(0.62, 0.4, 0.95, 0.38)
+	g.modulate = Color(0.58, 0.52, 0.95, 0.38)
 	g.z_index = z_index
 	get_parent().add_child(g)
 	g.global_transform = _visual.global_transform
@@ -758,7 +788,7 @@ func _mote_burst() -> void:
 	p.initial_velocity_max = 330.0
 	p.scale_amount_min = 0.22
 	p.scale_amount_max = 0.55
-	p.color = Color(0.66, 0.42, 1.0)
+	p.color = Color(0.61, 0.55, 1.0)
 	var m := CanvasItemMaterial.new()
 	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	p.material = m

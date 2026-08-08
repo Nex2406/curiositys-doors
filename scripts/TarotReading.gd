@@ -31,6 +31,12 @@ const TYPE_CPS := 28.0                     # typewriter chars/sec
 # feeds a jade shard here). And a tint on the painted card faces so each realm can
 # recolour the same art to its own palette (white = the original ink-and-cream).
 @export var second_art: Texture2D = preload("res://assets/enemies/void_moth/fly_01.png")
+## Optional material for that foot illustration. Realm 2 hands it the moth's own
+## palette shader so the creature painted on the card is the same colour as the one
+## that comes out of the storm — the card kept showing the old violet after the moth
+## itself had moved (Advika: *"update them in the tarot card as well"*). Realm 1 feeds
+## a jade shard through `second_art` and leaves this null, so nothing recolours it.
+@export var second_art_material: Material = null
 @export var face_tint: Color = Color(1, 1, 1)
 # The painted card faces are dark ink + light ornament; a multiply-tint can't lift
 # the near-black body to a colour. When `recolor` is on, a luminance ramp remaps the
@@ -308,6 +314,7 @@ func _build_reveal_ui() -> void:
 	# THE TRIAL drawn over its lower wisps (title added after = on top)
 	var moth := TextureRect.new()
 	moth.texture = _cropped(second_art)
+	moth.material = second_art_material
 	moth.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	moth.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	# strictly INSIDE the open zone: below the last verse, above the bottom

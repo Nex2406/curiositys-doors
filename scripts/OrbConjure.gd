@@ -37,6 +37,10 @@ func _ready() -> void:
 	for i in range(1, FRAME_COUNT + 1):
 		frames.add_frame(&"conjure", load(FRAME_DIR + "runeorbspawn%d.png" % i))
 	_visual.sprite_frames = frames
+	# the same conjuring, so the same colour: the spawn smoke is drawn in the orb
+	# sheet's warm gold, and left alone it stayed a bright tan bloom sitting on
+	# top of a ball that had just been moved to the wizard's indigo.
+	_visual.material = RuneOrb.conjured_material()
 	# Bottom-anchored: lift the centered texture so its bottom edge = our origin.
 	_visual.offset = Vector2(0.0, -FRAME_SIZE.y * 0.5)
 	add_child(_visual)
