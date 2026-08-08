@@ -36,6 +36,12 @@ const CURIOSITY_DIM := Color(0.62, 0.6, 0.64)   # Advika: dim the bright purple 
 # not the feathered edge) — the collider top sits here so Curiosity plants, no float.
 const PLAT_SLAB_H := 5.0    # a thin red LINE — just the standable outline, not a slab
 const PLAT_SINK := 5.0      # sit that line slightly BELOW the rim for a perfect planted sit
+## How deep the hero's hem beds into bare cave stone — see the `set_ground_sink` call
+## in `_setup_play()`. Realm-local: this realm is rock, not growth.
+const ROCK_SINK := 8.0
+## A roof golem's reach — deliberately shorter than a ground one's 580. See the
+## `gc.detect_range` assignment for why.
+const CEIL_GOLEM_DETECT := 300.0
 const CEILING_Y := -340.0         # world y Curiosity's head stops at (roof collider)
 ## The ceiling golem's cling spot — up IN the roof rock, over the flat early ground.
 ## y is set from the MEASURED roof silhouette here (bottom edge ≈ -380 world at this
@@ -1012,6 +1018,14 @@ func _setup_play() -> void:
 	_player.scale = Vector2(CURIOSITY_SCALE, CURIOSITY_SCALE)
 	_player.position = _spawn_pos
 	_player.z_index = 10        # in front of ground (z6) / platforms (z5)
+	# THIS REALM IS ROCK. Her default GROUND_SINK is 40 — tuned for Realm 2's moss and
+	# Realm 3's meadow, where that much of her disappears into growth that closes over
+	# her boots. Cave stone closes over nothing, so the same forty read as her sunk
+	# into the slab (Advika: *"in r1 he sits way below the platform"* — R1 only). Eight
+	# is the old "planted" depth: enough that her feet leak into the rock instead of
+	# perching on its very top edge, not enough to look like a hole. The platform caps
+	# and the cave floor are untouched — it is the hero who stands differently here.
+	_player.set_ground_sink(ROCK_SINK)
 	_player.jump_velocity = CURIOSITY_JUMP
 	_player.max_air_jumps = 1   # Advika: double jump in this level
 	# moving-platform fixes: snap to a descending platform (no jitter/float on the
@@ -1067,6 +1081,14 @@ func _setup_play() -> void:
 			var gc := BOULDER_GOLEM.new()
 			gc.ceiling_spawner = true
 			gc.body_tint = GOLEM_TINT
+			# THEY LET GO TOO SOON. The default 580px reach is a ground golem's — it
+			# is measured along the floor she is walking on, where seeing it coming
+			# is the point. A roof golem's whole trick is that she does not see it at
+			# all until it is already falling, and at 580 it committed while she was
+			# most of a screen away and simply landed behind her (Advika: *"the
+			# ceiling golems they reveal themselves too early so just reduce their
+			# detection range"*). 300 drops it when she is genuinely underneath.
+			gc.detect_range = CEIL_GOLEM_DETECT
 			gc.position = spot
 			gc.z_index = 8
 			add_child(gc)
@@ -1136,10 +1158,26 @@ func _seed_platform_golems() -> void:
 		g.body_tint = GOLEM_TINT
 		g.roll_distance = PLAT_GOLEM_ROLL
 		g.detect_range = PLAT_GOLEM_DETECT
-		g.position = Vector2(p["pos"].x + rng.randf_range(left, right),
-				p["pos"].y + float(meta[0]) - 8.0)
+		# THE GROUND VARIANT, explicitly. The ceiling one drops out of the roof and
+		# animates its own fall inside the cell; a plank is something to stand ON
+		# (Advika: *"for planks use ground golem not ceiling"*).
+		g.ceiling_spawner = false
+		# PARENTED TO THE PLATFORM, not stood on it. A DORMANT golem runs no physics
+		# at all — no gravity, no move_and_slide, collider disabled — so standing one
+		# on a mover carries it exactly nowhere: the platform slid out from under it
+		# and it hung in the air (Advika: *"the golem needs to sit on the platform
+		# blend into it and move with it until triggered"*). As a child of the
+		# assembly it rides the tween for free, which is what scenery should do.
+		g.position = Vector2(rng.randf_range(left, right),
+				float(meta[0]) + PLAT_SINK)
 		g.z_index = 8
-		add_child(g)
+		p["node"].add_child(g)
+		# and the moment it erupts it leaves the platform's frame for the world's,
+		# keeping its global transform, so its charge is its own and not the
+		# platform's. Deferred: this fires from inside the golem's state machine.
+		g.woke.connect(func() -> void:
+			if is_instance_valid(g) and g.get_parent() != self:
+				g.reparent.call_deferred(self, true))
 		placed += 1
 	print("PLATFORM GOLEMS: ", placed, " of ", _plats.size(), " platforms")
 

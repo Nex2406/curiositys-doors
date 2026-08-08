@@ -10,6 +10,8 @@ class_name BoulderGolem
 ## animation offset so the body stays put between states (cells differ in size).
 
 signal died
+## It has stopped being part of the rock — see `_enter()`.
+signal woke
 
 const DIR := "res://assets/enemies/golem/boulder/"
 const SCALE := 0.35   # Advika: smaller golem, then smaller again (2026-07-26)
@@ -201,9 +203,18 @@ func _on_frame_changed() -> void:
 
 # ── state machine ────────────────────────────────────────────────────────────
 func _enter(s: int) -> void:
+	var was_dormant := _state == S.DORMANT
 	_state = s
 	_t = 0.0
 	_enter_body(s)
+	# THE MOMENT IT STOPS BEING SCENERY. A DORMANT golem runs no physics at all (see
+	# `_physics_process`), which is what lets a level PARENT one to a moving platform
+	# and have it ride perfectly — but the instant it erupts it needs to be back in
+	# world space, moving under its own gravity, or it would charge along inside a
+	# parent that is still sliding around underneath it. Realm 1 listens for this and
+	# reparents. Nothing else needs to care.
+	if was_dormant and s != S.DORMANT:
+		woke.emit()
 	# logged AFTER the state's own setup, so `face` is the direction he actually
 	# committed to and not the one he had a frame ago
 	if _log or OS.get_environment("GOLEM_DEBUG") != "":

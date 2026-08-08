@@ -126,6 +126,35 @@ const FEET_FROM_CENTRE: float = 136.0   # content feet row below canvas centre (
 # what it was. Scene contract (Curiosity.tscn): size = (88, 396), position = (0, -18).
 const GROUND_SINK: float = 40.0
 
+
+## Re-seat how deep her painted hem rests below the collision plane.
+##
+## GROUND_SINK is tuned for realms whose floors are GROWTH — Realm 2's moss, Realm 3's
+## meadow — where forty pixels of her vanish into fronds that close over her boots.
+## Realm 1 is bare cave stone, and stone closes over nothing: the same forty read as
+## her standing in a hole (Advika: *"in r1 he sits way below the platform"*).
+##
+## So the depth belongs to the SURFACE, not to one number for the whole game, and a
+## realm with hard floors says so once here instead of re-tuning every collider it
+## owns. Realm 1's platform caps and cave floor are unchanged — it is the hero who
+## stands differently on rock than she does in moss.
+##
+## The box TOP never moves whatever the sink, so head clearance under low ceilings is
+## the same in every realm. The shape is duplicated first: the sub-resource in
+## `Curiosity.tscn` is shared between instances, and a realm re-seating its own hero
+## must not re-seat one standing in another scene.
+func set_ground_sink(px: float) -> void:
+	var col := get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if col == null or not (col.shape is RectangleShape2D):
+		return
+	var rect: RectangleShape2D = (col.shape as RectangleShape2D).duplicate()
+	var top: float = col.position.y - rect.size.y * 0.5
+	var scale_y: float = _base_visual_scale if _base_visual_scale > 0.0 else visual.scale.y
+	var bottom: float = FEET_FROM_CENTRE * scale_y - px
+	rect.size.y = bottom - top
+	col.shape = rect
+	col.position.y = (top + bottom) * 0.5
+
 # Source art faces RIGHT. Default unflipped = facing right; flip_h mirrors to face left.
 var _state: State = State.IDLE
 # She starts facing RIGHT — the way every level runs (Advika 2026-07-26: "when
