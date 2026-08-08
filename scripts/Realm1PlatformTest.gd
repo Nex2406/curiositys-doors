@@ -1201,6 +1201,18 @@ func _seed_platform_golems() -> void:
 		# animates its own fall inside the cell; a plank is something to stand ON
 		# (Advika: *"for planks use ground golem not ceiling"*).
 		g.ceiling_spawner = false
+		# AND IT HAS TO BE ABLE TO STAND ON A PLATFORM. `BoulderGolem` masks 1 alone
+		# unless it is a ceiling one, which masks 3 with the comment "ceiling golems
+		# also land on platforms" -- platforms are layer 2 and the cave floor is layer
+		# 1. So a ground golem woken on a ledge collided with nothing under it and
+		# dropped straight through (Advika: *"when he steps on the platform they fall
+		# right through it??"*). It never showed while they were dormant because a
+		# dormant golem has its collider disabled and runs no physics at all -- the bug
+		# only existed in the one frame after waking.
+		#
+		# With 3 it stands on the ledge, turns on her, and rolls; the charge runs out
+		# over the lip and THEN gravity has it, which is the arc she asked for.
+		g.collision_mask = 3
 		# PARENTED TO THE PLATFORM, not stood on it. A DORMANT golem runs no physics
 		# at all — no gravity, no move_and_slide, collider disabled — so standing one
 		# on a mover carries it exactly nowhere: the platform slid out from under it
