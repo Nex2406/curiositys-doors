@@ -80,6 +80,17 @@ const FLOOR_TOP := 470.0                 # world y of the walkable ground surfac
 const GOLEM_SPAWN_X := [1100.0, 3500.0, 6300.0, 8600.0]
 const GOLEM_TINT := Color(0.95, 0.74, 0.46)   # darker warm — blends into the cave rock
 const MAX_GOLEMS := 12
+## Golems lurking in the platforms — see `_seed_platform_golems()`.
+## A COUNT, not a probability. It started as a 0.34 chance per platform, which landed
+## on 9 of 26 and read as too many next to the three on the floor and six in the roof
+## (Advika: *"reduce 9 platforms to like 6"*). A chance cannot be asked for six — it can
+## only be nudged until it happens to give six on this seed and then quietly give eight
+## the next time a platform is added to the level. So the number is the number, and the
+## randomness decides WHICH six.
+const PLAT_GOLEM_COUNT := 6
+const PLAT_GOLEM_MARGIN := 46.0   # keep the body clear of both lips
+const PLAT_GOLEM_ROLL := 300.0    # a platform is ~240 wide; a floor-length charge is a fall
+const PLAT_GOLEM_DETECT := 300.0  # she has to be ON the platform, not walking past below it
 # Realm 2 portal door at the level end — floats in the cleared pocket, mist looping.
 const DOOR_SCALE := 1.25                       # a grand portal, taller than the 0.3 hero
 # It is not a floating portal any more — it ERUPTS from the ground, so the cell's
@@ -1039,6 +1050,8 @@ func _setup_play() -> void:
 		g.position = Vector2(gx, FLOOR_TOP)
 		g.z_index = 8
 		add_child(g)
+	if OS.get_environment("GOLEM_SIT") == "":
+		_seed_platform_golems()
 	# ceiling golems buried in the roof — they drop when Curiosity walks under.
 	# Each body sits UP in the roof rock and the ceiling frame (z40) draws over the
 	# golem (z8), so it reads as PART of the ceiling until it lets go.
@@ -1066,6 +1079,69 @@ func _setup_play() -> void:
 			and (OS.get_environment("PLAT_SHOT") == ""
 					or OS.get_environment("TAROT_SHOT") != ""):
 		_tarot_beat()
+
+
+## GOLEMS IN THE PLATFORMS THEMSELVES (Advika: *"in r1 add some stone golems blended
+## into the platforms themselves keep it random"*). Until now every golem in the realm
+## was on the floor or in the roof, so the platforms — the part of the level she spends
+## the most time looking at — were the one safe surface. Now a share of them are not.
+##
+## RANDOM, but not random every run. `_golem_rng` is seeded exactly like the jade and
+## vegetation RNGs, so which platforms carry one is unpredictable to read and identical
+## on every boot: a level that rearranges its threats between attempts is unlearnable,
+## and learnable is the whole point of a platforming route.
+##
+## They are added to the LEVEL ROOT and left to STAND on the platform rather than
+## parented to it. That is deliberate: most of these platforms are movers, and a
+## CharacterBody2D pinned inside a moving parent fights its own physics every frame.
+## Standing on an `AnimatableBody2D` with `sync_to_physics` gets it carried by the
+## engine for free — the same ride Curiosity gets, so a golem on a rising platform
+## behaves exactly like a player on one.
+##
+## Blending is the existing GOLEM_TINT (the warm cave rock the floor golems already
+## wear) plus a small random scale wobble, so a dormant one reads as one more lump of
+## the same stone the platform is drawn from until it uncurls. The roll is cut down
+## hard — 1100px of charge is a corridor distance and a platform is 240 wide, so a
+## floor-length roll would only ever mean "immediately falls off".
+func _seed_platform_golems() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("realm1-platform-golems")
+	# every platform that could carry one, shuffled, then the first PLAT_GOLEM_COUNT
+	# taken. Shuffling the whole pool rather than rolling per platform keeps the count
+	# exact however many platforms the level grows to, and keeps the spread even —
+	# a per-platform roll clusters, and three golems in a row is a wall, not a level.
+	var pool: Array = []
+	for i in _plats.size():
+		if String(_plats[i]["pname"]) != "wall_ledge":
+			pool.append(i)
+	for i in range(pool.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp = pool[i]
+		pool[i] = pool[j]
+		pool[j] = tmp
+	var placed := 0
+	for idx: int in pool:
+		if placed >= PLAT_GOLEM_COUNT:
+			break
+		var p: Dictionary = _plats[idx]
+		var pname: String = p["pname"]
+		var meta: Array = PLAT_META[pname]
+		# inside the standable span, clear of both lips so it can never be spawned
+		# hanging over an edge with half its body in open air
+		var left: float = float(meta[1]) + PLAT_GOLEM_MARGIN
+		var right: float = float(meta[2]) - PLAT_GOLEM_MARGIN
+		if right <= left:
+			continue
+		var g := BOULDER_GOLEM.new()
+		g.body_tint = GOLEM_TINT
+		g.roll_distance = PLAT_GOLEM_ROLL
+		g.detect_range = PLAT_GOLEM_DETECT
+		g.position = Vector2(p["pos"].x + rng.randf_range(left, right),
+				p["pos"].y + float(meta[0]) - 8.0)
+		g.z_index = 8
+		add_child(g)
+		placed += 1
+	print("PLATFORM GOLEMS: ", placed, " of ", _plats.size(), " platforms")
 
 
 ## The instructions card, TAROT_DELAY after Curiosity lands in the realm (Advika
