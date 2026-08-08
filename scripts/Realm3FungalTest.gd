@@ -3549,7 +3549,15 @@ func _process(delta: float) -> void:
 ## reason to close the game. So the spawn creeps forward with her: only ever
 ## forward, only while she is on the ground (never mid-jump over a gap), and
 ## never during the death beat itself.
-const CHECKPOINT_STEP := 1800.0
+## 520, down from 1800 (Advika: *"when curiosity dies and one eye closes just respawn
+## him slightly further in lvl3 not like completely restart the level"*). The
+## checkpoint already crept forward — it just crept in eighteen-hundred-pixel
+## strides, so a death anywhere in the first seventeen hundred of a stride put her
+## back at the start of it. Standing at 1799 and dying meant walking the whole thing
+## again, which is a restart in everything but name. At 520 the ground she loses is
+## a run-up rather than a leg of the level, and the rule is otherwise untouched:
+## forward only, on the floor only, never during the death beat.
+const CHECKPOINT_STEP := 520.0
 
 ## Report every sprite hanging in open air.
 ##
