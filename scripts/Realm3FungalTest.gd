@@ -222,6 +222,117 @@ const NEAR_L := -1350.0
 const NEAR_R := 18500.0
 
 
+## WHICH BUILDER DREW THIS PIXEL — R3_DIAG=1.
+##
+## Every time the floor has had a hole in it, the expensive part was not fixing it
+## but finding out which of the four things stacked below the walk line was
+## responsible. Reading the code cannot tell you: they overlap, they are all dark
+## teal, and the one you suspect is usually behind the one that is actually doing
+## it. I have now guessed wrong three times in a row on this exact question.
+##
+## So: flat loud colours, one per builder, and the answer is in one frame. Red is
+## the moss courses, green the near-black punctuation masses, blue the floor
+## scatter, magenta the understory sweep. Pair it with `R3_HOLES` and the dead
+## mask lands on whichever colour is at fault.
+const DIAG_COURSE := Color(1, 0, 0, 1)
+const DIAG_MASS := Color(0, 1, 0, 1)
+const DIAG_SCATTER := Color(0, 0.4, 1, 1)
+const DIAG_SWEEP := Color(1, 0, 1, 1)
+const DIAG_OTHER := Color(1, 1, 0, 1)   # anything not one of the four, incl. the field
+const DIAG_SOIL := Color(0, 1, 1, 1)    # the earth polygon under all of it
+
+
+func _diag(c: Color, tag: Color) -> Color:
+	return tag if OS.get_environment("R3_DIAG") != "" else c
+
+
+## WHY THE FLOOR KEPT HAVING HOLES, FOR FOUR SESSIONS RUNNING.
+##
+## It was never the placement. It is the art, and one sprite in particular.
+##
+## `fungalhill` 2 and 5 are the radial bursts — a ring of fronds around a middle.
+## Measured off the PNGs, that middle is opaque (alpha 1.00) and nearly unpainted:
+## hill2's centre runs lum 0.024 at std 0.061, against 0.071-0.146 at std
+## 0.13-0.17 for the wide mounds 1, 3 and 4. So a burst is a donut. Multiply that
+## centre by a near-foreground depth tint and it stops being dark and becomes
+## absolutely flat black — a disc of nothing, with a lovely spiky rim around it.
+##
+## Which is why every previous fix failed, and failed in the same way: the answer
+## to a hole always looked like "more growth down there", the growth I reached for
+## was the nice round burst, and every one I added punched a fresh hole in the
+## middle of itself. I have twice made this floor worse while measuring it better.
+##
+## The defect is a function of SIZE, and the level already proves it. The
+## understory sweep draws the very same textures at 150-250px bodies and accounts
+## for 0.1% of the dead pixels; the near masses draw them at 344-509px and are the
+## single biggest contributor. Below roughly 260px the hollow centre is a few
+## dozen pixels across and reads as shadow between fronds, which is exactly what
+## it should be. Above it, the centre clears the ~9,900 world px² a hole needs to
+## register and the eye calls it a hole too.
+##
+## So: bursts stay — Advika likes them and they are the silhouette this realm
+## reads by — but they are no longer allowed to be the BIG piece. Anything drawn
+## larger than the cut comes from the mounds, whose middles carry paint.
+const BURST_MAX_BODY := 260.0     # world px; above this a burst's centre reads as a hole
+const HILL_BURSTS: Array[int] = [2, 5]
+const HILL_MOUNDS: Array[int] = [1, 3, 4]
+
+## HOW DARK THE NEAREST MASSES ARE ALLOWED TO BE.
+##
+## They used to sit at `_depth(1.0)` — NEAR_BLACK exactly, the very bottom of the
+## ramp. Modulate multiplies, so at that tint a 500px sprite had its whole internal
+## range squeezed into about two rgb8 steps and there was no art left in it, only
+## an outline. Changing WHICH sprite it was could not help, because at that value
+## any sprite is flat; the mounds actually measured worse than the bursts, a
+## hollow middle being smaller than a solid one.
+##
+## They are R2 moss now (see `_moss_tuft`), so the value is expressed in R2's tint
+## like the courses beneath them — same pack, same correction, one material. Still
+## the darkest thing in the realm; it is the art that changed, not the darkness.
+const MASS_MOSS_K := 0.24
+
+
+## R2 MOSS IN THE NEAR BAND — and this one is my regression, not an old one.
+##
+## Advika, circling a wide dark mass at her feet: *"the outline of this asset can
+## be seen its as if its just stamped on replace thiss with moss from r2"*.
+##
+## She is looking at something I did an hour ago. The size rule above sends every
+## piece over 260px to the wide mounds, and in the band just below the walk line
+## EVERY piece is over 260px — so a rule meant to stop hollow centres quietly
+## turned that whole band into wide smooth mounds. A mound has one clean outline
+## and a broad even fill, which at this value is exactly a stamp. I traded a hole
+## for a sticker.
+##
+## Her fix is the right one and she has now given it three times in three
+## different words: use the moss from Realm 2. It is the same paint the courses
+## under this band are already laid in, so it cannot fail to belong, and its
+## silhouette is a hundred separate fronds instead of one smooth edge — there is
+## no outline left to see.
+##
+## `tuft_2` carries the big pieces because it is the only one of the three that is
+## SOLID: measured interior lum 0.163 at std 0.109, against tuft_0 and tuft_1,
+## which have the same hollow middle the fungalhill bursts do and would walk us
+## straight back into the donut problem at this size. They are still allowed small.
+const R2_TUFT_SOLID := "tuft_2"
+const R2_TUFT_ANY: Array[String] = ["tuft_2", "tuft_0", "tuft_1"]
+
+
+func _moss_tuft(body_px: float) -> String:
+	if body_px > BURST_MAX_BODY:
+		return R2_TUFT_SOLID
+	return R2_TUFT_ANY[_rng.randi() % R2_TUFT_ANY.size()]
+
+
+## R2's art is painted purple and this realm is teal, so it is read through
+## `R2_TEAL` exactly as the moss courses are — same correction, same pack, so the
+## near band and the courses beneath it stay one material. `k` is the value, and
+## it is set to land on the luminance the fungalhill pieces were already
+## rendering at: the art changes here, the darkness does not.
+func _moss_tint(k: float) -> Color:
+	return _dim(R2_TEAL, k)
+
+
 ## the realm's only tint function. `lift` brightens a piece WITHIN its depth
 ## (a lit face, a rim) without letting it escape the band it belongs to.
 func _depth(t: float, lift := 0.0) -> Color:
@@ -364,6 +475,31 @@ func _ready() -> void:
 	# found in the image can be walked to in the level.
 	if OS.get_environment("R3_GAPS") != "":
 		_gap_scan(OS.get_environment("R3_GAPS"))
+		return
+	# R3_HOLES=<dir> — THE SAME WALK, BUT LIT. Feeds `tools/find_holes.py`.
+	#
+	# R3_GAPS above answers "is anything DRAWN here", and answered ZERO on a floor
+	# Advika had just circled twice. It was not wrong: the sprite she circled IS
+	# there, it just renders at rgb8 (0,2,2) while the moss beside it renders at
+	# (9,9,11) with texture in it. To a coverage mask those are both "covered". The
+	# eye is asking a different question — does this region have any LIGHT and any
+	# TEXTURE — and only a lit frame can be asked it. So: the same camera walk, no
+	# flattening, grade and lights left exactly as they ship, and the detector reads
+	# the pixels the player actually sees.
+	if OS.get_environment("R3_HOLES") != "":
+		_hole_scan(OS.get_environment("R3_HOLES"))
+		return
+	# R3_PROBE="x,y" — WHAT IS ACTUALLY AT THIS WORLD POINT.
+	#
+	# The scan says a point is a hole; the diag says which builder owns it. When
+	# those two disagree — and they did, for two passes running — the question is
+	# no longer statistical, it is "name every node covering this exact pixel, in
+	# draw order". Reading the builders cannot answer that, because the thing on
+	# top is usually not the thing you are reading about.
+	if OS.get_environment("R3_PROBE") != "":
+		await get_tree().process_frame
+		_probe_point(OS.get_environment("R3_PROBE"))
+		get_tree().quit()
 		return
 	if OS.get_environment("R3_AUDIT") != "":
 		await get_tree().process_frame
@@ -854,8 +990,15 @@ func _mid_band() -> void:
 					x + _rng.randf_range(-260.0, 260.0), FLOOR_Y + 46.0,
 					_rng.randf_range(0.42, 0.78), _depth(t + 0.06),
 					_rng.randf() < 0.5)
+		# THIS WAS A STONE. Advika circled one of these and said replace it with
+		# moss — the fourth time she has told me rocks do not belong in this
+		# floor, so the whole class goes rather than the one she happened to
+		# catch. `fungalhill` 1/3/4 are the wide mounds (solid centres, see
+		# BURST_MAX_BODY) and are already what the line above lays down here, so
+		# the band keeps its variety of size and depth without a smooth grey
+		# lump sitting in the middle of a meadow.
 		if _rng.randf() < 0.5:
-			_band_at(_hills_mid, "fungalstoneb%d.png" % (1 + _rng.randi() % 11),
+			_band_at(_hills_mid, "fungalhill%d.png" % HILL_MOUNDS[_rng.randi() % 3],
 					x + _rng.randf_range(-300.0, 300.0), FLOOR_Y + 40.0,
 					_rng.randf_range(0.30, 0.52), _depth(t + 0.10),
 					_rng.randf() < 0.5)
@@ -895,9 +1038,13 @@ func _near_band() -> void:
 					x + _rng.randf_range(-380.0, 380.0), FLOOR_Y + 96.0,
 					_rng.randf_range(0.62, 1.15), _depth(D_NEAR + 0.08),
 					_rng.randf() < 0.5)
-		# one big stone mass every other stand — not all of it is growth
+		# one big mass every other stand, so the band is not all one size. It used
+		# to be a stone here too, on the reasoning that "not all of it is growth"
+		# — but a smooth grey boulder is exactly what Advika keeps circling, and
+		# these are the biggest of them at 0.55-0.85 scale. A wide mound gives the
+		# same break in rhythm and is made of the same stuff as the forest.
 		if i % 2 == 0:
-			_band_at(_hills_near, "fungalstoneb%d.png" % (1 + _rng.randi() % 11),
+			_band_at(_hills_near, "fungalhill%d.png" % HILL_MOUNDS[_rng.randi() % 3],
 					x + _rng.randf_range(-420.0, 420.0), FLOOR_Y + 90.0,
 					_rng.randf_range(0.55, 0.85), _depth(D_NEAR + 0.05),
 					_rng.randf() < 0.5)
@@ -2279,6 +2426,35 @@ func _build_foreground() -> void:
 			var hid: int = [1, 2, 3, 4, 5, 1, 3, 2][(i + p) % 8]
 			var tex: Texture2D = load(BASE + "fungalhill%d.png" % hid)
 			var sc: float = body / float(tex.get_height())
+			# BACK THE BURST, DON'T SWAP IT.
+			#
+			# The field runs 323-650px bodies, every one of them over the size
+			# where a burst's hollow middle turns into a hole (see `_hill_id`),
+			# and the field is the largest population of clumps in the realm —
+			# it was 57% of the dead pixels the scan found, more than everything
+			# else put together. But this is also the realm's signature
+			# silhouette, tuned by eye, and the mix of bursts and mounds is
+			# precisely what stops it reading as a hedge. So unlike the utility
+			# placements, nothing here is swapped out: a burst that lands big
+			# gets a mound laid behind it at the same spot, which puts paint
+			# under the hollow centre and leaves the spiky outline untouched.
+			# Added before the burst, so same z, drawn under.
+			if hid in HILL_BURSTS and body > BURST_MAX_BODY:
+				var bkt: Texture2D = load(BASE + "fungalhill%d.png"
+						% HILL_MOUNDS[(i + p) % HILL_MOUNDS.size()])
+				var bksc: float = body * 0.72 / float(bkt.get_height())
+				var bk := Sprite2D.new()
+				bk.texture = bkt
+				bk.scale = Vector2(bksc, bksc)
+				bk.flip_h = _rng.randf() < 0.5
+				bk.position = Vector2(x, top + body * 0.62)
+				bk.modulate = _depth(lerpf(0.60, 0.97, t)
+						+ _rng.randf_range(-0.04, 0.04))
+				bk.z_index = FRONT_Z + int(t * 3.99)
+				bk.set_meta("air", true)
+				bk.material = _growth_sway()
+				add_child(bk)
+				_front_growth.append(bk)
 			var sp := Sprite2D.new()
 			sp.texture = tex
 			sp.scale = Vector2(sc, sc)
@@ -2330,6 +2506,95 @@ func _build_foreground() -> void:
 			i += 1
 
 	_understory()
+	_floor_scatter()
+
+
+## MORE MOSS IN THE GAPS, AND NOTHING ELSE CHANGES.
+##
+## Advika, circling the dark band under the walk line: *"add more moss to r3
+## floor but keep it scattered — put more of these moss onto the floor gaps"*.
+##
+## This is the fix I should have reached for first. My previous attempt treated
+## the gaps as a VALUE problem and lifted the black point on every growth sprite
+## in the realm; it measured beautifully and she hated it on sight, because
+## brightening the whole lower half is how you lose the depth separation that
+## makes this cavern read at all. The gaps are not too dark. There is simply not
+## enough growing down there.
+##
+## So: the same art, at the same depths, drawn by the same rule — just more of
+## it. `_depth` is untouched, no new tint, nothing lifted. The only thing this
+## adds is clumps.
+##
+## SCATTERED, and that word is load-bearing. She has rejected a strip of moss
+## laid over the patches twice (*"i dont wanna just put a whole strip of moss to
+## cover patches, thats just incorrect and wrong"*), so this must never close
+## into a run: the step is long and irregular, a third of the positions are
+## skipped outright, and every clump takes its own depth. Gaps survive — they
+## are just gaps in growth now, instead of gaps in the picture.
+const SCATTER_PASSES := 2
+
+
+func _floor_scatter() -> void:
+	# R3_SCATTER=0 turns it off, so the floor can be A/B'd against itself
+	if OS.get_environment("R3_SCATTER") == "0":
+		return
+	for p in SCATTER_PASSES:
+		var x: float = WORLD_L - 400.0 + _rng.randf_range(0.0, 620.0)
+		while x < WORLD_R + 400.0:
+			# a third of the slots stay empty, so the pass can never read as a row
+			if _rng.randf() < 0.34:
+				x += _rng.randf_range(200.0, 560.0)
+				continue
+			# BELOW the walk line, in the band that reads as empty — measured off
+			# the floor rather than off the frame, so it follows her, not the
+			# camera
+			var top: float = FLOOR_Y + _rng.randf_range(120.0, 520.0) * GROWTH_SCALE
+			var body: float = _rng.randf_range(200.0, 430.0) * GROWTH_SCALE
+			# R2 MOSS, not fungalhill — this is the band Advika circled as
+			# "stamped on". See `_moss_tuft`: the hills gave this band either a
+			# hollow centre (bursts) or one smooth outline (mounds), and the R2
+			# tuft has neither.
+			var tex: Texture2D = load(R2 + "%s.png" % _moss_tuft(body))
+			var sc: float = body / float(tex.get_height())
+			# depth from the same ramp the field uses, in the range its readable
+			# clumps already occupy — these have to look like the moss that is
+			# down there, not like a new layer
+			var t: float = _rng.randf_range(0.62, 0.88)
+			var sp := Sprite2D.new()
+			sp.texture = tex
+			sp.scale = Vector2(sc, sc)
+			sp.flip_h = _rng.randf() < 0.5
+			sp.rotation_degrees = _rng.randf_range(-6.0, 6.0)
+			sp.position = Vector2(x, top + body * 0.5)
+			# value tracks the same depth ramp it always did, just expressed in
+			# R2's tint because the art is now R2's — nearer is darker
+			sp.modulate = _diag(_moss_tint(lerpf(0.40, 0.26, t)
+					+ _rng.randf_range(-0.03, 0.03)), DIAG_SCATTER)
+			sp.z_index = FRONT_Z + int(t * 3.99)
+			sp.set_meta("air", true)
+			sp.material = _growth_rim()
+			add_child(sp)
+			_front_growth.append(sp)
+			# a frond or two off the side, so a clump is growth and not a blob
+			if _rng.randf() < 0.40:
+				var fi: int = FRINGE_TEX[_rng.randi() % FRINGE_TEX.size()]
+				var ft: Texture2D = load(BASE + "fungalfrond%d.png" % fi)
+				var fh: float = body * _rng.randf_range(0.35, 0.70)
+				var f := Sprite2D.new()
+				f.texture = ft
+				f.scale = Vector2(fh / float(ft.get_height()),
+						fh / float(ft.get_height()))
+				f.flip_h = _rng.randf() < 0.5
+				f.rotation_degrees = _rng.randf_range(-14.0, 14.0)
+				f.position = Vector2(x + _rng.randf_range(-body * 0.45, body * 0.45),
+						top + fh * 0.5 + _rng.randf_range(-14.0, 24.0))
+				f.modulate = _depth(lerpf(0.56, 0.92, t))
+				f.z_index = sp.z_index
+				f.set_meta("air", true)
+				f.material = _growth_sway()
+				add_child(f)
+				_front_growth.append(f)
+			x += _rng.randf_range(200.0, 560.0)
 
 ## THE UNDERSTORY — GAPLESS BY CONSTRUCTION.
 ##
@@ -2393,6 +2658,12 @@ const UNDERSTORY: Array = [
 ##
 ## Below that line there is no hole to find, because there are no seams down
 ## there to begin with.
+## the most a single course tile can wander off its listed y — the two sines and
+## the jitter in `_understory_mass` summed (26 + 17 + 11). The course spacing is
+## derived from this number, so if the wobble changes this must change with it or
+## the courses stop overlapping and the bare strip comes back.
+const COURSE_WOBBLE_MAX := 54.0
+
 const MASS_TOP := 545.0        # mean height of the ground mass's edge
 const MASS_WAVE := 78.0        # how far that edge wanders
 const MASS_STEP := 52.0        # x resolution of the edge
@@ -2418,15 +2689,47 @@ func _understory_mass() -> void:
 	var front: Texture2D = load(R2 + "moss_front.png")
 	var span: float = 3840.0 * R2_SCALE
 	var n: int = int((WORLD_R - WORLD_L + 4000.0) / span) + 2
-	# [texture, y, z, tint multiplier, x offset]
-	var courses: Array = [
-		[front, 470.0, FORE_Z, 0.46, span * 0.31],
-		[mat, 555.0, FORE_Z, 0.40, 0.0],
-		[mat, 760.0, FORE_Z + 1, 0.30, span * 0.17],
-		# the scan's leftovers sat in a band at world y ~880-1020, so these are
-		# placed FROM the measurement rather than by eye
-		[mat, 990.0, FORE_Z + 2, 0.22, span * 0.48],
-	]
+	# THE COURSES ARE SPACED BY PROOF NOW, NOT BY EYE. This is Advika's gap.
+	#
+	# She circled a strip of bare ground below the walk line and I spent a whole
+	# session looking for a dark SPRITE, because my detector wanted dark AND flat
+	# and this reads at lum 0.033 — just bright enough to slip the test. It was
+	# never a sprite. It was arithmetic:
+	#
+	#   moss_mat is 300px tall, laid at R2_SCALE 0.7 -> 210px, `centered = false`
+	#   so the listed y is its TOP. The old tops were 470 / 555 / 760 / 990:
+	#
+	#     555 -> bottom 765, next top 760  =    5px of overlap
+	#     760 -> bottom 970, next top 990  =  -20px, i.e. A GAP BEFORE ANY WOBBLE
+	#
+	# and then every tile takes up to +-54px of wobble, so that -20 opens to as
+	# much as 128px of exposed soil running the entire 27,000px of the level, with
+	# the texture's own hard bottom edge ruling a straight line across the top of
+	# it. That straight edge is what makes it read as a hole rather than as shade.
+	#
+	# So the spacing is now derived instead of chosen. For guaranteed overlap the
+	# next top must land inside the previous strip even when the two wobble their
+	# full amount in opposite directions:
+	#
+	#     STEP + 2 * WOBBLE_MAX < STRIP_H      ->   100 + 108 = 208 < 210
+	#
+	# which holds for every pair, so no gap can open anywhere. Covering 470..1100
+	# at that step takes seven courses instead of four; they are generated rather
+	# than hand-listed precisely so the next person cannot re-open a gap by
+	# nudging one number.
+	# derived, not typed in — so the guarantee survives someone editing the wobble
+	var strip_h: float = 300.0 * R2_SCALE          # 210
+	var step: float = strip_h - 2.0 * COURSE_WOBBLE_MAX - 2.0   # 100
+	var courses: Array = []
+	var cy: float = 470.0
+	var ci2 := 0
+	while cy < 1100.0:
+		# tint ramps down with depth, ranges deliberately overlapping (see below)
+		var k: float = lerpf(0.46, 0.20, float(ci2) / 6.0)
+		courses.append([front if ci2 == 0 else mat, cy, FORE_Z + mini(ci2 / 2, 2),
+				k, span * [0.31, 0.0, 0.17, 0.48, 0.63, 0.09, 0.72][ci2 % 7]])
+		cy += step
+		ci2 += 1
 	# EVERY COURSE IS LAID CROOKED, ON PURPOSE.
 	#
 	# Laid flat they band — Advika circled a long dark trough running the width
@@ -2450,8 +2753,15 @@ func _understory_mass() -> void:
 			var wob: float = sin(float(i) * 2.37 + float(ci) * 1.9) * 26.0 					+ sin(float(i) * 0.71 + float(ci) * 4.1) * 17.0 					+ _rng.randf_range(-11.0, 11.0)
 			m.position = Vector2(WORLD_L - 2000.0 - float(c[4]) + i * span,
 					float(c[1]) + wob)
-			m.modulate = _dim(R2_TEAL, float(c[3]) * _rng.randf_range(0.82, 1.24))
+			m.modulate = _diag(_dim(R2_TEAL,
+					float(c[3]) * _rng.randf_range(0.82, 1.24)), DIAG_COURSE)
 			m.z_index = int(c[2])
+			# and the bottom edge FEATHERS. `moss_mat` is opaque to its last row of
+			# pixels, so an uncovered course cuts a straight line across the level —
+			# that ruled edge is what made this read as a hole rather than as
+			# shadow. `_moss_dissolve` is the same fade `_moss_body` already uses at
+			# the walk line; these courses simply never got it.
+			m.material = _moss_dissolve
 			add_child(m)
 			_front_growth.append(m)
 
@@ -2476,7 +2786,8 @@ func _understory() -> void:
 			sp.flip_h = _rng.randf() < 0.5
 			sp.rotation_degrees = _rng.randf_range(-5.0, 5.0)
 			sp.position = Vector2(x, top + body * 0.5)
-			sp.modulate = _depth(float(row[5]) + _rng.randf_range(-0.05, 0.04))
+			sp.modulate = _diag(_depth(float(row[5])
+					+ _rng.randf_range(-0.05, 0.04)), DIAG_SWEEP)
 			sp.z_index = int(row[4])
 			sp.set_meta("air", true)
 			add_child(sp)
@@ -2493,36 +2804,102 @@ func _understory() -> void:
 	var bx := WORLD_L + 400.0
 	var bi := 0
 	while bx < WORLD_R:
-		var bt: Texture2D = load(BASE + "fungalhill%d.png" % [2, 5][bi % 2])
+		# 344-509px of body — the biggest growth in the level, so whatever is wrong
+		# with a piece of art is most visible here. R2 moss for the same reason the
+		# scatter above uses it: no hollow centre, and no single readable outline.
 		var bh: float = _rng.randf_range(250.0, 370.0) * GROWTH_SCALE
+		var bt: Texture2D = load(R2 + "%s.png" % _moss_tuft(bh))
 		var bs: float = bh / float(bt.get_height())
 		var b := Sprite2D.new()
 		b.texture = bt
 		b.scale = Vector2(bs, bs)
 		b.flip_h = _rng.randf() < 0.5
 		b.position = Vector2(bx, FLOOR_Y + 440.0 - bh * 0.5)
-		b.modulate = _depth(1.0)
+		# STILL THE DARKEST THING IN FRAME — but no longer flat.
+		#
+		# This was `_depth(1.0)`, which is NEAR_BLACK exactly. Modulate multiplies,
+		# so a frond burst whose own art runs across a healthy range came out with
+		# every one of those values crushed into rgb8 0..3: a solid black blob with
+		# a soft edge, sitting on top of moss that reads beautifully. After the
+		# boulders were fixed these were the entire remaining top of the hole list,
+		# and their spacing in the scan (~1570-1970px apart) matches this loop's
+		# step exactly, which is how they were identified rather than guessed at.
+		#
+		# The intent — a near-black mass she walks out from behind — is good and
+		# stays. What was wrong is that a silhouette needs to read AS a shape, and
+		# against an equally dark floor a textureless one just reads as a hole. So
+		# it keeps its place at the bottom of the value ramp and gets `lift`, the
+		# parameter `_depth` already has for exactly this: brighten a piece WITHIN
+		# its band without letting it escape the band. Nothing else in the realm
+		# moves — this is fifteen sprites, not the global black-point lift that was
+		# tried and rejected before.
+		b.modulate = _diag(_moss_tint(MASS_MOSS_K), DIAG_MASS)
 		b.z_index = FORE_Z + 2
 		b.set_meta("air", true)
+		b.material = _growth_rim()
 		add_child(b)
 		_front_growth.append(b)
-		# a stone shoulder against it, so the near frame is not all one
-		# material either
+		# A SHOULDER AGAINST IT — and it is NOT a rock. This is the line that put
+		# the holes in the floor.
+		#
+		# It used to drop a `fungalstoneb` here: a big smooth boulder, 180-280px
+		# scaled up, at `_depth(1.0)`, every ~1600px for the whole 27,000px level.
+		# The intent was right — the near frame should not be all one material —
+		# but the execution IS the defect Advika keeps circling. The lit scan
+		# found 76 dead regions and seven of the worst eight were this exact
+		# sprite. The reason is what the boulder art is: smooth shaded ovoids with
+		# no fine grain, so once the near-foreground dim takes them to rgb8 ~(2,5,6)
+		# there is nothing left inside them. The moss beside them keeps its texture
+		# at the same value and reads fine; the rock goes to a flat void.
+		#
+		# She had already told me this in words, twice, and I had it backwards both
+		# times: *"please do not cover patches with bloody rocks — u should use the
+		# moss from lvl2 and 3 combined, or some mushrooms with moss and vines,
+		# make it BLEND IN with the rest of the floor."* I was using rocks to fill
+		# holes. The rocks were the holes.
+		#
+		# So the shoulder is now growth from the same families as the floor around
+		# it. It still breaks the silhouette — different family, own depth, own
+		# height — but it cannot go flat, because fronds and ground clumps are
+		# texture all the way down. No value was lifted anywhere to achieve this.
 		if bi % 2 == 0:
-			var st: Texture2D = load(BASE + "fungalstoneb%d.png" % (1 + _rng.randi() % 11))
-			var sh: float = _rng.randf_range(180.0, 280.0) * GROWTH_SCALE
-			var ss: float = sh / float(st.get_height())
-			var so := Sprite2D.new()
-			so.texture = st
-			so.scale = Vector2(ss, ss)
-			so.flip_h = _rng.randf() < 0.5
-			so.position = Vector2(bx + _rng.randf_range(-380.0, 380.0),
-					FLOOR_Y + 470.0 - sh * 0.5)
-			so.modulate = _depth(1.0)
-			so.z_index = FORE_Z + 2
-			so.set_meta("air", true)
-			add_child(so)
-			_front_growth.append(so)
+			var sx: float = bx + _rng.randf_range(-380.0, 380.0)
+			var gt: Texture2D = load(BASE + "fungalground%d.png"
+					% [3, 8, 14, 21, 27][_rng.randi() % 5])
+			var gh: float = _rng.randf_range(190.0, 290.0) * GROWTH_SCALE
+			var gs: float = gh / float(gt.get_height())
+			var g := Sprite2D.new()
+			g.texture = gt
+			g.scale = Vector2(gs, gs)
+			g.flip_h = _rng.randf() < 0.5
+			g.rotation_degrees = _rng.randf_range(-4.0, 4.0)
+			g.position = Vector2(sx, FLOOR_Y + 470.0 - gh * 0.5)
+			g.modulate = _depth(0.94)
+			g.z_index = FORE_Z + 2
+			g.set_meta("air", true)
+			g.material = _growth_sway()
+			add_child(g)
+			_front_growth.append(g)
+			# two or three fronds standing out of it, so the shoulder has an edge
+			# that catches light instead of a smooth rim that does not
+			for _fi in 2 + _rng.randi() % 2:
+				var ft: Texture2D = load(BASE + "fungalfrond%d.png"
+						% FRINGE_TEX[_rng.randi() % FRINGE_TEX.size()])
+				var fh: float = gh * _rng.randf_range(0.45, 0.85)
+				var f := Sprite2D.new()
+				f.texture = ft
+				f.scale = Vector2(fh / float(ft.get_height()),
+						fh / float(ft.get_height()))
+				f.flip_h = _rng.randf() < 0.5
+				f.rotation_degrees = _rng.randf_range(-16.0, 16.0)
+				f.position = Vector2(sx + _rng.randf_range(-gh * 0.5, gh * 0.5),
+						FLOOR_Y + 470.0 - gh * 0.72 + _rng.randf_range(-20.0, 40.0))
+				f.modulate = _depth(0.90)
+				f.z_index = FORE_Z + 2
+				f.set_meta("air", true)
+				f.material = _growth_sway()
+				add_child(f)
+				_front_growth.append(f)
 		bx += _rng.randf_range(1300.0, 2100.0)
 
 
@@ -2646,6 +3023,85 @@ func _growth_sway() -> ShaderMaterial:
 		_sway_mat = ShaderMaterial.new()
 		_sway_mat.shader = sh
 	return _sway_mat
+
+
+## THE RIM — how the nearest growth stops reading as a hole without getting lighter.
+##
+## Advika's call, given the choice: keep the near band exactly as dark as it is and
+## catch a thin edge of light on it instead. That is the right instinct and it is
+## how this kind of near-black foreground works everywhere it works — the mass
+## stays the darkest thing in frame, and the eye is given an EDGE to read it by
+## rather than a value.
+##
+## It matters that this is not a brightness change. The body of every one of these
+## sprites comes out of the shader at exactly the value it went in at; the only
+## pixels that gain anything are the ones within a few texels of the silhouette,
+## and they gain it from above, because that is where this cavern's light is.
+##
+## TWO THINGS THIS SHADER MUST NOT BREAK, both learned from `SWAY_SHADER`'s note:
+##
+## 1. It writes COLOR, so it has to multiply by MODULATE by hand. The sway shader
+##    gets to stay out of the fragment stage precisely to avoid this; a rim cannot.
+## 2. The drain tweens modulate on every one of these sprites when the forest
+##    dies. A rim added as a flat constant would survive that tween, and the dead
+##    forest would sit there with its edges still lit. So the rim is scaled by the
+##    sprite's own modulate luminance against the value the near band normally
+##    sits at — full strength while alive, gone by the time the drain is finished,
+##    with no extra bookkeeping.
+##
+## It carries the sway verbatim, because a clump that gets a rim must still move
+## with its neighbours.
+const RIM_SHADER := "shader_type canvas_item;
+uniform float amp = 3.2;
+uniform float speed = 0.55;
+uniform vec3 rim_col : source_color = vec3(0.30, 0.52, 0.48);
+uniform float rim_px = 3.0;
+uniform float rim_gain = 0.30;
+uniform float live_at = 0.12;   // modulate luminance the near band sits at alive
+
+// MODULATE does not exist in the fragment stage on this renderer — asking for it
+// there fails compilation, and a canvas_item whose shader failed to compile draws
+// BLACK, which is indistinguishable from the very defect this file is chasing.
+// (It cost me a whole diagnostic pass: the first R3_DIAG used MODULATE and
+// reported two thirds of the floor as bare when it was nothing of the sort.) In
+// the vertex stage COLOR *is* the node's modulate, so it is caught there and
+// carried down.
+varying vec4 vmod;
+
+void vertex() {
+	vmod = COLOR;
+	float ph = MODEL_MATRIX[3][0] * 0.013 + MODEL_MATRIX[3][1] * 0.021;
+	float w = 1.0 - UV.y;
+	VERTEX.x += sin(TIME * speed + ph) * amp * w * w;
+}
+
+void fragment() {
+	vec4 tex = texture(TEXTURE, UV);
+	vec2 o = TEXTURE_PIXEL_SIZE * rim_px;
+	// the lit edge is the one with empty space over it — light from above
+	float up = texture(TEXTURE, UV - vec2(0.0, o.y)).a;
+	float lf = texture(TEXTURE, UV - vec2(o.x, 0.0)).a;
+	float rt = texture(TEXTURE, UV + vec2(o.x, 0.0)).a;
+	float rim = clamp(tex.a - up, 0.0, 1.0)
+			+ clamp(tex.a - lf, 0.0, 1.0) * 0.35
+			+ clamp(tex.a - rt, 0.0, 1.0) * 0.35;
+	rim = clamp(rim, 0.0, 1.0) * tex.a;
+	float k = clamp(dot(vmod.rgb, vec3(0.299, 0.587, 0.114)) / live_at,
+			0.0, 1.0);
+	COLOR = tex * vmod;
+	COLOR.rgb += rim_col * rim * rim_gain * k * vmod.a;
+}"
+
+var _rim_mat: ShaderMaterial
+
+
+func _growth_rim() -> ShaderMaterial:
+	if _rim_mat == null:
+		var sh := Shader.new()
+		sh.code = RIM_SHADER
+		_rim_mat = ShaderMaterial.new()
+		_rim_mat.shader = sh
+	return _rim_mat
 
 
 func _build_atmosphere() -> void:
@@ -3857,6 +4313,147 @@ void fragment() {
 		i += 1
 	print("GAPSCAN: done, ", i, " frames")
 	get_tree().quit()
+
+
+## THE LIT WALK — see the R3_HOLES block in `_ready()`.
+##
+## Deliberately changes NOTHING about how the realm renders. No flat material, no
+## clear colour, no CanvasModulate override — the whole point is that the detector
+## has to judge the same pixels Advika judges. The only things taken out of shot
+## are the two that are not floor: Curiosity herself (she is a bright vertical in
+## the middle of every frame, and would mask whatever she is standing over) and
+## the UI layers, which do not ride the camera and so would smear the same HUD
+## across all forty frames.
+func _hole_scan(dir: String) -> void:
+	await get_tree().process_frame
+	if _curi != null:
+		_curi.visible = false
+	var hidden := 0
+	for n in _all_nodes(self):
+		if n is CanvasLayer and (n as CanvasLayer).layer >= 0:
+			(n as CanvasLayer).visible = false
+			hidden += 1
+	# R3_DIAG PAINTS FLAT, and it has to, or it lies.
+	#
+	# The first version of this just set each builder's modulate to a loud colour
+	# and let it render normally. Modulate MULTIPLIES, so a sprite whose art is
+	# black in the middle came out black no matter which tag it carried — and the
+	# attribution then blamed "nothing drawn here" for pixels that something very
+	# much had drawn. That sent me looking in the wrong place twice.
+	#
+	# So under R3_DIAG every sprite is filled with its own modulate, flat, keeping
+	# only the texture's alpha for shape. A tagged builder is then loud everywhere
+	# it covers, whatever its art looks like, and anything still untagged is
+	# repainted yellow. After that, and only after that, black means nothing drew
+	# here.
+	if OS.get_environment("R3_DIAG") != "":
+		var flat := Shader.new()
+		# MODULATE is vertex-stage only here — see the note in RIM_SHADER. The first
+		# version of this asked for it in fragment, failed to compile, and every
+		# sprite it touched drew black; the attribution then blamed "nothing drawn"
+		# for two thirds of the floor. A broken canvas shader and a real hole look
+		# exactly alike, so this one is worth keeping correct.
+		flat.code = "shader_type canvas_item;
+render_mode unshaded;
+varying vec4 vmod;
+void vertex() { vmod = COLOR; }
+void fragment() {
+	COLOR = vec4(vmod.rgb, texture(TEXTURE, UV).a * vmod.a);
+}"
+		var fm := ShaderMaterial.new()
+		fm.shader = flat
+		var tags := [DIAG_COURSE, DIAG_MASS, DIAG_SCATTER, DIAG_SWEEP]
+		for n in _all_nodes(self):
+			# Polygon2D too, and leaving it out cost me a whole pass: the soil is a
+			# polygon, so it stayed dark, and "nothing drawn here" swallowed it.
+			if n is Polygon2D:
+				var pg := n as Polygon2D
+				pg.color = DIAG_SOIL
+				pg.vertex_colors = PackedColorArray()
+				pg.material = null
+				continue
+			if not (n is Sprite2D):
+				continue
+			var s := n as Sprite2D
+			var tagged := false
+			for t in tags:
+				if s.modulate.is_equal_approx(t):
+					tagged = true
+			if not tagged:
+				s.modulate = DIAG_OTHER
+			s.material = fm
+	# let the sway shaders and the fog settle before the first grab, or frame 0
+	# reads darker than every frame after it
+	for _i in 8:
+		await get_tree().process_frame
+	var vp := get_viewport_rect().size
+	var step: float = vp.x / _cam.zoom.x
+	var cam_y: float = FLOOR_Y - 40.0
+	var x: float = WORLD_L
+	var i := 0
+	print("HOLESCAN: zoom %.4f  cam_y %.0f  step %.0f  hid %d layers"
+			% [_cam.zoom.x, cam_y, step, hidden])
+	while x < WORLD_R:
+		_cam.position = Vector2(x + step * 0.5, cam_y)
+		await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(
+				"%s/lit_%03d_x%06d.png" % [dir, i, int(x)])
+		x += step
+		i += 1
+	print("HOLESCAN: done, %d frames  (python tools/find_holes.py %s --zoom %.4f --cam-y %.0f)"
+			% [i, dir, _cam.zoom.x, cam_y])
+	get_tree().quit()
+
+
+## every CanvasItem whose drawn rect contains a world point, back to front
+func _probe_point(spec: String) -> void:
+	var parts: PackedStringArray = spec.split(",")
+	var p := Vector2(float(parts[0]), float(parts[1]))
+	var hits: Array = []
+	for n in _all_nodes(self):
+		if not (n is CanvasItem):
+			continue
+		var ci := n as CanvasItem
+		if not ci.visible:
+			continue
+		var r := Rect2()
+		if n is Sprite2D:
+			var s := n as Sprite2D
+			if s.texture == null:
+				continue
+			var sz: Vector2 = s.texture.get_size() * s.scale
+			r = Rect2(s.global_position - (sz * 0.5 if s.centered else Vector2.ZERO), sz)
+		elif n is Polygon2D:
+			var pg := n as Polygon2D
+			if pg.polygon.size() < 3:
+				continue
+			var mn: Vector2 = pg.polygon[0]
+			var mx: Vector2 = pg.polygon[0]
+			for v in pg.polygon:
+				mn = mn.min(v)
+				mx = mx.max(v)
+			r = Rect2(pg.to_global(mn), mx - mn)
+		else:
+			continue
+		if not r.has_point(p):
+			continue
+		# the texture filename is the only field that answers "which asset IS that",
+		# which is the question actually being asked when she circles something
+		var art := "-"
+		if n is Sprite2D and (n as Sprite2D).texture != null:
+			art = String((n as Sprite2D).texture.resource_path).get_file()
+		var par := "root"
+		if ci.get_parent() != null and ci.get_parent() != self:
+			par = String(ci.get_parent().name)
+		hits.append([ci.z_index, par, art,
+				ci.global_position, r.size,
+				(ci as Node).get_meta("air", false)])
+	hits.sort_custom(func(a, b): return a[0] < b[0])
+	print("R3 PROBE at (%.0f, %.0f) — %d canvas items cover it" % [p.x, p.y, hits.size()])
+	for h in hits:
+		print("   z%-4d %-11s %-26s at(%.0f,%.0f) size %.0fx%.0f air=%s"
+				% [h[0], h[1], h[2], h[3].x, h[3].y, h[4].x, h[4].y, h[5]])
 
 
 func _all_nodes(root: Node) -> Array[Node]:
