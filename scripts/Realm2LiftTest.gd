@@ -1526,7 +1526,12 @@ func _set_phase(p: Phase) -> void:
 ## under it would read as pasted onto the screen.
 const R3_GATE_DECK_Y := -120.0     # the deck's walkable top, island-local
 const R3_GATE_X := 210.0           # off to one side: she should walk TO it
-const R3_GATE_SCALE := 1.32
+# 0.95, down from 1.32. "The largest thing standing on the island" was the brief and
+# it overshot: at 1.32 the doorway ate the deck she has to fight and walk on, and it
+# read as a set piece the island was hanging off rather than something growing out of
+# it (Advika: *"door is too big on the floating platform"*). Still the tallest thing
+# up there, with deck left either side of it.
+const R3_GATE_SCALE := 0.95
 
 ## PRELOADED, not referenced by class name. `Door.gd` has no `class_name` at
 ## all, and a `class_name` that was only just added is not in the global class

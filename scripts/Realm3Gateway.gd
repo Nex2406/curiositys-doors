@@ -630,7 +630,12 @@ func _sway(sp: Sprite2D, pivot: String, amp: float, period: float) -> void:
 ## full-bleed planes filling the opening; they never move, and they open as an
 ## APERTURE afterwards (`open_portal`) — Realm 3 shows through only once there is
 ## something for it to show through.
-const ASM_SWEEP := 2.4        # how long the top-to-bottom sweep takes
+# 1.2, halved. The wizard falls, his own death beat plays, and only then does the
+# doorway begin writing itself downward -- so a 2.4s sweep landed the last piece the
+# best part of five seconds after the kill, long enough that it read as unrelated to
+# it (Advika: *"the door appears like 5 or 7seconds after the wizard dies"*). The beat
+# is the same beat, crown first, one piece at a time; it just is not waited through.
+const ASM_SWEEP := 1.2        # how long the top-to-bottom sweep takes
 const ASM_LAND := 0.42        # one piece's drop
 const ASM_DROP := 45.0        # how far above its place it starts
 

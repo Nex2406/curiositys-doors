@@ -41,7 +41,12 @@ const GROWTH_SCALE := HERO_SCALE / 0.24
 ## the front growth row takes just over half of that growth — see `_build_foreground`.
 ## R3_FRINGE=<n> overrides it live, so how deep she wades is a thing that can
 ## be SHOT at three depths and looked at rather than argued about.
-const FRINGE_GROWTH := 1.0
+## 1.4, up from 1.0 — how far the NEAREST field clumps reach above the floor line, so
+## the meadow crosses her rather than ending under her boots (Advika, again: *"IN not
+## ON the ground"*). Picked by shooting 1.0, 1.4 and 1.8 side by side: 1.0 is
+## ankle-deep and still reads as standing on top, 1.8 buries her to the eyes, 1.4 puts
+## the growth across her waist and leaves the lantern and the hood clear.
+const FRINGE_GROWTH := 1.4
 var _fringe_growth := FRINGE_GROWTH
 ## where the front moss curtain's tips land, relative to the walk line
 const MOSS_FRONT_TIP := 30.0
@@ -2782,7 +2787,12 @@ func _build_exit_door() -> void:
 func _build_camera() -> void:
 	_cam = Camera2D.new()
 	var vp := get_viewport_rect().size
-	var z := 1.0 * vp.y / 1080.0   # she's the subject, with room to breathe
+	# 0.86, pulled back from 1.0 (Advika: *"zoom out camera a bit for r3"*). This realm
+	# is a meadow under a canopy and the shot was framed on HER — which is right for a
+	# cave corridor and wrong here, where the platforming reads across a span and the
+	# forest is the thing worth seeing. Still viewport-relative, so a shorter window
+	# does not silently show more world than the shot was judged at.
+	var z := 0.86 * vp.y / 1080.0
 	_cam.zoom = Vector2(z, z)
 	_cam.position = _spawn + Vector2(0, -80)
 	add_child(_cam)
