@@ -2280,10 +2280,20 @@ func _build_foreground() -> void:
 				f.material = _growth_sway()
 				add_child(f)
 				_front_growth.append(f)
-			# the step rides depth too: near clumps are big and sparse, far
-			# ones small and tight, which is one more thing that cannot band
-			# ~20% overlap at most (the spec's number), instead of 70%
-			x += tex.get_width() * sc * _rng.randf_range(0.82, 1.18)
+			# THE STEP CAN NEVER EXCEED THE CLUMP'S OWN WIDTH. It used to run to
+			# 1.18 of it, which means two neighbours in a pass simply stop
+			# touching — and with only two passes, both offset at random, nothing
+			# guarantees the other one lands over the miss. That is where the
+			# black window in the bank came from (Advika, circling one: *"this
+			# hedge needs to cover gap"*), and it is a hole that appears and
+			# disappears with the seed, which is why it survived being looked at
+			# several times.
+			#
+			# Capped below 1.0 the clumps always overlap — by 6% at the loosest
+			# and 38% at the tightest, so they are still the sparse accents the
+			# field was rebuilt to be and nowhere near the 97% blob it started as.
+			# Overlap is the only thing that can promise no gap; spacing cannot.
+			x += tex.get_width() * sc * _rng.randf_range(0.62, 0.94)
 			i += 1
 
 	_understory()
@@ -2792,7 +2802,7 @@ func _build_camera() -> void:
 	# cave corridor and wrong here, where the platforming reads across a span and the
 	# forest is the thing worth seeing. Still viewport-relative, so a shorter window
 	# does not silently show more world than the shot was judged at.
-	var z := 0.86 * vp.y / 1080.0
+	var z := 0.78 * vp.y / 1080.0
 	_cam.zoom = Vector2(z, z)
 	_cam.position = _spawn + Vector2(0, -80)
 	add_child(_cam)
