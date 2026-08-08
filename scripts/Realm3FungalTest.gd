@@ -3250,6 +3250,11 @@ var _mirror: Mirror
 var _boss_log := 0.0
 
 
+## The fade-up is long enough to outlast reading the card; `closed` is what makes it
+## live, so this is a ceiling, not a timer.
+const BOSS_ARRIVE_HOLD := 30.0
+
+
 func _spawn_mirror() -> void:
 	if _mirror != null or _curi == null:
 		return
@@ -3266,15 +3271,28 @@ func _spawn_mirror() -> void:
 	if OS.get_environment("R3_END") != "":
 		_mirror.max_health = 80      # two of her swings, then the ending
 		_mirror.health = 80
-	# it arrives, is looked at, and only then is allowed to move
-	_mirror.arrive(2.6)
-	# THE MIRROR CARD, ONE SECOND AFTER IT STANDS UP (Advika). Deliberately not
-	# on the drain and not on the kill: the level names what she is fighting only
-	# once she has seen it, so the card confirms a thing she has already begun to
-	# suspect rather than spoiling it.
+	# IT FADES UP, THE CARD NAMES IT, AND ONLY THEN IS IT ALLOWED TO MOVE.
+	#
+	# `arrive()` ends by setting `live`, and it ran on its own 2.6s clock while the
+	# card came up at 1.0s and stayed until dismissed — so the fight started under the
+	# card, against a boss the player could not see and could not answer (Advika:
+	# *"evil C spawns when the card is still going??? u need to let the user exit the
+	# card and then spawn evil c"*). A card that pauses the game to explain a thing
+	# cannot also be the thing you are losing to.
+	#
+	# So the arrival is now the FADE only — a long hold that outlasts any reading of
+	# the card — and `closed` is what actually starts it. The card still comes a beat
+	# after it stands up, because the level names what she is fighting only once she
+	# has seen it.
+	_mirror.arrive(BOSS_ARRIVE_HOLD)
 	get_tree().create_timer(1.0).timeout.connect(func() -> void:
-		if is_inside_tree():
-			add_child(Realm3Card.mirror()))
+		if not is_inside_tree():
+			return
+		var card: TarotReading = Realm3Card.mirror()
+		card.closed.connect(func() -> void:
+			if is_instance_valid(_mirror):
+				_mirror.live = true)
+		add_child(card))
 	# R3_END_AUTO=1 — nobody is holding the controller in a headless run, so
 	# the fight has to end itself for the ending after it to be provable.
 	if OS.get_environment("R3_END_AUTO") != "":

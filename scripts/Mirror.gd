@@ -202,6 +202,8 @@ var target: CharacterBody2D = null
 ## dead until the arrival beat finishes — it stands there and is looked at
 ## first, and only then does it get to move
 var live := false
+## its opening move has been spent — see `_pick_move`
+var _opened := false
 
 var _act: int = Act.WAIT
 var _act_t := 0.0
@@ -544,6 +546,25 @@ func _decide(gap: float, want: float) -> void:
 ## the thing their own habits leave them worst placed to answer. The stage only
 ## decides how much of the kit is unlocked.
 func _pick_move(gap: float, level: bool) -> void:
+	# ITS FIRST MOVE IS A DASH (Advika: *"instead of jumping towards the player
+	# initially evil C should dash and then attack"*).
+	#
+	# The opening stage is MIMIC, which unlocks only the swing — so with her stood
+	# anywhere but on top of it, `opts` came out empty and it fell through to CLOSE,
+	# and CLOSE hops. The very first thing the boss did was bunny-hop across the
+	# arena at her, which is not an entrance for a thing that has been watching her
+	# fight; a dash is. The lunge's own animation is her DASH art, so this is also
+	# the read: it opens by doing the move she opens with.
+	#
+	# Once only, and only from range — if she is already in its face when it wakes
+	# it swings like it always did, and everything after this is the profile-driven
+	# weighting untouched.
+	if not _opened:
+		_opened = true
+		if gap > reach * 1.1 and level:
+			_start_lunge()
+			return
+
 	var opts: Array = []          # [name, weight]
 
 	if gap < reach * 1.05 and level:
