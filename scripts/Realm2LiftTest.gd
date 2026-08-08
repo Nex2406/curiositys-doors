@@ -1509,7 +1509,7 @@ func _set_phase(p: Phase) -> void:
 			_trauma = 1.0
 		Phase.DONE:
 			print("trial complete")
-			_grow_r3_gateway()
+			_await_clear_deck()
 
 
 ## THE WAY ON. Realm 2 ended by hovering — the wizard fell, the storm relented,
@@ -1531,7 +1531,7 @@ const R3_GATE_X := 210.0           # off to one side: she should walk TO it
 # read as a set piece the island was hanging off rather than something growing out of
 # it (Advika: *"door is too big on the floating platform"*). Still the tallest thing
 # up there, with deck left either side of it.
-const R3_GATE_SCALE := 0.95
+const R3_GATE_SCALE := 0.78
 
 ## PRELOADED, not referenced by class name. `Door.gd` has no `class_name` at
 ## all, and a `class_name` that was only just added is not in the global class
@@ -1544,6 +1544,34 @@ const DOOR_SCRIPT := preload("res://scripts/Door.gd")
 var _r3_gate: Node2D
 var _r3_door: Area2D
 var _r3_near := false
+
+
+## THE DECK HAS TO BE HERS BEFORE THE WAY OUT APPEARS.
+##
+## The doorway used to grow the instant `arrived` fired, which is the instant the
+## wizard falls -- with his last orbs still rolling around under it. A way out
+## writing itself into a deck that is still a hazard reads as two scenes playing
+## over each other, and she cannot walk to it anyway (Advika: *"make it spawn only
+## when the platform is free of the balls and is clear"*).
+##
+## So it waits for the orbs to leave -- they do that on their own, each rolling off
+## the nearest edge after its spell -- with a floor of GATE_MIN_WAIT so the beat
+## never snaps in early on a deck that happened to be empty, and a ceiling so a
+## wedged orb can never lock the level shut.
+const GATE_MIN_WAIT := 7.0    # Advika: "like 7 seconds after wizz dies"
+const GATE_MAX_WAIT := 16.0   # ...but never hostage to one stuck orb
+
+
+func _await_clear_deck() -> void:
+	var waited := 0.0
+	while waited < GATE_MAX_WAIT:
+		await get_tree().create_timer(0.25).timeout
+		waited += 0.25
+		if waited < GATE_MIN_WAIT:
+			continue
+		if get_tree().get_nodes_in_group("hazards").is_empty():
+			break
+	_grow_r3_gateway()
 
 
 func _grow_r3_gateway() -> void:

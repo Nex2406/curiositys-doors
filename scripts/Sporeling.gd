@@ -23,9 +23,17 @@ class_name Sporeling
 
 signal popped
 
+## blows to fell one — see `take_damage()`
+const HITS_TO_KILL := 3
+var _pop_hits := 0
+
 ## the breath from Realm 1's jade pickup set — see `_sprout`
 const SPROUT_SFX: AudioStream = preload("res://assets/audio/jade/jade_pickup_4_breath.wav")
-const POP_SFX: AudioStream = preload("res://assets/audio/jade/jade_pickup_2_glass.wav")
+## The glass note was wrong (Advika: *"i dont like the mushroom kill sound"*) — a
+## bright chime is a PICKUP sound, and it made killing one feel like collecting it.
+## The stone hit is blunt and short, which is what a thing of cap and spore coming
+## apart should be.
+const POP_SFX: AudioStream = preload("res://assets/audio/jade/jade_pickup_6_stone.wav")
 
 const SPORE_TEX := "res://assets/realms/realm2_moss/spore.png"
 const HALO := "res://assets/effects/lantern_halo.png"
@@ -456,6 +464,16 @@ func _pick_dir() -> float:
 
 func take_damage(_amount: int, _knockback: Vector2 = Vector2.ZERO) -> void:
 	if _dead:
+		return
+	# THEY TAKE MORE THAN ONE (Advika: *"make the mushrooms harder to kill"*). One
+	# swing each made the six lights a walk rather than a fight. The flinch is what
+	# sells it: without a visible reaction a non-fatal blow reads as a MISS, and a
+	# player who thinks they missed backs off instead of committing.
+	_pop_hits += 1
+	if _pop_hits < HITS_TO_KILL:
+		_visual.modulate = Color(2.2, 2.2, 2.2)
+		create_tween().tween_property(_visual, "modulate", Color(1, 1, 1), 0.20)
+		AudioManager.play_sfx(POP_SFX, -22.0)
 		return
 	_dead = true
 	# IT MAKES A SOUND WHEN IT GOES (Advika: *"add a noise when i kill it when it

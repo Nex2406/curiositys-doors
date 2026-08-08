@@ -283,11 +283,11 @@ func _ready() -> void:
 	# Divine Echo, on loop, from the moment she arrives (the loop flag lives in
 	# the .ogg's import settings, same as Realm 2's Moonlight).
 	_play_track(DIVINE_ECHO, "realm3_divine", 3.0)
-	# THE OPENING CARD, FIVE SECONDS IN (Advika). Not on arrival: she comes out
-	# of a quote card into this realm, and stacking a second card straight onto
-	# the first makes the doorway feel like a menu. Five seconds is long enough
-	# to see the forest breathing before the game says anything about it.
-	get_tree().create_timer(5.0).timeout.connect(func() -> void:
+	# THE OPENING CARD, SEVEN SECONDS IN (Advika, up from five). Not on arrival:
+	# she comes out of a quote card into this realm, and stacking a second card
+	# straight onto the first makes the doorway feel like a menu. Seven is long
+	# enough to have started walking and met the forest before it is explained.
+	get_tree().create_timer(7.0).timeout.connect(func() -> void:
 		if is_inside_tree():
 			add_child(Realm3Card.open()))
 	# hazy blue-grey ambient — a soft cool dim over the world (the backdrop

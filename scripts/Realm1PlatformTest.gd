@@ -100,7 +100,12 @@ const MAX_GOLEMS := 12
 ## only be nudged until it happens to give six on this seed and then quietly give eight
 ## the next time a platform is added to the level. So the number is the number, and the
 ## randomness decides WHICH six.
-const PLAT_GOLEM_COUNT := 6
+## THREE. Six of them read as level geometry rather than as enemies -- a dark hump
+## on a dark ledge in the same cave-rock tint is another small platform to the eye,
+## which is why Advika counted them as added platforms. Camouflage is the point
+## while they sleep, but six of it changes what the room looks like. Three keep the
+## threat without redrawing the route.
+const PLAT_GOLEM_COUNT := 3
 const PLAT_GOLEM_MARGIN := 46.0   # keep the body clear of both lips
 ## A FLOOR-LENGTH CHARGE, and the fall is the point (Advika: *"the golem on the
 ## platforms need to be the ones on the ground they need to roll off the platform
