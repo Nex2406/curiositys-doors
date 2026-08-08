@@ -71,44 +71,24 @@ const STANZAS: Array = [
 	},
 ]
 
-## THE LIDS. Two full-screen quads whose covered edge BULGES in the middle, so
-## what closes reads as an eyelid rather than a letterbox bar, and whose edge is
-## feathered so it never draws a line across the frame.
-const LID_SHADER := """
-shader_type canvas_item;
-uniform float amount = 0.0;   // 0 open, 1 shut
-uniform float flip = 0.0;     // 0 top lid, 1 bottom lid
-uniform float curve = 0.26;   // how far the middle of the lid hangs past its edges
-uniform float feather = 0.055;
-void fragment() {
-	float x = UV.x * 2.0 - 1.0;
-	float y = mix(UV.y, 1.0 - UV.y, flip);
-	float edge = amount * (1.0 + curve) - curve * (1.0 - x * x);
-	COLOR = vec4(0.0, 0.0, 0.0, smoothstep(edge + feather, edge - feather, y));
-}
-"""
+## THE LIDS now live in `Eyelids.gd` — Realm 2's death beat needed the same eye
+## closing before its reset, and one approved lid is better than two that drift.
+const EYELIDS := preload("res://scripts/Eyelids.gd")
 
-var _lids: Array[ColorRect] = []
+var _eye: Eyelids = null
 var _pro: Node = null
 var _text_layer: CanvasLayer = null
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	layer = 250
-	for i in 2:
-		var r := ColorRect.new()
-		r.set_anchors_preset(Control.PRESET_FULL_RECT)
-		r.mouse_filter = Control.MOUSE_FILTER_STOP
-		var sh := Shader.new()
-		sh.code = LID_SHADER
-		var m := ShaderMaterial.new()
-		m.shader = sh
-		m.set_shader_parameter("amount", 0.0)
-		m.set_shader_parameter("flip", float(i))
-		r.material = m
-		add_child(r)
-		_lids.append(r)
+	# 249, so the lids' own 250 sits above this and the voice's `layer + 10` sits
+	# above them both. A CanvasLayer nested in a CanvasLayer does NOT inherit — its
+	# layer is a global sort key — which is exactly why the eye can be parented here
+	# and still draw over the realm, and why it gets freed when the epilogue does.
+	layer = 249
+	_eye = EYELIDS.new()
+	add_child(_eye)
 	# R3_EPI_SHOT=<dir> — three frames of the ending: the eye half shut, a
 	# stanza mid-type, and the menu behind the opening lids. A video cannot be
 	# taken from here, so these are what proves the beats land.
@@ -130,7 +110,7 @@ func _shots(path: String) -> void:
 func _run() -> void:
 	# the boss track goes with the boss
 	AudioManager.stop_ambient(CLOSE_TIME)
-	await _lids_to(1.0, CLOSE_TIME, Tween.EASE_IN)
+	await _eye.close(CLOSE_TIME)
 	# THE TREE IS NOT PAUSED. Pausing it was the obvious move and it deadlocked
 	# the ending: `Prologue.gd` drives its stanzas on plain `create_tween()`,
 	# which halts with the tree, so the voice never said a word. Nothing behind
@@ -190,20 +170,9 @@ func _finish() -> void:
 	await get_tree().process_frame
 	if is_instance_valid(_text_layer):
 		_text_layer.queue_free()
-	await _lids_to(0.0, OPEN_TIME, Tween.EASE_OUT)
+	await _eye.open(OPEN_TIME)
 	await _wait(MENU_HOLD)
 	queue_free()
-
-
-func _lids_to(amount: float, secs: float, ease_: int) -> void:
-	var t := create_tween().set_parallel(true)
-	t.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	for r in _lids:
-		var m: ShaderMaterial = r.material
-		t.tween_method(func(v: float) -> void: m.set_shader_parameter("amount", v),
-				m.get_shader_parameter("amount"), amount, secs) \
-				.set_trans(Tween.TRANS_SINE).set_ease(ease_)
-	await t.finished
 
 
 ## timers stop with the tree; this one must not
