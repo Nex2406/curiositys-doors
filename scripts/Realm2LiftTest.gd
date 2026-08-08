@@ -63,8 +63,15 @@ const JUMP_BOOST := 1.15   # this level jumps slightly higher — orbs must be c
 
 # The wizard fights dirtier here: quicker cast cadence, wider escape sense,
 # a slimmer grace beat — and the storm itself sharpens when he takes the deck.
-const WIZ_IDLE_MIN := 1.5
-const WIZ_IDLE_MAX := 2.5
+# HE LINGERS LONGER BETWEEN HOPS. Up from 1.5-2.5 (Advika: *"the wizard shifts
+# postions too fast u need to slow that down a bit"*). This is the beat he stands
+# still for before the next teleport, and at 1.5s the deck read as a wizard
+# flickering around it rather than a caster choosing his ground — with the blink
+# itself now a full second each way, the pause between them has to be long enough
+# to be a pause. It also gives her a window where he is actually somewhere, which
+# is the only window she has to close the distance and swing.
+const WIZ_IDLE_MIN := 2.6
+const WIZ_IDLE_MAX := 4.0
 const WIZ_ESCAPE_RANGE := 340.0
 const WIZ_ESCAPE_GRACE := 0.6
 const STORM_SWAY_AMP := 40.0     # island sway once he's aboard (calm was 22)
@@ -76,6 +83,10 @@ const STORM_SWAY_PERIOD := 2.7   # (calm was 3.4)
 # (hold L, ~5s on it). Moths keep coming until the wizard falls; a live
 # one leaves on his defeat, flying off upward.
 const VOID_MOTH := preload("res://scenes/VoidMoth.tscn")
+## Realm 3's ending eye, shared — see `_die()`.
+const EYELIDS := preload("res://scripts/Eyelids.gd")
+const DEATH_EYE_CLOSE := 1.1   # a breath before another go, not the ending's 2.5s goodbye
+const DEATH_EYE_OPEN := 0.7    # the ending's own opening time — an eye opens the one way
 const MOTH_SCALE := 0.78         # BIG (Advika, three passes) — it fills the sky over her
 const MOTH_STAGGER := 6.0        # gap between arrivals while building to the cap
 @export var moth_cap := 3              # 2-3 aloft at once (Advika) — they build up staggered
@@ -96,7 +107,6 @@ var _chunk_glow: Sprite2D
 var _curi: CharacterBody2D
 var _cam: Camera2D
 var _trauma := 0.0
-var _lbl: Label
 var _lives: LivesHUD
 var _dying := false
 var _leaving := false
@@ -135,6 +145,17 @@ func _ready() -> void:
 	# the beat that is actually being looked at starts about two seconds in.
 	if OS.get_environment("R2_GATE") != "":
 		_jump_to_gateway()
+	# R2_DIE=1 — STRAIGHT TO THE LAST DEATH. The eye closing before the reset is a
+	# two-second beat that otherwise costs three deliberate deaths to reach, and a
+	# beat nobody can get to quickly is a beat nobody checks. Spends every lifeline
+	# and runs the real `_die()`, so what plays here is what plays in the game.
+	# R2_DIE_SHOT=<path> catches it mid-close.
+	if OS.get_environment("R2_DIE") != "":
+		await get_tree().create_timer(1.2).timeout
+		if OS.get_environment("R2_DIE_SHOT") != "":
+			_shoot_the_blink(OS.get_environment("R2_DIE_SHOT"))
+		_lives.reset(1)
+		_die()
 
 
 ## Fast-forward to the finale: island at the top, hovering, wizard gone.
@@ -290,16 +311,38 @@ func _build_ground() -> void:
 
 	# FRONT moss row — dedicated tileable strip drawn OVER Curiosity
 	# (organic tips to the waist; no crop slices, no seams)
-	for i in 3:
-		var front := Sprite2D.new()
-		front.texture = load(BASE + "moss_front.png")
-		front.centered = false
-		front.scale = Vector2(0.7, 0.7)
-		front.position = Vector2(-2200 + i * 3840 * 0.7, 236.0 + sin(i * 2.1 + 4.0) * 9.0)
-		front.modulate = Color(0.86, 0.84, 0.94)
-		front.z_index = 12
-		front.set_meta("dbg", "front")
-		add_child(front)
+	#
+	# TWO passes, and the lower one is the whole point. `moss_front.png` carries
+	# its painted body in rows 40-290 of 300, so at 0.7 from y=236 the strip runs
+	# out at y~432 — five pixels ABOVE the walkable line at FLOOR_Y+136. The moss
+	# stopped exactly where the floor started, so there was no growth below the
+	# walk line for anyone to stand in: she could only ever touch the bottom edge
+	# of it. That is what survived the hero's own ground-sink fix and kept her
+	# reading as standing ON the moss (Advika, twice: *"he's still on....."*, and
+	# *"IN not ON theres a huge diff"*) — the sink was real, it just dropped her
+	# clean out from under a strip that had no underside.
+	#
+	# The second pass is the same strip again, ~118px lower, at the same z. Its
+	# tips break the surface at about the walk line and its body carries on well
+	# under it, so the band is continuous from the crowns down into the soil and
+	# there is finally growth in FRONT of her shins wherever she stands. Two
+	# overlapping fringes read as one deeper bed, not as a repeat — which is what
+	# a mound of moss looks like anyway. The upper pass is untouched, so the
+	# level's silhouette against the sky is exactly what it was.
+	for pass_y in [0.0, 152.0]:
+		for i in 3:
+			var front := Sprite2D.new()
+			front.texture = load(BASE + "moss_front.png")
+			front.centered = false
+			front.scale = Vector2(0.7, 0.7)
+			front.position = Vector2(-2200 + i * 3840 * 0.7,
+					236.0 + pass_y + sin(i * 2.1 + 4.0 + pass_y) * 9.0)
+			# the lower pass sits deeper in the bed, so it takes the darker read
+			front.modulate = (Color(0.86, 0.84, 0.94) if pass_y == 0.0
+					else Color(0.66, 0.64, 0.76))
+			front.z_index = 12
+			front.set_meta("dbg", "front")
+			add_child(front)
 
 
 	# R2_TINT env: flat-color every tagged ground layer (layer forensics)
@@ -983,7 +1026,6 @@ func _build_chunk() -> void:
 	plug.z_index = 10  # over the island underbelly, under the z11 mid moss row
 	add_child(plug)
 	_chunk.levitation_started.connect(func() -> void:
-		_lbl.text = ""
 		# the island wakes: camouflage violet -> its own bright moss colors,
 		# glow breathing ramps in, plants stir back to life
 		create_tween().tween_property(_chunk, "modulate", Color(1, 1, 1), WAKE_TIME)\
@@ -1066,11 +1108,13 @@ func _build_ui() -> void:
 	vr.set_anchors_preset(Control.PRESET_FULL_RECT)
 	vr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cl.add_child(vr)
-	_lbl = Label.new()
-	_lbl.text = "R2-M1 LIFT TEST — walk right →   (J strike · hold L: the light · R restart · ESC hub)"
-	_lbl.position = Vector2(16, 12)
-	_lbl.add_theme_color_override("font_color", Color(0.78, 0.73, 0.92, 0.6))
-	cl.add_child(_lbl)
+	# NO CORNER LABEL. It sat directly under the lifeline eyes and was the first
+	# thing the eye landed on in a level whose whole subject is a dark forest
+	# (Advika: *"remove the text near the eye region in r2"*), and it broke the
+	# house rule besides — this game does not write words onto its scenes. That
+	# took the harness line with it and the two mood beats it also carried ("the
+	# wind is changing…", "the wizard falls — the storm relents"); the storm, the
+	# shake and the moss coming back to colour already say both of those.
 
 	# HER HEALTH IS HER LANTERN. The ember strip is gone — a red bar is the one
 	# piece of UI this game had that belonged to a different game entirely.
@@ -1084,6 +1128,16 @@ func _build_ui() -> void:
 	# a walk to the liftoff and a wait for the wizard
 	_lantern.start_hidden = OS.get_environment("R2_LANTERN_NOW") == ""
 	cl.add_child(_lantern)
+
+
+## One frame partway through the death blink, so the lids can be looked at rather
+## than assumed. Runs on a tree-independent timer — `_die()` does not pause the tree,
+## but the lid tween is pause-proof and this should be too.
+func _shoot_the_blink(path: String) -> void:
+	await get_tree().create_timer(DEATH_EYE_CLOSE * 0.62, true, false, true).timeout
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(path)
+	get_tree().quit()
 
 
 func _self_screenshot(path: String) -> void:
@@ -1192,15 +1246,30 @@ func _die() -> void:
 		_curi.hurt()
 	var remaining: int = 99 if _soak else _lives.lose_eye()
 	if remaining <= 0:
-		# all three eyes closed — the level begins again, and so must its
-		# music (Advika). Stopping clears AudioManager's same-track guard,
-		# so the reloaded scene's play_ambient starts realm2 from the top;
-		# the fade rides the death beat.
-		AudioManager.stop_ambient(0.35)
-	await get_tree().create_timer(0.45).timeout
-	if remaining <= 0:
+		# ALL THREE EYES CLOSED — so the eye itself closes, and the level begins
+		# again behind it (Advika: *"when curiosity dies in lvl 2 i want that blink
+		# thing that we had in the end of r3 before epilouge to happen before the
+		# entire level resets"*). It is literally Realm 3's ending lid, shared out of
+		# `Realm3Epilogue` into `Eyelids` so there is one eye in this game and not
+		# two that drift. Quicker than the ending's 2.5s: that one is a goodbye and
+		# this one is a breath before another go.
+		#
+		# The music leaves with the lids rather than on its own short fade —
+		# stopping also clears AudioManager's same-track guard, so the reloaded
+		# scene's play_ambient starts realm2 from the top.
+		var eye := EYELIDS.new()
+		get_tree().root.add_child(eye)
+		AudioManager.stop_ambient(DEATH_EYE_CLOSE)
+		await eye.close(DEATH_EYE_CLOSE)
+		# `reload_current_scene` frees this level; the lid is parented to the ROOT
+		# so it survives that, holds the dark over the rebuild, and opens on a
+		# standing forest instead of on a half-built one.
 		get_tree().reload_current_scene()
+		await get_tree().process_frame
+		await eye.open(DEATH_EYE_OPEN)
+		eye.queue_free()
 		return
+	await get_tree().create_timer(0.45).timeout
 	# respawn: on the island if it's flying, else back on solid ground
 	if _chunk.state != LevitatingIsland.State.IDLE:
 		_curi.global_position = _chunk.global_position + Vector2(0, -170)
@@ -1304,6 +1373,9 @@ func _spawn_wizard(instant := false) -> void:
 				# code-drawn TarotCard
 				var card: TarotReading = \
 						load("res://scenes/UI/TarotReading.tscn").instantiate()
+				# the moth at the card's foot wears the moth's own palette, so the
+				# reading shows the creature that actually arrives out of the storm
+				card.second_art_material = VoidMoth.palette_material()
 				add_child(card)
 				card.closed.connect(func() -> void:
 					if _wizard != null and is_instance_valid(_wizard):
@@ -1432,11 +1504,10 @@ func _set_phase(p: Phase) -> void:
 	_pt = 0.0
 	match p:
 		Phase.BUILD:
-			_lbl.text = "the wind is changing…"
+			pass
 		Phase.RIDE:
 			_trauma = 1.0
 		Phase.DONE:
-			_lbl.text = "the wizard falls — the storm relents"
 			print("trial complete")
 			_grow_r3_gateway()
 
@@ -1481,10 +1552,20 @@ func _grow_r3_gateway() -> void:
 			R3_GATE_DECK_Y - R3_GATEWAY.FLOOR * R3_GATE_SCALE)
 	_r3_gate.scale = Vector2(R3_GATE_SCALE, R3_GATE_SCALE)
 	# and the gateway drops UNDER her rather than her climbing over the deck to
-	# clear it — that was the other half of the same mistake. At 10 the deck's
-	# own moss beds its base, which is where a thing growing out of the island
-	# should sit anyway.
-	_r3_gate.z_index = 10
+	# clear it — that was the other half of the same mistake. The deck's own moss
+	# beds its base, which is where a thing growing out of the island should sit.
+	#
+	# 2, NOT 10 — a door assembly occupies a BAND, not a slot. `Realm3Gateway`
+	# leaves its pieces at the default z_as_relative, so their z stacks ON TOP of
+	# this root: the hills sit at +0/+1, the hanging fronds at +4, the stalagmites
+	# and caps at +6, the glowers at +8. Rooting the assembly at 10 therefore put
+	# most of the doorway at 14-18, well above the hero at 11, and she vanished
+	# behind her own way out (Advika: *"curiosity needs to be infront, he doesnt
+	# need to disappear behind the doors and their assets"*). Setting the root to
+	# the band's height below her instead — 2, so the whole 2..10 stack clears
+	# nothing of hers — puts every piece of the doorway behind her at once. Any
+	# new piece added to the gateway must stay within +8 or this breaks again.
+	_r3_gate.z_index = 2
 	_chunk.add_child(_r3_gate)
 	_r3_gate.build()
 
@@ -1631,7 +1712,7 @@ func _physics_process(delta: float) -> void:
 		for orb in get_tree().get_nodes_in_group("hazards"):
 			if orb is RuneOrb \
 					and absf(orb.global_position.x - _chunk.global_position.x) < 660.0:
-				var want := deck_y - RuneOrb.BALL_RADIUS * ORB_SCALE
+				var want := RuneOrb.rest_y(deck_y, ORB_SCALE)
 				if orb.global_position.y > want + 10.0 \
 						and orb.global_position.y < deck_y + 220.0:
 					orb.global_position.y = want
