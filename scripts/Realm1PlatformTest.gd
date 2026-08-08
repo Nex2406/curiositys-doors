@@ -38,7 +38,14 @@ const PLAT_SLAB_H := 5.0    # a thin red LINE — just the standable outline, no
 const PLAT_SINK := 5.0      # sit that line slightly BELOW the rim for a perfect planted sit
 ## How deep the hero's hem beds into bare cave stone — see the `set_ground_sink` call
 ## in `_setup_play()`. Realm-local: this realm is rock, not growth.
-const ROCK_SINK := 8.0
+## ZERO. The platform cap already sits PLAT_SINK (5px) below the painted rim, and
+## that 5px was tuned when the OLD sprite carried ~20px of empty canvas under its
+## feet — the art floated by about as much as the cap dropped, and the two cancelled
+## into the perfect sit Advika remembers (*"in the past versions C sat perfectly on
+## the platforms"*). The new sheet draws to its last row, so any sink asked for here
+## is added on top of the cap's 5px instead of absorbing it. Nothing extra, then:
+## the cap's own drop is the whole of her leak into the rock, exactly as before.
+const ROCK_SINK := 0.0
 ## A roof golem's reach — deliberately shorter than a ground one's 580. See the
 ## `gc.detect_range` assignment for why.
 const CEIL_GOLEM_DETECT := 300.0
@@ -95,7 +102,14 @@ const MAX_GOLEMS := 12
 ## randomness decides WHICH six.
 const PLAT_GOLEM_COUNT := 6
 const PLAT_GOLEM_MARGIN := 46.0   # keep the body clear of both lips
-const PLAT_GOLEM_ROLL := 300.0    # a platform is ~240 wide; a floor-length charge is a fall
+## A FLOOR-LENGTH CHARGE, and the fall is the point (Advika: *"the golem on the
+## platforms need to be the ones on the ground they need to roll off the platform
+## onto the ground"*). Capping this at 300 kept them politely aboard, which made
+## them platform furniture; at the ground golem's own 1100 the charge runs out over
+## the lip and gravity has it — it wakes above her, commits, and arrives on the
+## floor she is standing on. `woke` has already reparented it into world space by
+## then, so the fall is a real fall and not a child sliding out of a moving frame.
+const PLAT_GOLEM_ROLL := 1100.0
 const PLAT_GOLEM_DETECT := 300.0  # she has to be ON the platform, not walking past below it
 # Realm 2 portal door at the level end — floats in the cleared pocket, mist looping.
 const DOOR_SCALE := 1.25                       # a grand portal, taller than the 0.3 hero
@@ -1035,7 +1049,6 @@ func _setup_play() -> void:
 	# is the old "planted" depth: enough that her feet leak into the rock instead of
 	# perching on its very top edge, not enough to look like a hole. The platform caps
 	# and the cave floor are untouched — it is the hero who stands differently here.
-	_player.set_ground_sink(ROCK_SINK)
 	_player.jump_velocity = CURIOSITY_JUMP
 	_player.max_air_jumps = 1   # Advika: double jump in this level
 	# moving-platform fixes: snap to a descending platform (no jitter/float on the
@@ -1044,6 +1057,11 @@ func _setup_play() -> void:
 	_player.floor_snap_length = 34.0
 	_player.platform_on_leave = CharacterBody2D.PLATFORM_ON_LEAVE_DO_NOTHING
 	add_child(_player)
+	# AFTER add_child, NOT BEFORE. `set_ground_sink` reads her visual scale, which is
+	# an @onready — null until the node enters the tree — so calling it on the freshly
+	# instantiated node did nothing at all. It was dead code from the moment it was
+	# written, which is why the rock depth never appeared in the level.
+	_player.set_ground_sink(ROCK_SINK)
 	# dim just the cloak sprite (not the lantern) so the bright purple sits back
 	var pv := _player.get_node_or_null("Visual")
 	if pv != null:
