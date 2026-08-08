@@ -1017,7 +1017,17 @@ func _setup_play() -> void:
 	_player = CURIOSITY.instantiate()
 	_player.scale = Vector2(CURIOSITY_SCALE, CURIOSITY_SCALE)
 	_player.position = _spawn_pos
-	_player.z_index = 10        # in front of ground (z6) / platforms (z5)
+	# TOP OF THE REALM (Advika: *"for the door, u need to figure out what it is or
+	# just push her character to the top layer"*). She was at 10 with the doorway at
+	# 7, so the door itself was never the thing covering her -- something in its
+	# dressing was, and hunting which sprite it is costs more than it is worth when
+	# the answer for a side-scroller's hero is "in front of the world" anyway. 60
+	# clears every piece of scenery this realm builds, including the ceiling frame
+	# at 40 and the roof rocks at 41.
+	#
+	# NOT above everything: the door prompt (z 11 -> raised with her) and the HUD
+	# live above, because a prompt she can stand in front of is no prompt.
+	_player.z_index = 60
 	# THIS REALM IS ROCK. Her default GROUND_SINK is 40 — tuned for Realm 2's moss and
 	# Realm 3's meadow, where that much of her disappears into growth that closes over
 	# her boots. Cave stone closes over nothing, so the same forty read as her sunk
@@ -1311,7 +1321,7 @@ func _door_fittings(door: Node2D) -> void:
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	prompt.size = Vector2(360.0, 44.0)
 	prompt.position = DOOR_POS + Vector2(-180.0, -300.0)
-	prompt.z_index = 11
+	prompt.z_index = 62         # above the hero, who now sits at 60
 	prompt.modulate.a = 0.0
 	add_child(prompt)
 	_door_prompt = prompt

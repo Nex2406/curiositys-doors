@@ -30,11 +30,14 @@ const IDLE_FRAMES := 20
 const IDLE_FPS := 16.0
 const BLINK_SET := "blink_a"
 const BLINK_FRAMES := 16
-const BLINK_FPS := 16.0          # 16 frames -> 1.0s vanish/appear.
-                                 # Down from 24 (~0.67s): he went out too quickly to
-                                 # register as a teleport at all (Advika: *"the wizard
-                                 # disappears very fast slow that down a bit"*) — the
-                                 # eye had nothing to follow, he was simply gone. Both
+const BLINK_FPS := 20.0          # 16 frames -> 0.8s vanish/appear.
+                                 # 24 (~0.67s) went out too quickly to register as a
+                                 # teleport at all — the eye had nothing to follow. But
+                                 # 16 overcorrected and the trial went soft with it
+                                 # (Advika: *"the wizard level did def become a bit
+                                 # easy"*, then *"make him disappear a bit faster now"*),
+                                 # so 20 splits them: still readable as a vanish, no
+                                 # longer a free second of standing still. Both
                                  # the sheet and the alpha fade derive from this one
                                  # number, and the trial's VANISH/APPEAR states are
                                  # driven off the clip, so the whole blink stretches

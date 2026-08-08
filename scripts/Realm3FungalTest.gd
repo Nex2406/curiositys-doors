@@ -352,6 +352,19 @@ func _ready() -> void:
 		await get_tree().process_frame
 		_audit_decor()
 		get_tree().quit()
+	# R3_GAPS=<dir> — WHERE THE HOLES ARE, IN COORDINATES.
+	#
+	# The floor has been patched twice by eye off compressed screenshots and it kept
+	# having holes somewhere else, because "look at it and see if it seems covered"
+	# cannot answer a question about twenty-seven thousand pixels of level. This
+	# renders the whole realm as a MASK: every sprite flat white, everything behind
+	# it black. Anything still black in the ground band is a place where nothing is
+	# drawn — not something that looks dark, something that is genuinely not there.
+	# The frames are saved with their world x written into the filename so a hole
+	# found in the image can be walked to in the level.
+	if OS.get_environment("R3_GAPS") != "":
+		_gap_scan(OS.get_environment("R3_GAPS"))
+		return
 	if OS.get_environment("R3_AUDIT") != "":
 		await get_tree().process_frame
 		_audit_floaters()
@@ -2223,7 +2236,15 @@ const FIELD_TOP_NEAR := 338.0
 const FIELD_TOP_FAR := 900.0
 ## how far each clump's body runs below its own top — this is what closes the
 ## gaps, so it is generous on purpose
-const FIELD_BODY_MIN := 150.0
+## 380, up from 150. The gap scan put every remaining hole at world y 880-1040 —
+## the bottom ~190px of frame — and the arithmetic says why: a far clump tops out
+## around 900 and at a 150px body it stopped at 1050, while the camera sees to
+## 1072. The deepest row was ending just inside the frame, so the last strip of
+## screen was the only place nothing was drawn. At 380 the same clump reaches 1280
+## and is CUT BY THE FRAME instead of stopping short of it, which is R2's law and
+## the note at the top of this field already says so. Growth carrying past the edge,
+## not a rectangle laid over the hole.
+const FIELD_BODY_MIN := 380.0
 const FIELD_BODY_MAX := 520.0
 
 
@@ -3771,6 +3792,66 @@ func _audit_floaters() -> void:
 	if found.size() > cap:
 		print("    ... and %d more" % (found.size() - cap))
 	print("  bands skipped: %d (parallax, judged by eye not by this)" % bands.size())
+
+
+
+## THE GAP DETECTOR — see the R3_GAPS block in `_ready()`.
+##
+## Every Sprite2D in the level is given a flat-white unshaded material, the clear
+## colour goes black, and the camera walks the world a screen at a time. What comes
+## out is a coverage mask: white is drawn, black is not. Fog, motes and anything
+## marked as air are whited too — they are still pixels on the screen, and a hole
+## the fog happens to sit over is not a hole the player sees.
+func _gap_scan(dir: String) -> void:
+	await get_tree().process_frame
+	var flat := Shader.new()
+	flat.code = "shader_type canvas_item;
+render_mode unshaded;
+void fragment() {
+	COLOR = vec4(1.0, 1.0, 1.0, texture(TEXTURE, UV).a);
+}"
+	var mat := ShaderMaterial.new()
+	mat.shader = flat
+	var painted := 0
+	for n in _all_nodes(self):
+		if n is Sprite2D or n is AnimatedSprite2D:
+			(n as CanvasItem).material = mat
+			(n as CanvasItem).modulate = Color(1, 1, 1, 1)
+			painted += 1
+		elif n is Polygon2D:
+			(n as Polygon2D).color = Color(1, 1, 1, 1)
+			(n as Polygon2D).vertex_colors = PackedColorArray()
+			painted += 1
+	RenderingServer.set_default_clear_color(Color(0, 0, 0, 1))
+	# the realm grade would tint the mask; a coverage test wants raw white
+	for n in _all_nodes(self):
+		if n is CanvasModulate:
+			(n as CanvasModulate).color = Color(1, 1, 1, 1)
+	print("GAPSCAN: painted ", painted, " nodes")
+	var vp := get_viewport_rect().size
+	var step: float = vp.x / _cam.zoom.x
+	var x: float = WORLD_L
+	var i := 0
+	while x < WORLD_R:
+		_cam.position = Vector2(x + step * 0.5, FLOOR_Y - 40.0)
+		await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(
+				"%s/gap_%03d_x%06d.png" % [dir, i, int(x)])
+		print("GAPSCAN: frame %d  x %.0f..%.0f  camy %.0f  zoom %.3f"
+				% [i, x, x + step, FLOOR_Y - 40.0, _cam.zoom.x])
+		x += step
+		i += 1
+	print("GAPSCAN: done, ", i, " frames")
+	get_tree().quit()
+
+
+func _all_nodes(root: Node) -> Array[Node]:
+	var out: Array[Node] = []
+	for c in root.get_children():
+		out.append(c)
+		out.append_array(_all_nodes(c))
+	return out
 
 
 func _tick_checkpoint() -> void:
