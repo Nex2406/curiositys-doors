@@ -1,0 +1,1206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Curiosity's Doors — a hand-built 2D atmospheric puzzle game by Advika Kohli. Three realms, the doorways between them, and how it is made.">
+<meta property="og:title" content="Curiosity's Doors">
+<meta property="og:description" content="A traveller wakes holding a lantern they don't remember lighting. There are doors.">
+<meta property="og:type" content="website">
+<title>Curiosity's Doors</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   CURIOSITY'S DOORS — one unbroken descent.
+
+   The realm holds and the words move across it: every realm pins its
+   own art to the viewport and lets its story scroll over the top, so
+   there is never a page edge, never a slab of undressed black, and
+   never a moment where the game is a picture in a document instead of
+   the room you are standing in.
+
+   Three things move, and only three: the lantern follows the pointer,
+   the motes drift, and the words arrive as you reach them. Everything
+   else is still, because the game is.
+   ══════════════════════════════════════════════════════════════════ */
+
+:root{
+  --void:#07060c;
+  --ink:#ece7f5;
+  --soft:#b0a7c6;
+  --faint:#7a7290;
+  --line:rgba(236,231,245,.14);
+
+  --ember:#e0a355;
+  --violet:#ab8bee;
+  --teal:#5fd0b3;
+  --pale:#c8d9d5;
+  --gold:#e8c88a;
+
+  --accent:var(--ember);
+  --wash:rgba(224,163,85,.13);
+
+  --display:"Cormorant Garamond",Cormorant,Garamond,"Times New Roman",serif;
+  --body:"EB Garamond",Garamond,Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+
+  --gutter:clamp(1.4rem,5.5vw,6rem);
+  --measure:33rem;
+}
+
+*,*::before,*::after{ box-sizing:border-box }
+html{ -webkit-text-size-adjust:100% }
+
+body{
+  margin:0;
+  background:var(--void);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:clamp(1.02rem,.32vw + .96rem,1.14rem);
+  line-height:1.72;
+  /* CLIP, not hidden: `overflow-x:hidden` on the body makes it a scroll
+     container, and every `position:sticky` inside a scroll container that
+     never scrolls simply stops sticking. `clip` trims the same overflow
+     without creating one. */
+  overflow-x:clip;
+  -webkit-font-smoothing:antialiased;
+}
+
+img{ display:block; max-width:100% }
+a{ color:var(--accent) }
+p{ margin:0 }
+
+/* ── type ───────────────────────────────────────────────────────── */
+
+h1,h2,h3{ font-family:var(--display); font-weight:300; margin:0; text-wrap:balance; letter-spacing:-.006em }
+h1{ font-size:clamp(3.6rem,12vw,9rem); line-height:.88 }
+h2{ font-size:clamp(2.6rem,7vw,5.2rem); line-height:.96 }
+h3{ font-size:clamp(1.8rem,4vw,3rem); line-height:1.08 }
+
+.eyebrow{
+  font-family:var(--mono); font-size:.66rem; font-weight:500;
+  letter-spacing:.34em; text-transform:uppercase; color:var(--accent);
+}
+.numeral{
+  font-family:var(--display); font-size:clamp(2rem,4vw,2.9rem);
+  font-weight:300; line-height:1; letter-spacing:.05em;
+  color:var(--accent); margin-bottom:-.4rem;
+}
+.lede{ font-size:clamp(1.18rem,.55vw + 1.04rem,1.42rem); line-height:1.58 }
+.soft{ color:var(--soft) }
+.small{ font-size:.93rem; line-height:1.64; color:var(--soft) }
+.faint{ color:var(--faint) }
+.verse{
+  font-family:var(--display); font-style:italic; font-weight:300;
+  font-size:clamp(1.2rem,.9vw + 1.02rem,1.6rem); line-height:1.5;
+  color:var(--accent);
+}
+em{ font-style:italic; color:var(--accent) }
+strong{ font-weight:400; color:var(--ink) }
+.accent-rule{ width:3rem; height:2px; background:var(--accent); border:0; margin:0 }
+
+/* ── the descent ─────────────────────────────────────────────────
+   ONE stage, fixed to the viewport, holding every realm at once. The
+   words scroll over the top of it and each beat says which realm it
+   wants; the stage cross-fades to it. A sticky backdrop per section
+   would have been the obvious build and it is wrong — sticky releases
+   once its own section runs out, so the last screen of every realm
+   would have played against bare black. */
+
+#stage{ position:fixed; inset:0; z-index:0; background:var(--void); overflow:hidden }
+#stage .layer{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit:cover;
+  opacity:0;
+  transition:opacity 1.1s cubic-bezier(.4,0,.2,1);
+}
+#stage .layer.on{ opacity:1 }
+#stage .vignette{
+  position:absolute; inset:0; pointer-events:none;
+  background:
+    radial-gradient(128% 96% at 50% 46%, transparent 34%, rgba(7,6,12,.6) 100%),
+    linear-gradient(to bottom, rgba(7,6,12,.48), transparent 22%, transparent 74%, rgba(7,6,12,.7));
+}
+
+main{ position:relative; z-index:1 }
+
+/* The stage is fixed, and a fixed thing cannot paginate — so printing
+   (and ?flat) drops a real copy of each realm's plate into its own beat.
+   Built on demand rather than shipped in the markup, which would have
+   doubled the weight of the single-file build for a view most readers
+   never open. */
+.plate-print{ display:none }
+.realm{ position:relative }
+.beat{
+  position:relative;
+  min-height:100vh; min-height:100svh;
+  display:flex; align-items:center;
+  padding-block:clamp(4rem,10vh,8rem);
+}
+.beat::before{
+  content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:linear-gradient(to right,
+    rgba(7,6,12,.94) 0%, rgba(7,6,12,.88) 26%, rgba(7,6,12,.42) 52%, rgba(7,6,12,0) 78%);
+}
+.beat.centred{ justify-content:center; text-align:center }
+.beat.centred::before{
+  background:radial-gradient(78% 62% at 50% 50%, rgba(7,6,12,.9) 0%, rgba(7,6,12,.72) 52%, rgba(7,6,12,.28) 100%);
+}
+.beat.bottom{ align-items:flex-end }
+
+.copy{
+  padding-inline:var(--gutter);
+  width:100%;
+  max-width:calc(var(--measure) + var(--gutter) * 2);
+  display:flex; flex-direction:column; gap:1.1rem;
+}
+.beat.centred .copy{ align-items:center; max-width:calc(38rem + var(--gutter) * 2) }
+
+/* ── the cover ──────────────────────────────────────────────────── */
+
+.cover .beat{ align-items:flex-end }
+.cover .beat::before{
+  background:linear-gradient(to top, var(--void) 1%, rgba(7,6,12,.84) 24%, rgba(7,6,12,.1) 60%, rgba(7,6,12,.45) 100%);
+}
+/* the first screen carries nothing at all — the game, at full size,
+   before a single word of anybody's writing */
+.beat.naked::before{ background:none }
+.cover .copy{ max-width:calc(50rem + var(--gutter) * 2); gap:1.5rem }
+.cover h1 span{ display:block }
+.cover h1 .second{ padding-left:.1em }
+
+.byline{
+  font-family:var(--mono); font-size:.68rem; letter-spacing:.34em;
+  text-transform:uppercase; color:var(--gold);
+}
+.play{
+  font-family:var(--mono); font-size:.8rem; letter-spacing:.05em;
+  color:var(--ink); text-decoration:none;
+  border:1px solid var(--accent); padding:.85rem 1.5rem;
+  align-self:flex-start;
+  transition:background-color .35s ease,color .35s ease;
+}
+.play:hover,.play:focus-visible{ background:var(--accent); color:var(--void) }
+
+.scroll-hint{
+  position:absolute; left:50%; bottom:2.6rem; transform:translateX(-50%);
+  z-index:2;
+  font-family:var(--mono); font-size:.58rem; letter-spacing:.34em;
+  text-transform:uppercase; color:var(--faint);
+  display:flex; flex-direction:column; align-items:center; gap:.6rem;
+}
+.scroll-hint i{ display:block; width:1px; height:2.4rem; background:linear-gradient(var(--faint),transparent); animation:drop 2.6s ease-in-out infinite }
+@keyframes drop{ 0%,100%{ transform:scaleY(.4); transform-origin:top; opacity:.5 } 50%{ transform:scaleY(1); transform-origin:top; opacity:1 } }
+
+/* ── the card the realm hands you, held up against the realm ────── */
+
+.held{
+  display:grid; gap:clamp(1.5rem,4vw,3rem);
+  align-items:center;
+  padding-inline:var(--gutter);
+  width:100%; max-width:calc(58rem + var(--gutter) * 2);
+}
+@media (min-width:54rem){ .held{ grid-template-columns:minmax(0,1fr) 15rem } }
+.held > div{ display:flex; flex-direction:column; gap:1.1rem; min-width:0 }
+.held img{
+  width:100%; max-width:15rem; height:auto; border-radius:3px;
+  box-shadow:0 1.6rem 4rem rgba(0,0,0,.8), 0 0 3rem rgba(0,0,0,.5);
+}
+
+pre{
+  font-family:var(--mono); font-size:.71rem; line-height:1.8;
+  background:rgba(9,7,15,.72);
+  border:1px solid var(--line);
+  border-left:2px solid var(--accent);
+  padding:1rem 1.15rem; margin:0;
+  overflow-x:auto; color:#cfc7e2;
+}
+pre .c{ color:#655d7c; font-style:italic }
+pre .k{ color:#b78ad6 } pre .n{ color:var(--teal) } pre .s{ color:var(--gold) }
+
+/* ── the handover: one card lit on black ────────────────────────── */
+
+.handover{
+  position:relative; z-index:1;
+  min-height:100vh; min-height:100svh;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:1.1rem; text-align:center;
+  padding:clamp(3rem,8vh,6rem) var(--gutter);
+  background:radial-gradient(58% 46% at 50% 48%, rgba(232,200,138,.07), transparent 70%), #040309;
+}
+.handover .eyebrow{ color:#8d8368 }
+.quote{
+  font-family:var(--display); font-style:italic; font-weight:300;
+  font-size:clamp(1.55rem,3.6vw,2.9rem); line-height:1.4;
+  color:var(--gold); max-width:26ch; min-height:1.4em;
+}
+.quote.four{ max-width:34ch }
+.quote .ln{ display:block; min-height:1.4em }
+.caret{
+  display:inline-block; width:.055em; height:.86em; margin-left:.05em;
+  background:var(--gold); vertical-align:-.05em;
+}
+.typing .caret{ animation:blink 1s steps(1) infinite }
+@keyframes blink{ 50%{ opacity:0 } }
+.speaker{ font-style:italic; color:var(--soft) }
+.attrib{ font-size:.85rem; color:var(--faint) }
+
+/* ── the quiet section: how it is built ─────────────────────────── */
+
+.plain{
+  position:relative; z-index:1;
+  padding-block:clamp(5rem,11vh,9rem);
+  background:radial-gradient(140% 60% at 50% 0%, var(--wash), transparent 62%), var(--void);
+}
+.grid2{
+  display:grid; gap:clamp(2rem,5vw,3.5rem);
+  padding-inline:var(--gutter);
+  max-width:calc(72rem + var(--gutter) * 2);
+}
+@media (min-width:52rem){ .grid2{ grid-template-columns:minmax(0,1fr) minmax(0,1fr) } }
+.grid2 > div{ display:flex; flex-direction:column; gap:1.05rem; min-width:0 }
+
+.spec{ font-family:var(--mono); font-size:.73rem; display:flex; flex-direction:column; gap:.5rem; color:var(--soft) }
+.spec div{ display:flex; flex-wrap:wrap; gap:.3rem 1rem; justify-content:space-between; border-bottom:1px solid var(--line); padding-bottom:.5rem }
+.spec span:first-child{ color:var(--faint); text-transform:uppercase; letter-spacing:.16em; font-size:.61rem; align-self:center }
+.spec span:last-child{ color:var(--ink); font-variant-numeric:tabular-nums }
+
+.figures{ display:grid; grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr)); gap:1.6rem 2.2rem }
+.figures span:first-child{
+  display:block; font-family:var(--display); font-size:clamp(2.1rem,4vw,3.1rem);
+  line-height:1; color:var(--accent); font-variant-numeric:tabular-nums;
+}
+.figures span:last-child{
+  display:block; font-family:var(--mono); font-size:.57rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--faint); margin-top:.45rem;
+}
+
+footer{
+  position:relative; z-index:1;
+  padding:clamp(2.5rem,6vw,4rem) var(--gutter);
+  border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.64rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--faint);
+  display:flex; flex-wrap:wrap; gap:.7rem 2rem; justify-content:space-between;
+  background:var(--void);
+}
+
+/* ── the accent travels, realm by realm ─────────────────────────── */
+
+.r1{ --accent:var(--ember); --wash:rgba(224,163,85,.12) }
+.r2{ --accent:var(--violet); --wash:rgba(148,116,214,.15) }
+.r3{ --accent:var(--teal);   --wash:rgba(60,168,142,.13) }
+.rx{ --accent:var(--pale);   --wash:rgba(160,182,178,.09) }
+
+/* ── the three things that move ─────────────────────────────────── */
+
+/* the lantern: a warm pool that follows the pointer, the way the
+   hero's own PointLight2D follows her */
+#lantern{
+  position:fixed; top:0; left:0; z-index:3;
+  width:44rem; height:44rem; margin:-22rem 0 0 -22rem;
+  pointer-events:none; opacity:0;
+  background:radial-gradient(closest-side, rgba(232,200,138,.10), rgba(232,200,138,.045) 42%, transparent 72%);
+  transition:opacity .8s ease;
+  will-change:transform;
+}
+#motes{ position:fixed; inset:0; z-index:2; pointer-events:none }
+
+/* painted texture, so no ground is ever a flat digital black */
+body::after{
+  content:""; position:fixed; inset:0; z-index:9998; pointer-events:none;
+  background-image:url(img/grain.png); background-size:128px 128px;
+  opacity:.05; mix-blend-mode:overlay;
+}
+
+/* the words arrive as you reach them */
+.js .rise > *{
+  opacity:0; transform:translate3d(0,14px,0);
+  transition:opacity .85s cubic-bezier(.22,.61,.36,1), transform .85s cubic-bezier(.22,.61,.36,1);
+}
+.js .rise.seen > *{ opacity:1; transform:none }
+.js .rise.seen > *:nth-child(1){ transition-delay:.04s }
+.js .rise.seen > *:nth-child(2){ transition-delay:.15s }
+.js .rise.seen > *:nth-child(3){ transition-delay:.26s }
+.js .rise.seen > *:nth-child(4){ transition-delay:.37s }
+.js .rise.seen > *:nth-child(5){ transition-delay:.48s }
+.js .rise.seen > *:nth-child(6){ transition-delay:.59s }
+.js .rise.seen > *:nth-child(7){ transition-delay:.70s }
+
+@media (prefers-reduced-motion:reduce){
+  .js .rise > *{ opacity:1; transform:none; transition:none }
+  .scroll-hint i{ animation:none }
+  .typing .caret{ animation:none }
+  .backdrop .layer{ transition:none }
+}
+@media (hover:none),(pointer:coarse){ #lantern{ display:none } }
+
+:focus-visible{ outline:2px solid var(--accent); outline-offset:3px }
+
+/* ── ?flat — the paginated view, on screen ──────────────────────── */
+.flat #stage,.flat #lantern,.flat #motes{ display:none }
+.flat .plate-print{ display:block; width:100%; margin:0 auto 1.6rem }
+.flat .beat{ min-height:0; padding-block:3rem; display:block }
+.flat .beat::before{ display:none }
+.flat .handover{ min-height:0; padding-block:6rem }
+.js.flat .rise > *{ opacity:1; transform:none }   /* both classes sit on <html> */
+
+/* ── the PDF ─────────────────────────────────────────────────────
+   The page version is what gets attached to an email, so it is laid
+   out as pages: A4 landscape, one beat to a sheet, the realm running
+   full-bleed down one side and its lines set against it on the other.
+   The plates are cloned into the beats by `platePrints()` — the stage
+   is fixed to the viewport and a fixed thing cannot paginate. */
+
+@page{ size:A4 landscape; margin:0 }
+
+@media print{
+  html,body{ background:#07060c !important; font-size:10pt }
+  body::after,#lantern,#motes,.scroll-hint{ display:none !important }
+  .js .rise > *{ opacity:1 !important; transform:none !important }
+  #stage{ display:none !important }
+  main{ display:block }
+
+  /* ---- a page ---- */
+  .beat{
+    display:grid;
+    grid-template-columns:1fr;
+    width:297mm; height:210mm;
+    padding:0; margin:0;
+    overflow:hidden;
+    align-content:center;
+    break-after:page; page-break-after:always;
+    break-inside:avoid; page-break-inside:avoid;
+  }
+  .beat::before{ display:none }
+  .beat.paged{ grid-template-columns:43% 57%; position:relative }
+  /* feather the art into the type panel so the sheet is one picture
+     rather than two rectangles butted together */
+  .beat.paged::after{
+    content:""; position:absolute; top:0; bottom:0; left:41%; width:16%;
+    z-index:1; pointer-events:none;
+    background:linear-gradient(to right, #07060c 8%, rgba(7,6,12,0));
+  }
+
+  .plate-print{
+    display:block !important;
+    grid-column:2; grid-row:1;
+    width:100%; height:210mm;
+    object-fit:cover;
+    margin:0;
+  }
+  .beat.paged > .copy{ grid-column:1; grid-row:1 }
+
+  .copy{
+    align-self:center;
+    max-width:none;
+    padding:0 15mm;
+    gap:4.5mm;
+  }
+  /* a card page holds the realm behind it, dimmed, with the tarot card
+     lit on top — the way the card is actually shown in the game */
+  .beat.carded{ display:block; position:relative; padding:0 }
+  .beat.carded .plate-print{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    opacity:.42;
+  }
+  .beat.carded::after{
+    content:""; position:absolute; inset:0; z-index:1;
+    background:linear-gradient(to right, rgba(7,6,12,.95) 26%, rgba(7,6,12,.62));
+  }
+  .beat.carded .held{
+    position:relative; z-index:2;
+    height:210mm;
+    max-width:none; width:100%;
+    padding:0 26mm;
+    grid-template-columns:minmax(0,1fr) 62mm;
+    gap:18mm;
+    align-items:center; align-content:center;
+  }
+  .held img{ max-width:62mm; box-shadow:0 6mm 18mm rgba(0,0,0,.75) }
+
+  /* ---- the two covers: art to the edges, type laid on it ---- */
+  .cover .beat{ display:block; position:relative; grid-template-columns:none }
+  .cover .plate-print{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    grid-column:auto;
+  }
+  /* the scrim spans the sheet; only the type is held to a measure */
+  .cover .beat::after{
+    content:""; position:absolute; left:0; right:0; bottom:0; height:64%;
+    z-index:1;
+    background:linear-gradient(to top, rgba(7,6,12,.95) 24%, rgba(7,6,12,0));
+  }
+  .cover .beat > .copy{
+    position:absolute; left:0; bottom:0;
+    z-index:2;
+    padding:0 20mm 20mm;
+    max-width:190mm;
+  }
+  .beat.naked > *{ display:none }
+
+  /* ---- the handover cards ---- */
+  .handover{
+    width:297mm; height:210mm;
+    min-height:0;
+    padding:0 40mm;
+    break-after:page; page-break-after:always;
+    break-inside:avoid;
+  }
+  .quote{ max-width:34ch }
+  .quote.four{ max-width:46ch }
+  .caret{ display:none }
+
+  /* ---- how it is built ---- */
+  .plain{
+    width:297mm; height:210mm;
+    padding:22mm 0 0;
+    break-before:page; page-break-before:always;
+    break-inside:avoid;
+  }
+  /* print media queries resolve against the paper, and Chrome does not
+     always agree with itself about how wide that is — so the two columns
+     are stated outright */
+  .grid2{ max-width:none; padding-inline:20mm; gap:14mm;
+          grid-template-columns:minmax(0,1fr) minmax(0,1fr) }
+  .plain > .grid2:first-of-type{ grid-template-columns:1fr }
+  pre{ font-size:6.6pt; line-height:1.6; padding:5mm 6mm }
+  .spec{ font-size:6.8pt } .spec span:first-child{ font-size:5.8pt }
+  .figures span:first-child{ font-size:22pt } .figures span:last-child{ font-size:5.4pt }
+
+  /* ---- type at page scale ---- */
+  h1{ font-size:46pt } h2{ font-size:30pt } h3{ font-size:19pt }
+  .lede{ font-size:11.5pt; line-height:1.5 }
+  .small{ font-size:8.4pt; line-height:1.55 }
+  .verse{ font-size:12pt }
+  .quote{ font-size:21pt }
+  .eyebrow{ font-size:6pt }
+  .numeral{ font-size:20pt }
+  a[href]::after{ content:none }
+  footer{ display:none }
+}
+</style>
+</head>
+<body>
+
+<script>
+  if ('IntersectionObserver' in window &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.documentElement.classList.add('js');
+  }
+</script>
+
+<div id="lantern"></div>
+<canvas id="motes" aria-hidden="true"></canvas>
+
+<div id="stage" aria-hidden="true">
+  <img data-key="cover" class="layer on" src="img/cover.jpg" alt="Curiosity arriving in the second realm: a violet fungal forest lit by drifting amber motes." fetchpriority="high">
+  <img data-key="menu" class="layer" src="img/menu.jpg" alt="The title screen: a painted cavern of arches receding into gold light, the words Curiosity's Doors glowing above a short menu.">
+  <img data-key="r1_wide" class="layer" src="img/r1_wide.jpg" alt="The ember cave: dark stone ledges hanging in warm fog with green jade shards on them.">
+  <img data-key="r1_golem" class="layer" src="img/r1_golem.jpg" alt="A boulder golem sitting curled on the cave floor, indistinguishable from the surrounding stone.">
+  <img data-key="door1" class="layer" src="img/door1.jpg" alt="A violet fungal archway grown out of the floor of the ember cave, glowing against the warm rock, with the prompt Press Y to enter above it.">
+  <img data-key="r2_isle" class="layer" src="img/r2_isle.jpg" alt="A torn slab of violet moss floating in a night sky under a pale moon, Curiosity standing on it with a conjurer and a rune orb beside her.">
+  <img data-key="r2_deck" class="layer" src="img/r2_deck.jpg" alt="Close on the floating island's deck: Curiosity mid-swing, a rune orb rolling toward her, the conjurer standing his ground.">
+  <img data-key="door2" class="layer" src="img/door2.jpg" alt="A teal fungal archway standing in the violet forest at the end of Realm 2, lit from inside, with the prompt Press Y to enter above it.">
+  <img data-key="r3_forest" class="layer" src="img/r3_forest.jpg" alt="The teal fungal forest of Realm 3: huge pale caps and glowing stalks over deep green undergrowth, an hourglass counting down in the corner.">
+  <img data-key="r3_walk" class="layer" src="img/r3_walk.jpg" alt="Curiosity waist-deep in the forest's undergrowth, lantern lit, walking under a low canopy of hanging fungal fringe.">
+  <img data-key="drained" class="layer" src="img/drained.jpg" alt="The same forest with all its colour gone: a grey, near-monochrome wood, Curiosity lit pink in the middle of it and a red-eyed shape watching from the right.">
+  <div class="vignette"></div>
+</div>
+
+<main>
+
+
+<!-- ═══════════════════════════  COVER  ═══════════════════════════ -->
+<section class="realm cover r2">
+  <div class="beats">
+    <div class="beat naked" data-img="cover">
+      <div class="scroll-hint"><i></i></div>
+    </div>
+    <div class="beat" data-img="cover">
+      <div class="copy rise">
+        <p class="byline">A game by Advika Kohli</p>
+        <h1><span>Curiosity's</span><span class="second">Doors</span></h1>
+        <p class="lede soft" style="max-width:34rem">
+          A traveller wakes holding a lantern they don't remember lighting.
+          There are doors. That is the whole invitation.
+        </p>
+        <a class="play" href="https://nex2406.github.io/curiositys-doors/">Play it in a browser →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════  THE WAY IN  ══════════════════════ -->
+<section class="realm r1">
+  <div class="beats">
+
+    <div class="beat" data-img="menu">
+      <div class="copy rise">
+        <p class="eyebrow">The way in</p>
+        <hr class="accent-rule">
+        <p class="lede">Press Begin and the painting goes out.</p>
+        <p class="soft">
+          For the next forty seconds a voice types itself onto black, one line at
+          a time. It talks straight at you. It knew you were coming.
+        </p>
+      </div>
+    </div>
+
+    <div class="beat" data-img="r1_wide">
+      <div class="copy rise">
+        <p class="soft">
+          By the time it stops it has told you three things and explained none of
+          them: you did not choose to come, the wanting was put in you on purpose,
+          and there are three doors ahead. Then you are standing in a cave.
+        </p>
+        <p class="small faint">
+          The doors come one at a time. Finishing a realm opens the next.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════  REALM I  ═════════════════════════ -->
+<section class="realm r1">
+  <div class="beats">
+
+    <div class="beat" data-img="r1_wide">
+      <div class="copy rise">
+        <p class="numeral">I</p>
+        <h2>The Hollow</h2>
+        <p class="lede soft">
+          A warm ember cave, and the first descent. Seventeen pieces of jade are
+          scattered across a course of stone ledges and drifting planks, and the way
+          out will not open until every one of them is found.
+        </p>
+      </div>
+    </div>
+
+    <div class="beat" data-img="r1_golem">
+      <div class="copy rise">
+        <p class="eyebrow">Some of the stone is awake</p>
+        <hr class="accent-rule">
+        <p class="soft">
+          Boulder golems sit curled on the floor, the same colour and shape as the
+          rock around them, until you come close enough. Then they uncurl and charge
+          the length of the cave. Three more lie bedded into the moving platforms, so
+          a plank you were about to land on stands up under you. Four hang buried in
+          the ceiling and drop where you are <i>about</i> to be.
+        </p>
+        <p class="soft">
+          A rolling one will take the hit and keep coming. You get it in the
+          half-second it takes to wake, or you dash and let it go past.
+        </p>
+        <p class="small" style="color:var(--accent)">
+          The card never says what the jade is. Neither does the cave. You find that
+          out in the last five minutes of the game.
+        </p>
+      </div>
+    </div>
+
+    <div class="beat" data-img="r1_golem">
+      <div class="held rise">
+        <div>
+          <p class="eyebrow">All the instruction you get</p>
+          <hr class="accent-rule">
+          <p class="soft">
+            Every realm hands you one card at the door. It names the threat and the
+            answer to it in five lines, then stops explaining and lets you walk in.
+          </p>
+          <pre><span class="c"># the whole of Realm 1's teaching layer</span>
+Gather all the jade; the way opens itself
+One jump is never enough — space, twice
+Strike a golem while it wakes — J
+Never attack a rolling stone — dash — K
+Mind your head — not all the roof is rock</pre>
+        </div>
+        <img src="img/card_r1.jpg" alt="The tarot card for Realm 1, titled The Hollow, showing a curled boulder golem above five lines of instruction." loading="lazy" decoding="async">
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════  DOOR I → II  ═════════════════════ -->
+<section class="realm r1">
+  <div class="beats">
+    <div class="beat" data-img="door1">
+      <div class="copy rise">
+        <p class="eyebrow">The first door</p>
+        <hr class="accent-rule">
+        <h3>A door is built out of<br>the place it leads to.</h3>
+        <p class="soft">
+          This is the rule the whole game hangs on. Every doorway is grown on the
+          spot, out of the art of the realm it opens onto.
+        </p>
+        <p class="soft">
+          Everything around this arch is ember and stone, because this is the ember
+          cave. The arch is violet and fungal, because the next realm is violet and
+          fungal. You can see where you are going before anything tells you, and the
+          cave has visibly been broken open to let it through.
+        </p>
+        <p class="small faint">
+          The doorway arrives late. The seventeenth piece of jade arms it, and
+          walking into the pocket at the end of the cave makes it write itself out of
+          the ground while you stand there.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════  HANDOVER I  ══════════════════════ -->
+<div class="handover">
+  <p class="eyebrow">Between realms, a card</p>
+  <p class="quote type"><span class="ln">&ldquo;You will not fall, nor rise.&rdquo;</span></p>
+  <p class="speaker">— Fear</p>
+  <p class="attrib">(Written by Silence — Advika Kohli)</p>
+</div>
+
+
+<!-- ═══════════════════════════  REALM II  ════════════════════════ -->
+<section class="realm r2">
+  <div class="beats">
+
+    <div class="beat" data-img="r2_isle">
+      <div class="copy rise">
+        <p class="numeral">II</p>
+        <h2>The Trial</h2>
+        <p class="lede soft">
+          Curiosity walks in onto flat violet moss. A storm arrives, the ground shakes,
+          and the middle of it tears loose and starts to climb with her standing on it.
+        </p>
+        <p class="soft">
+          It keeps going. There is no height to reach and no timer. The island rises
+          for as long as the thing that raised the storm is still standing.
+        </p>
+      </div>
+    </div>
+
+    <div class="beat" data-img="r2_deck">
+      <div class="copy rise">
+        <p class="eyebrow">The storm has an author</p>
+        <hr class="accent-rule">
+        <p class="soft">
+          About twelve seconds into the climb a conjurer flickers into existence at
+          the far end of the deck and begins his trial, teleporting across it and
+          conjuring rune orbs. The orbs cannot be killed. They roll after you and
+          shove, and the deck has edges.
+        </p>
+        <p class="soft">
+          A void moth circles above the deck. Her sword passes straight through it.
+          The moth lives on no layer her swing can reach, and it dies to light. Hold
+          the lantern open and the glow swells; keep that glow on the moth for four
+          seconds and the void burns out of it.
+        </p>
+        <p class="small" style="color:var(--accent)">
+          The realm is the same violet as the cloak. Nobody mentions that.
+        </p>
+      </div>
+    </div>
+
+    <div class="beat" data-img="r2_deck">
+      <div class="held rise">
+        <div>
+          <p class="eyebrow">The second card</p>
+          <hr class="accent-rule">
+          <p class="soft">
+            Five lines again. The card names what will kill you and what to do about
+            it, then stops. How long the climb runs, how much the conjurer can take,
+            what the moth is for — you find all of that out by being there.
+          </p>
+          <pre><span class="c"># the whole of Realm 2's teaching layer</span>
+Strike the conjurer — J
+Grow the light — hold L
+The orbs only push — keep moving
+The void moth dies only to light — hold L
+Kill the conjurer to secure victory</pre>
+        </div>
+        <img src="img/card_r2.jpg" alt="The tarot card for Realm 2, titled The Trial, showing the conjurer above five lines of instruction and a void moth below them." loading="lazy" decoding="async">
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════  DOOR II → III  ═══════════════════ -->
+<section class="realm r3">
+  <div class="beats">
+    <div class="beat" data-img="door2">
+      <div class="copy rise">
+        <p class="eyebrow">The second door</p>
+        <hr class="accent-rule">
+        <h3>The same law,<br>one realm on.</h3>
+        <p class="soft">
+          Realm 2 is violet from the moss to the moth. The doorway standing in the
+          middle of it is teal and fungal, because Realm 3 is a teal fungal forest.
+          What you see through the arch is a real photograph of the place it opens
+          onto.
+        </p>
+        <p class="soft">
+          It waits for the deck to go quiet. The conjurer falls, his last orbs roll
+          off the edges on their own, and only then does the doorway start to grow. A
+          way out written into a deck that is still a hazard reads as two scenes
+          playing at once.
+        </p>
+        <p class="small faint">
+          Each post is two enormous fungal hills. A vertical run of small arch-shaped
+          pieces reads as a ladder no matter how much you jitter it; that one was
+          learned twice before it was believed.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════  HANDOVER II  ═════════════════════ -->
+<div class="handover">
+  <p class="eyebrow">And again, one realm on</p>
+  <p class="quote four type">
+    <span class="ln">&ldquo;It waits, knowing I will ask questions,</span>
+    <span class="ln">knowing I will test boundaries,</span>
+    <span class="ln">knowing I will step through myself</span>
+    <span class="ln">even though it has already seen the answer.&rdquo;</span>
+  </p>
+  <p class="speaker">— Curiosity</p>
+  <p class="attrib">(Written by Silence — Advika Kohli)</p>
+</div>
+
+
+<!-- ═══════════════════════════  REALM III  ═══════════════════════ -->
+<section class="realm r3">
+  <div class="beats">
+
+    <div class="beat" data-img="r3_forest">
+      <div class="copy rise">
+        <p class="numeral">III</p>
+        <h2>The Witness</h2>
+        <p class="lede soft">
+          A teal fungal forest that grew over the ruins of a library of the dead.
+          Mycelium feeds on dead matter, and this forest has been feeding on an archive
+          of ended lives.
+        </p>
+        <p class="soft">
+          Six lights are burning in the wood. The card does not say what they are.
+          They turn out to be creatures, six of them across twelve thousand pixels of
+          forest, spaced far enough apart that meeting one is an event. The last two
+          stand together, so the final fight is the hardest thing the forest asks for.
+        </p>
+      </div>
+    </div>
+
+    <div class="beat" data-img="r3_walk">
+      <div class="copy rise">
+        <p class="eyebrow">Seven minutes</p>
+        <hr class="accent-rule">
+        <p class="soft">
+          An hourglass in the corner gives you seven minutes for all six. Run out and
+          the forest starts over, and says one thing on its way out.
+        </p>
+        <p class="small" style="color:var(--accent)">
+          Your lantern is your health bar. It has been since the first cave. This is
+          the realm that makes you watch it.
+        </p>
+      </div>
+    </div>
+
+    <div class="beat" data-img="r3_walk">
+      <div class="held rise">
+        <div>
+          <p class="eyebrow">The third card</p>
+          <hr class="accent-rule">
+          <p class="soft">
+            This is the only card that names a number out loud. The seven minutes are
+            printed on it because a time limit you discover by losing is a trick.
+          </p>
+          <pre><span class="c"># the whole of Realm 3's teaching layer</span>
+Six lights are burning in this wood
+Put them out — J
+They notice; what falls from the roof is theirs
+Dash what you cannot outrun — K
+Your lantern is your life. Watch it
+You have seven minutes</pre>
+        </div>
+        <img src="img/card_r3.jpg" alt="The tarot card for Realm 3, titled The Witness, showing a pale mushroom above six lines of instruction." loading="lazy" decoding="async">
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════  THE MIRROR  ══════════════════════ -->
+<section class="realm rx">
+  <div class="beats">
+
+    <div class="beat" data-img="drained">
+      <div class="copy rise">
+        <p class="numeral">?</p>
+        <h2>The Mirror</h2>
+        <p class="lede soft">
+          The sixth light goes out and the colour drains out of the forest over nine
+          seconds. Nothing announces it. The green stops being there, and something is
+          standing in what is left, wearing your face.
+        </p>
+      </div>
+    </div>
+
+    <div class="beat" data-img="drained">
+      <div class="held rise">
+        <div>
+          <p class="soft">
+            It fights with your habits. A profile of how you play has been building
+            since the first cave — how close you stand, how fast you swing, which way
+            you dodge, how much of a fight you spend in the air — and the mirror is
+            assembled out of that profile. Everything you do well, it does back.
+          </p>
+          <p class="soft">
+            So playing better feeds it. The way through is to play like somebody
+            else, which is the one thing it has no recording of.
+          </p>
+        </div>
+        <img src="img/card_mirror.jpg" alt="The fourth tarot card, titled The Mirror, showing Curiosity herself above five lines of warning." loading="lazy" decoding="async">
+      </div>
+    </div>
+
+    <div class="beat centred" data-img="drained">
+      <div class="copy rise">
+        <p class="eyebrow">And then it talks to you</p>
+        <p class="lede">
+          The mirror falls and something starts speaking. You never fight it. It has
+          been there since the first cave, and it has been counting.
+        </p>
+        <p class="soft">
+          By the time it stops, all three realms behind you mean something else,
+          including the seventeen pieces of jade you spent the first one collecting.
+        </p>
+        <p class="small faint">The rest of it is in the game.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════  HOW IT IS BUILT  ═════════════════ -->
+<section class="plain r1">
+  <div class="grid2" style="margin-bottom:clamp(2rem,4vw,3rem)">
+    <div class="rise">
+      <p class="eyebrow">How it is built</p>
+      <hr class="accent-rule">
+      <h3>Every realm is a script.</h3>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="rise">
+      <p class="small"><strong>The realms are built by code.</strong>
+        Each one reads an art pack and assembles its own world at load: platform runs,
+        ceiling teeth, vegetation, fog banks, parallax bands, creature placement.
+        Re-tuning the cave means changing a constant and watching four hundred objects
+        move.</p>
+      <p class="small"><strong>Every part boots alone.</strong>
+        Any beat in the game starts straight from an environment variable — the third
+        realm's boss, the doorway animation, the ending. Working on the last fight takes
+        seconds to reach. Every screenshot and every card in here was captured that way,
+        out of the running game.</p>
+      <p class="small"><strong>It ships on every merge.</strong>
+        A push to <code style="font-family:var(--mono);font-size:.86em">main</code>
+        triggers a GitHub Action that re-exports the game to WebAssembly and publishes
+        it. The play link in here is always the current build.</p>
+      <div class="spec">
+        <div><span>Engine</span><span>Godot 4.6.2 · Forward+</span></div>
+        <div><span>Language</span><span>GDScript only</span></div>
+        <div><span>Target</span><span>HTML5 / WebAssembly</span></div>
+        <div><span>Hosting</span><span>GitHub Pages via Actions</span></div>
+      </div>
+    </div>
+    <div class="rise">
+      <pre><span class="c"># There is no RigidBody2D anywhere in this project,</span>
+<span class="c"># so every equation of motion in the game is a line</span>
+<span class="c"># someone chose.</span>
+
+<span class="c"># Curiosity.gd — the drifting-traveller tuning</span>
+<span class="k">@export var</span> gravity:       float = <span class="n">460.0</span>
+<span class="k">@export var</span> jump_velocity: float = <span class="n">-356.0</span>
+<span class="c"># Both well under the usual ~980. Height goes as v0²/2g</span>
+<span class="c"># and air time as 2v0/g, so lowering both keeps the jump</span>
+<span class="c"># the same size while roughly doubling the hang.</span>
+
+<span class="k">func</span> <span class="n">_physics_process</span>(delta: float) -&gt; <span class="k">void</span>:
+    <span class="k">if not</span> is_on_floor():
+        velocity.y += gravity * delta
+    velocity.x = move_toward(velocity.x, target_x, accel * delta)
+    move_and_slide()</pre>
+      <p class="small faint">Semi-implicit Euler, written out by hand, sixty times a second.</p>
+      <div class="figures">
+        <div><span>69</span><span>Scripts</span></div>
+        <div><span>27,145</span><span>Lines of GDScript</span></div>
+        <div><span>22</span><span>Shaders</span></div>
+        <div><span>0</span><span>Rigid bodies</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════  PLAY IT  ═════════════════════════ -->
+<section class="realm r2">
+  <div class="beats">
+    <div class="beat bottom" data-img="cover">
+      <div class="copy rise">
+        <p class="eyebrow">Open the first door</p>
+        <h2>It runs in a tab.<br>Nothing to install.</h2>
+        <a class="play" href="https://nex2406.github.io/curiositys-doors/">nex2406.github.io/curiositys-doors</a>
+        <p class="small">
+          Arrow keys or A/D to move, shift to run, space to jump, J to swing, K to dash,
+          L to hold the lantern open, Y to step through a door. Seventeen pieces of jade
+          are waiting in the first cave.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <span>Curiosity's Doors — Advika Kohli</span>
+  <span>Godot 4.6.2 · GDScript · WebAssembly</span>
+</footer>
+
+
+<script>
+(function () {
+  'use strict';
+  var live = document.documentElement.classList.contains('js');
+
+  /* ── one measurement pass, then a pure-arithmetic scroll loop ───
+     Both the stage and the arriving words are driven off offsets cached
+     at load, so a scroll frame reads no layout at all — and the whole
+     thing can be stepped and asserted from a script, which an
+     IntersectionObserver cannot be. */
+
+  var stage = document.getElementById('stage');
+  var layers = stage ? [].slice.call(stage.querySelectorAll('.layer')) : [];
+  var beats = [].slice.call(document.querySelectorAll('.beat[data-img]'));
+  var darks = [].slice.call(document.querySelectorAll('.handover,.plain'));
+  var rises = [].slice.call(document.querySelectorAll('.rise'));
+
+  var bands = [];        // {top, bottom, key}  — key null = put the stage out
+  var marks = [];        // {el, top}           — where a block starts arriving
+  var vh = window.innerHeight;
+  var shown;
+
+  function measure() {
+    vh = window.innerHeight;
+    var y = window.pageYOffset;
+    bands.length = 0; marks.length = 0;
+    beats.forEach(function (b) {
+      var r = b.getBoundingClientRect();
+      bands.push({ top: r.top + y, bottom: r.bottom + y, key: b.getAttribute('data-img') });
+    });
+    darks.forEach(function (d) {
+      var r = d.getBoundingClientRect();
+      bands.push({ top: r.top + y, bottom: r.bottom + y, key: null });
+    });
+    bands.sort(function (a, b) { return a.top - b.top; });
+    rises.forEach(function (el) {
+      if (el.classList.contains('seen')) return;
+      marks.push({ el: el, top: el.getBoundingClientRect().top + y });
+    });
+  }
+
+  function show(key) {
+    if (key === shown) return;
+    shown = key;
+    for (var i = 0; i < layers.length; i++) {
+      layers[i].classList.toggle('on', layers[i].getAttribute('data-key') === key);
+    }
+  }
+
+  function frame() {
+    var y = window.pageYOffset, mid = y + vh * 0.5;
+    for (var i = 0; i < bands.length; i++) {
+      if (mid >= bands[i].top && mid < bands[i].bottom) { show(bands[i].key); break; }
+    }
+    if (live) {
+      var trigger = y + vh * 0.88;
+      for (var j = marks.length - 1; j >= 0; j--) {
+        if (marks[j].top <= trigger) { marks[j].el.classList.add('seen'); marks.splice(j, 1); }
+      }
+    }
+    ticking = false;
+  }
+
+  var ticking = false;
+  function request() { if (!ticking) { ticking = true; requestAnimationFrame(frame); } }
+
+  measure();
+  frame();
+  window.addEventListener('scroll', request, { passive: true });
+  var mt;
+  window.addEventListener('resize', function () {
+    clearTimeout(mt);
+    mt = setTimeout(function () { measure(); request(); }, 180);
+  }, { passive: true });
+  window.addEventListener('load', function () { measure(); request(); });
+
+  /* ── the printable view builds itself on demand ───────────────── */
+  function platePrints() {
+    if (document.querySelector('.plate-print')) return;
+    document.querySelectorAll('.beat[data-img]').forEach(function (b) {
+      var carded = !!b.querySelector('.held img');
+      var src = document.querySelector('#stage .layer[data-key="' + b.getAttribute('data-img') + '"]');
+      if (!src) return;
+      var im = document.createElement('img');
+      im.className = 'plate-print';
+      im.alt = '';
+      im.setAttribute('aria-hidden', 'true');
+      im.src = src.currentSrc || src.src;
+      b.insertBefore(im, b.firstChild);
+      b.classList.add(carded ? 'carded' : 'paged');
+    });
+  }
+  window.addEventListener('beforeprint', platePrints);
+  if (location.search.indexOf('flat') >= 0) {
+    document.documentElement.classList.add('flat');
+    platePrints();
+  }
+
+  /* ── the handover cards type themselves, at the game's own rate ─
+     26 characters a second: the number in Prologue.gd, and the number
+     every tarot card in the game types at. */
+  if (live) {
+    var CPS = 26;
+    var waiting = [].slice.call(document.querySelectorAll('.quote.type'));
+
+    function typeIn(host) {
+      var lines = [].slice.call(host.querySelectorAll('.ln'));
+      var texts = lines.map(function (l) { var t = l.textContent.trim(); l.textContent = ''; return t; });
+      var caret = document.createElement('span');
+      caret.className = 'caret';
+      host.classList.add('typing');
+      var li = 0, done = 0, start = 0;
+      if (lines.length) lines[0].appendChild(caret);
+      function step(now) {
+        if (!start) start = now;
+        var due = Math.floor((now - start) / (1000 / CPS));
+        while (done < due && li < lines.length) {
+          var t = texts[li];
+          var have = lines[li].textContent.length;
+          if (have >= t.length) {
+            li++; done++;
+            if (li < lines.length) lines[li].appendChild(caret);
+            continue;
+          }
+          lines[li].insertBefore(document.createTextNode(t.charAt(have)), caret);
+          done++;
+        }
+        if (li < lines.length) { requestAnimationFrame(step); return; }
+        host.classList.remove('typing');
+        if (caret.parentNode) caret.parentNode.removeChild(caret);
+      }
+      requestAnimationFrame(step);
+    }
+
+    function typeCheck() {
+      for (var i = waiting.length - 1; i >= 0; i--) {
+        var r = waiting[i].getBoundingClientRect();
+        if (r.top < window.innerHeight * 0.8 && r.bottom > 0) typeIn(waiting.splice(i, 1)[0]);
+      }
+      if (!waiting.length) window.removeEventListener('scroll', typeCheck);
+    }
+    window.addEventListener('scroll', typeCheck, { passive: true });
+    typeCheck();
+  }
+
+  /* ── the lantern follows the pointer ──────────────────────────── */
+  if (live && window.matchMedia('(hover: hover)').matches) {
+    var lamp = document.getElementById('lantern');
+    var lx = 0, ly = 0, queued = false;
+    function paint() { queued = false; lamp.style.transform = 'translate3d(' + lx + 'px,' + ly + 'px,0)'; }
+    window.addEventListener('pointermove', function (e) {
+      lx = e.clientX; ly = e.clientY;
+      lamp.style.opacity = '1';
+      if (!queued) { queued = true; requestAnimationFrame(paint); }
+    }, { passive: true });
+    document.addEventListener('mouseleave', function () { lamp.style.opacity = '0'; });
+  }
+
+  /* ── motes ────────────────────────────────────────────────────── */
+  if (live) {
+    var cv = document.getElementById('motes');
+    var cx = cv.getContext('2d');
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    var W = 0, H = 0, m = [], running = true;
+
+    function size() {
+      W = window.innerWidth; H = window.innerHeight;
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      cv.style.width = W + 'px'; cv.style.height = H + 'px';
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var want = W < 700 ? 16 : 34;
+      m.length = 0;
+      for (var i = 0; i < want; i++) {
+        m.push({
+          x: Math.random() * W, y: Math.random() * H,
+          r: 0.7 + Math.random() * 1.9,
+          vy: -(3 + Math.random() * 11) / 60,
+          vx: (Math.random() - 0.5) * 4 / 60,
+          a: 0.10 + Math.random() * 0.28,
+          p: Math.random() * Math.PI * 2,
+          s: 0.4 + Math.random() * 0.8
+        });
+      }
+    }
+
+    var t = 0;
+    function tick() {
+      if (!running) return;
+      t += 1 / 60;
+      cx.clearRect(0, 0, W, H);
+      for (var i = 0; i < m.length; i++) {
+        var d = m[i];
+        d.y += d.vy; d.x += d.vx + Math.sin(t * d.s + d.p) * 0.12;
+        if (d.y < -12) { d.y = H + 12; d.x = Math.random() * W; }
+        if (d.x < -12) d.x = W + 12; else if (d.x > W + 12) d.x = -12;
+        var a = d.a * (0.62 + 0.38 * Math.sin(t * d.s * 1.7 + d.p));
+        var rad = d.r * 4.5;
+        var g = cx.createRadialGradient(d.x, d.y, 0, d.x, d.y, rad);
+        g.addColorStop(0, 'rgba(240,205,140,' + a.toFixed(3) + ')');
+        g.addColorStop(1, 'rgba(240,205,140,0)');
+        cx.fillStyle = g;
+        cx.beginPath(); cx.arc(d.x, d.y, rad, 0, 6.284); cx.fill();
+      }
+      requestAnimationFrame(tick);
+    }
+
+    size();
+    var rt;
+    window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(size, 180); }, { passive: true });
+    document.addEventListener('visibilitychange', function () {
+      running = !document.hidden;
+      if (running) requestAnimationFrame(tick);
+    });
+    requestAnimationFrame(tick);
+  }
+})();
+</script>
+
+</body>
+</html>

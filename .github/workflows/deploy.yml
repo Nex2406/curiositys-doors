@@ -50,6 +50,15 @@ jobs:
       - name: Add .nojekyll
         run: touch build/.nojekyll
 
+      # The deck ships alongside the game so it has a plain link anyone can
+      # open — https://nex2406.github.io/curiositys-doors/deck/ — with no
+      # account, no download and no plugin.
+      - name: Bundle the deck
+        run: |
+          mkdir -p build/deck
+          cp docs/presentation/index.html build/deck/index.html
+          cp -r docs/presentation/img build/deck/img
+
       - name: List build output
         run: ls -la build/
 
