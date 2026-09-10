@@ -2507,6 +2507,7 @@ func _build_foreground() -> void:
 
 	_understory()
 	_floor_scatter()
+	_dress_spawn_shelf()
 
 
 ## MORE MOSS IN THE GAPS, AND NOTHING ELSE CHANGES.
@@ -2533,6 +2534,83 @@ func _build_foreground() -> void:
 ## are just gaps in growth now, instead of gaps in the picture.
 const SCATTER_PASSES := 2
 
+
+## THE OPENING SHELF HAS NO BARE RUN IN IT.
+##
+## Advika, 2026-09-10, circling a hard black band under the spawn and pointing at
+## the bush stranded to the left of it: *"shift that bush to that area"*.
+##
+## Two tries at moving something were both wrong, and the probe
+## (`tools/ProbeShelf.tscn`) says why. Moving a `_floor_scatter` tuft changed
+## nothing on screen — those sit at `FLOOR_Y + 120..520`, six hundred pixels
+## BELOW the band. Moving a near FIELD clump filled the band and took her cover
+## with it, because the clump it moved was the one drawing across her shins.
+##
+## And the band is not empty of sprites at all — forty of them overlap it. It is
+## empty of PAINT: a `fungalhill` is a horizontal arch, so a clump scaled to a
+## 380-520px body has a transparent belly, and at the spawn several of those
+## bellies line up. That is the same hollow-middle fact `_build_foreground`
+## already documents and already answers, by laying a MOUND behind a burst
+## rather than swapping the burst out.
+##
+## So: same answer, applied where she drew it. Three mounds seated ACROSS the
+## band, on the near end of the depth ramp so they read as the growth she is
+## standing in, each with a frond or two off the side so it is growth and not a
+## blob. Nothing is moved and nothing is removed — the shelf gains paint under
+## the bellies that were showing through.
+const SPAWN_SHELF := Vector2(220.0, 820.0)   ## world x of the bare run she circled
+## the band itself: between the near field bodies and the moss under them
+const SHELF_BAND_Y := 452.0
+
+
+func _dress_spawn_shelf() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260910
+	var n := 3
+	for i in n:
+		var x: float = lerpf(SPAWN_SHELF.x, SPAWN_SHELF.y, (float(i) + 0.5) / float(n))
+		x += rng.randf_range(-46.0, 46.0)
+		# MOUNDS ONLY. A burst here would put its own hollow belly over the hole it
+		# was placed to close.
+		var hid: int = HILL_MOUNDS[i % HILL_MOUNDS.size()]
+		var tex: Texture2D = load(BASE + "fungalhill%d.png" % hid)
+		var body: float = rng.randf_range(190.0, 260.0) * GROWTH_SCALE
+		var sc: float = body / float(tex.get_height())
+		# `t` is nearness: these belong with the growth at her feet
+		var t: float = rng.randf_range(0.10, 0.26)
+		var top: float = SHELF_BAND_Y - rng.randf_range(10.0, 34.0)
+		var sp := Sprite2D.new()
+		sp.texture = tex
+		sp.scale = Vector2(sc, sc)
+		sp.flip_h = rng.randf() < 0.5
+		sp.rotation_degrees = rng.randf_range(-3.0, 3.0)
+		sp.position = Vector2(x, top + body * 0.5)
+		sp.modulate = _depth(lerpf(0.60, 0.97, t) + rng.randf_range(-0.03, 0.03))
+		sp.z_index = FRONT_Z + int(t * 3.99)
+		sp.set_meta("air", true)
+		sp.material = _growth_sway()
+		add_child(sp)
+		_front_growth.append(sp)
+		for f in 2:
+			var fi: int = FRINGE_TEX[rng.randi() % FRINGE_TEX.size()]
+			var ft: Texture2D = load(BASE + "fungalfrond%d.png" % fi)
+			var fh: float = body * rng.randf_range(0.30, 0.55)
+			var fs: float = fh / float(ft.get_height())
+			var fr := Sprite2D.new()
+			fr.texture = ft
+			fr.scale = Vector2(fs, fs)
+			fr.flip_h = rng.randf() < 0.5
+			fr.rotation_degrees = rng.randf_range(-12.0, 12.0)
+			fr.position = Vector2(x + rng.randf_range(-body * 0.42, body * 0.42),
+					top + fh * 0.42)
+			fr.modulate = _depth(lerpf(0.56, 0.92, t))
+			fr.z_index = sp.z_index
+			fr.set_meta("air", true)
+			fr.material = _growth_sway()
+			add_child(fr)
+			_front_growth.append(fr)
+	print("R3 spawn shelf: %d mounds seated across x %.0f..%.0f at y %.0f"
+			% [n, SPAWN_SHELF.x, SPAWN_SHELF.y, SHELF_BAND_Y])
 
 func _floor_scatter() -> void:
 	# R3_SCATTER=0 turns it off, so the floor can be A/B'd against itself
