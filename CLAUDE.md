@@ -18,6 +18,24 @@ Every PR must:
 - (b) pass `godot --headless --export-release "Web" build/index.html` cleanly
 - (c) not regress visuals, performance, or feel — A/B against the prior live build before merging
 - (d) reference an issue (`Closes #N`) — no orphan PRs except the meta-workflow PR itself
+- (e) **credit every new asset.** If the diff touches `assets/`, `CREDITS.md` changes in the same PR — source, licence, and where it's used. No orphan art.
+
+### The credits check
+`CREDITS.md` is a college-admissions gate, not bookkeeping: **NYU does not review a piece whose credits are incomplete.** It drifted once — last updated 2026-07-29, caught 49 commits later with all of Realm 3 uncredited. Don't let that repeat.
+
+Run this before claiming a session is done:
+
+```powershell
+# Anything added to assets/ since CREDITS.md was last touched?
+$last = git log -1 --format=%H -- CREDITS.md
+git diff --name-only --diff-filter=A "$last..HEAD" -- assets/ |
+  Where-Object { $_ -notmatch '\.(import|uid)$' }
+```
+
+(The quotes around `"$last..HEAD"` are required — unquoted, PowerShell reads the
+`.` as member access and git rejects the range.)
+
+Any output means rows are owed. If the source genuinely isn't knowable from the repo, add it to the **Unconfirmed sources** table in `CREDITS.md` and ask Advika — never guess an attribution, and never leave an asset silently uncredited.
 
 ## Session Start Protocol
 Before touching code:
@@ -112,3 +130,4 @@ No interrogation. One open question at the right moments. The brain grows by lis
 - [`docs/ART_DIRECTION.md`](docs/ART_DIRECTION.md) — painterly bible: palette hexes, lighting model, scale rules
 - [`docs/STORY.md`](docs/STORY.md) — narrative scaffolding: plot beats, tonal constraints, voice rules
 - [`docs/VIBE.md`](docs/VIBE.md) — tone allow/deny lists; sanity check before naming or writing
+- [`CREDITS.md`](CREDITS.md) — per-asset attribution; portfolio hard gate, updated in the same PR as any `assets/` change

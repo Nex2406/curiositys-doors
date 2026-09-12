@@ -16,6 +16,7 @@ extends CanvasLayer
 ## accelerates into the game, this decelerates out of it.
 
 const PROLOGUE := preload("res://scenes/prologue/Prologue.tscn")
+const CREDITS := preload("res://scenes/UI/Credits.tscn")
 const MENU_SCENE := "res://scenes/UI/MainMenu.tscn"
 const MENU_TRACK := preload("res://assets/audio/menu_starfall_dreams.ogg")
 
@@ -163,6 +164,7 @@ func _finish() -> void:
 	# THE LONGEST SILENCE IN THE GAME, and it is doing the work: "?" has landed,
 	# nothing moves, and the player is left holding it.
 	await _wait(STILL_AFTER)
+	await _roll_credits()
 	# the menu is built BEHIND the shut eye, so opening reveals it already there
 	# — there is no fade on stanza VII, the eye opening is its only exit
 	get_tree().change_scene_to_file(MENU_SCENE)
@@ -173,6 +175,29 @@ func _finish() -> void:
 	await _eye.open(OPEN_TIME)
 	await _wait(MENU_HOLD)
 	queue_free()
+
+
+## THE ROLL, between the question mark and the menu.
+##
+## It runs over the shut eye rather than after it opens — the player is still
+## inside the ending, not back at a title screen watching an appendix. The menu
+## track is already up (it came in under stanza VII), so the credits inherit it
+## and there is no second music cue to place.
+##
+## R3_NO_CREDITS=1 skips it, for anyone iterating on the ending's timing who
+## does not want two minutes of names between takes.
+func _roll_credits() -> void:
+	if OS.get_environment("R3_NO_CREDITS") != "":
+		return
+	# stanza VII goes now: the roll's black would cover it anyway, but leaving a
+	# live typewriter under an opaque quad is the kind of thing that survives
+	# until something else starts drawing over it
+	if is_instance_valid(_text_layer):
+		_text_layer.queue_free()
+		_text_layer = null
+	var roll: CanvasLayer = CREDITS.instantiate()
+	get_tree().root.add_child(roll)
+	await roll.finished
 
 
 ## timers stop with the tree; this one must not

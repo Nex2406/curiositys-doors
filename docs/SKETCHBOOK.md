@@ -9,6 +9,21 @@ Rules:
 
 ---
 
+## 2026-09-12
+
+- **The game ends on a credits roll.** Advika: "this credit list will play at
+  the end of the game — like when a movie finishes and there's a credit scene.
+  So when it says *The End*…? you then start launching credits." So the ending
+  is two beats: a title card, then the roll. `CREDITS.md` is the content;
+  nothing in the repo currently ends the game, so the ending trigger and the
+  title card are both new.
+- **Unused art stays uncredited.** Staged UI that never shipped
+  (`assets/ui/_hub_bg_unused/`) is scrap — delete it rather than credit it.
+  Unused art that is *hers* still gets credited (evil Curiosity's 76 frames).
+- **Authorship settled** for everything that had drifted: evil Curiosity and
+  the hourglass are Advika's own art; every door in the game is assembled from
+  pack pieces; the Realm 3 mist and the text-box tick are generated in-repo.
+
 ## 2026-08-03 — R3's concept landed: YOU ARE THE ENEMY, on a 15-minute clock
 
 Advika: "lvl 3 needs to be better in terms of concept idk what ur gonna do but
