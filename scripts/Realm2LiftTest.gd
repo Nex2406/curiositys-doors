@@ -145,6 +145,12 @@ func _ready() -> void:
 	# the beat that is actually being looked at starts about two seconds in.
 	if OS.get_environment("R2_GATE") != "":
 		_jump_to_gateway()
+	# R2_LIFT=<0..1> — THE ASCENT, LIVE. Same jump R2_SHOT_LIFT makes, but the realm
+	# keeps running afterwards instead of taking one frame and quitting. The trial in
+	# the sky is the biggest thing in this realm and it is twenty minutes from spawn.
+	if OS.get_environment("R2_LIFT") != "":
+		var lv := OS.get_environment("R2_LIFT")
+		await _jump_to_ascent(clampf(float(lv) if lv.is_valid_float() else 0.5, 0.02, 0.98), false)
 	# R2_DIE=1 — STRAIGHT TO THE LAST DEATH. The eye closing before the reset is a
 	# two-second beat that otherwise costs three deliberate deaths to reach, and a
 	# beat nobody can get to quickly is a beat nobody checks. Spends every lifeline
@@ -1140,6 +1146,32 @@ func _shoot_the_blink(path: String) -> void:
 	get_tree().quit()
 
 
+## MID-ASCENT, ON DEMAND. Lifted out of `_self_screenshot` (2026-09-10) so it can
+## be reached WITHOUT taking a picture and quitting: the trailer camera needs the
+## island ten seconds into its climb, and a rig that screenshots the first frame
+## of the beat cannot film the beat. `R2_SHOT_LIFT` and `R2_LIFT` are the same
+## jump now; only what happens afterwards differs.
+func _jump_to_ascent(prog: float, fall: bool) -> void:
+	# Let the island's physics body settle at the jumped position FIRST — placing
+	# the hero in the same tick lets the teleport sweep past him (he falls home).
+	_set_phase(Phase.RIDE)
+	_chunk.modulate = Color(1, 1, 1)  # mid-ascent = fully awake colors
+	_wake = 1.0
+	for c in _chunk.get_children():
+		if c is AnimatedSprite2D:
+			c.play()
+	_chunk.debug_jump(prog)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_curi.global_position = _chunk.global_position + Vector2(0, -175.0)
+	if fall:
+		_curi.global_position = _chunk.global_position + Vector2(0, 400.0)
+	_curi.velocity = Vector2.ZERO
+	_bg.set_storm(0.75)
+	_cam.position = Vector2(CHUNK_X, _chunk.global_position.y - 120.0)
+	_spawn_wizard(true)  # mid-ascent = he's long since appeared
+
+
 func _self_screenshot(path: String) -> void:
 	if OS.get_environment("R2_SHOT_X") != "":
 		# park the hero at a given ground x (pre-liftoff framing checks)
@@ -1147,31 +1179,12 @@ func _self_screenshot(path: String) -> void:
 		_curi.velocity = Vector2.ZERO
 		_cam.position = Vector2(_curi.position.x, FLOOR_Y - 500.0)
 	if OS.get_environment("R2_SHOT_LIFT") != "":
-		# jump straight to mid-ascent for the screenshot. Let the island's
-		# physics body settle at the jumped position FIRST — placing the hero
-		# in the same tick lets the teleport sweep past him (he falls home).
-		_set_phase(Phase.RIDE)
-		_chunk.modulate = Color(1, 1, 1)  # mid-ascent = fully awake colors
-		_wake = 1.0
-		for c in _chunk.get_children():
-			if c is AnimatedSprite2D:
-				c.play()
-		# R2_SHOT_LIFT may carry an ascent progress (0..1); bare "1" means midway
-		var prog := 0.5
 		var pv := OS.get_environment("R2_SHOT_LIFT")
+		var prog := 0.5
 		if pv.is_valid_float() and float(pv) != 1.0:
 			prog = clampf(float(pv), 0.02, 0.98)
-		_chunk.debug_jump(prog)
-		await get_tree().physics_frame
-		await get_tree().physics_frame
-		_curi.global_position = _chunk.global_position + Vector2(0, -175.0)
-		if OS.get_environment("R2_SHOT_FALL") != "":
-			# drop the hero below the island instead — proves the fall→respawn beat
-			_curi.global_position = _chunk.global_position + Vector2(0, 400.0)
-		_curi.velocity = Vector2.ZERO
-		_bg.set_storm(0.75)
-		_cam.position = Vector2(CHUNK_X, _chunk.global_position.y - 120.0)
-		_spawn_wizard(true)  # mid-ascent = he's long since appeared
+		# R2_SHOT_FALL drops her BELOW the island instead — the fall→respawn beat
+		await _jump_to_ascent(prog, OS.get_environment("R2_SHOT_FALL") != "")
 	# R2_TRIAL_LOG: don't screenshot — observe the trial economy for 45s
 	# (casts must keep coming as orbs vacate; regression guard for the
 	# "wizard stops conjuring" wedge) and quit.

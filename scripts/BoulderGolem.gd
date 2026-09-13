@@ -67,6 +67,9 @@ const CEIL_FRAME_OFF := [78.0, 42.0, -18.0, -48.0, -112.0, -152.0,
 		-52.0, -50.0, -50.0, -46.0, -46.0, -46.0]
 
 @export var ceiling_spawner := false
+## set on the golems that lurk IN a platform, so their mask includes the
+## platform layer — see `_ready`
+@export var stands_on_platforms := false
 @export var body_tint: Color = Color(1, 1, 1)   # recolour to the realm's rock
 @export var gravity := 1400.0
 @export var detect_range := 580.0     # he notices her from further off now
@@ -116,11 +119,28 @@ var _life := 0.0
 var _cur_anim := ""
 
 
+## the current state, by name — for GOLEM_LOG and for Realm 1's probe rig,
+## which has to assert on what the state machine ACTUALLY did
+const STATE_NAMES := ["DORMANT", "WAKING", "ROLLING", "RECOVERY", "DYING",
+		"CLING", "FALLING", "LANDING", "RETREAT"]
+
+
+func state_name() -> String:
+	return STATE_NAMES[_state] if _state < STATE_NAMES.size() else "?"
+
+
 func _ready() -> void:
 	_log = OS.get_environment("GOLEM_LOG") != ""
 	add_to_group("enemies")
 	collision_layer = 4
-	collision_mask = 3 if ceiling_spawner else 1   # ceiling golems also land on platforms
+	# Layer 1 is the cave floor, layer 2 the platforms. A golem that WAKES UP ON
+	# a platform needs both or there is nothing under it — it drops straight
+	# through the plank it was sitting on the instant it stops being scenery
+	# (Advika: *"when he steps on the platform they fall right through it??"*).
+	# The bug could not exist before platform golems did: a DORMANT golem runs no
+	# physics at all, so the mask never mattered until the frame one woke up
+	# somewhere other than the floor.
+	collision_mask = 3 if (ceiling_spawner or stands_on_platforms) else 1
 	floor_snap_length = 24.0        # stick to the surface (no landing bounce)
 	scale = Vector2(SCALE, SCALE)   # node scale; children inherit
 	_build_visual()
@@ -294,7 +314,18 @@ func _enter_body(s: int) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if _player == null or not is_instance_valid(_player):
+	# AND IT HAS TO STILL BE THE LIVE ONE.
+	#
+	# `is_instance_valid` was not a strong enough test. A death in Realm 1 builds
+	# a NEW Curiosity and the old node is dropped from the tree, but it is not
+	# freed the same frame — so it stays "valid", the golem went on holding it,
+	# and measured its range to a body parked wherever she happened to die. Found
+	# by the probe rig: a golem sat DORMANT reporting the player 759px away while
+	# she was standing 130px from it. It had been true since golems existed —
+	# after your first death, some of them quietly stop working for the rest of
+	# the run, which is exactly the kind of bug you cannot see by playing.
+	if _player == null or not is_instance_valid(_player) \
+			or not _player.is_inside_tree() or not _player.is_in_group("player"):
 		_player = get_tree().get_first_node_in_group("player")
 		_ignore_player_body()
 	_t += delta
@@ -351,6 +382,10 @@ func _do_dormant(_delta: float) -> void:
 	# used to also require _player_on_my_ground(), so a player who stayed on the
 	# platforms never woke a single ground golem in the whole level and could walk the
 	# cave end to end without meeting one).
+	if _log and fmod(_life, 1.0) < 0.02:
+		print("GOLEM dormant @%.0f,%.0f dist=%.0f range=%.0f player=%s"
+				% [global_position.x, global_position.y, _player_dist(), detect_range,
+				_player.name if _player != null else "<null>"])
 	if _player_dist() <= detect_range:
 		_enter(S.WAKING)
 

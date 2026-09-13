@@ -137,17 +137,38 @@ func stop_ambient(fade: float = DEFAULT_FADE) -> void:
 func _crossfade(incoming_player: AudioStreamPlayer, outgoing_player: AudioStreamPlayer, fade: float) -> void:
 	if _fade_tween and _fade_tween.is_valid():
 		_fade_tween.kill()
-	_fade_tween = create_tween().set_parallel(true)
-	_fade_tween.tween_property(incoming_player, "volume_db", AMBIENT_DB, fade) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	if outgoing_player.playing:
-		_fade_tween.tween_property(outgoing_player, "volume_db", SILENCE_DB, fade) \
-			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		# Stop the faded-out player once the parallel fades complete, but only if
-		# it wasn't reclaimed as the active player by a newer crossfade.
-		_fade_tween.chain().tween_callback(func() -> void:
+	# CONSTANT POWER, AND THE OLD ONE PASSED THROUGH SILENCE.
+	#
+	# Advika, on the Realm 3 handover: the crossfade isn't smooth. It wasn't —
+	# and it never had been in any scene, this is just the longest one in the
+	# game so it is where it shows. The fades ran on `volume_db` directly, from
+	# -80 to -6 and back, so HALFWAY THROUGH both players sat at about -43 dB.
+	# That is inaudible. Every "crossfade" in the game dipped to near-silence in
+	# the middle and then came back up: a gap, not a blend.
+	#
+	# Decibels are a logarithmic scale, so interpolating them linearly is not a
+	# linear fade — it is a fade that spends most of its time nearly silent. Two
+	# uncorrelated tracks also have to be summed by POWER, not amplitude, so the
+	# pair that keeps total loudness flat is sin/cos: at the midpoint each sits
+	# at 0.707 of full, and 0.707² + 0.707² = 1.
+	#
+	# So the tween drives one plain 0..1 and both gains are computed from it in
+	# linear amplitude, then converted to dB once at the end.
+	_fade_tween = create_tween()
+	var fading_out: bool = outgoing_player.playing
+	_fade_tween.tween_method(func(t: float) -> void:
+			var a: float = t * PI * 0.5
+			incoming_player.volume_db = AMBIENT_DB + linear_to_db(maxf(sin(a), 0.0001))
+			if fading_out:
+				outgoing_player.volume_db = AMBIENT_DB + linear_to_db(maxf(cos(a), 0.0001)),
+			0.0, 1.0, fade)
+	if fading_out:
+		# Stop the faded-out player once the fade completes, but only if it
+		# wasn't reclaimed as the active player by a newer crossfade.
+		_fade_tween.tween_callback(func() -> void:
 			if outgoing_player != _players[_active]:
-				outgoing_player.stop())
+				outgoing_player.stop()
+				outgoing_player.volume_db = SILENCE_DB)
 
 
 # ─── sfx ───────────────────────────────────────────────────────────────────

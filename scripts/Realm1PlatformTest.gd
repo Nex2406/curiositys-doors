@@ -107,6 +107,8 @@ const MAX_GOLEMS := 12
 ## threat without redrawing the route.
 const PLAT_GOLEM_COUNT := 3
 const PLAT_GOLEM_MARGIN := 46.0   # keep the body clear of both lips
+## how far into the plank a dormant one sits — see `_seed_platform_golems`
+const PLAT_GOLEM_BED := 34.0
 ## A FLOOR-LENGTH CHARGE, and the fall is the point (Advika: *"the golem on the
 ## platforms need to be the ones on the ground they need to roll off the platform
 ## onto the ground"*). Capping this at 300 kept them politely aboard, which made
@@ -339,6 +341,18 @@ func _ready() -> void:
 	# holds first.
 	if OS.get_environment("PLAT_SHOT") != "":
 		_realm1_shot(OS.get_environment("PLAT_SHOT"))
+	# PLAT_GOLEM_PROBE=1 — WATCH ONE WAKE, instead of describing one.
+	#
+	# The last attempt at the platform golems shipped three changes at once (bed
+	# them, re-write the wake test, change the mask), none of them watched
+	# running, and together they stopped EVERY golem in the level waking —
+	# ground ones included. It had to be reverted whole. This is the rig that
+	# would have caught it in ten seconds: it stands Curiosity on each platform
+	# that has a golem in it and prints what that golem actually does — the
+	# states it passes through, and whether it is still on the plank a second
+	# later or has dropped through it.
+	if OS.get_environment("PLAT_GOLEM_PROBE") != "":
+		_golem_probe()
 	if OS.get_environment("PLAT_CAM_X") != "":
 		_cam.position.x = float(OS.get_environment("PLAT_CAM_X"))
 	if OS.get_environment("PLAT_CAM_Y") != "":
@@ -1195,22 +1209,47 @@ func _seed_platform_golems() -> void:
 		# animates its own fall inside the cell; a plank is something to stand ON
 		# (Advika: *"for planks use ground golem not ceiling"*).
 		g.ceiling_spawner = false
+		g.stands_on_platforms = true
 		# PARENTED TO THE PLATFORM, not stood on it. A DORMANT golem runs no physics
 		# at all — no gravity, no move_and_slide, collider disabled — so standing one
 		# on a mover carries it exactly nowhere: the platform slid out from under it
 		# and it hung in the air (Advika: *"the golem needs to sit on the platform
 		# blend into it and move with it until triggered"*). As a child of the
 		# assembly it rides the tween for free, which is what scenery should do.
+		# BEDDED IN, NOT STOOD ON. Advika: *"apply the same principle as the
+		# golems on the ground"* — and that principle was never the tint. It is
+		# that the TERRAIN ART DRAWS OVER THE GOLEM, so it reads as part of the
+		# rock until it moves. At z 8 on the assembly these rendered in front of
+		# the plank entirely, and no amount of colouring a thing that is plainly
+		# ON something makes it look like part of it: she read the six of them as
+		# extra ledges (*"why have u added more platforms to lvl1???"*).
+		#
+		# Behind the platform art and sunk most of a body down, so only the crown
+		# breaks the rim — a lump in the stone, until it stands up.
 		g.position = Vector2(rng.randf_range(left, right),
-				float(meta[0]) + PLAT_SINK)
-		g.z_index = 8
+				float(meta[0]) + PLAT_SINK + PLAT_GOLEM_BED)
+		g.z_index = -2
 		p["node"].add_child(g)
 		# and the moment it erupts it leaves the platform's frame for the world's,
 		# keeping its global transform, so its charge is its own and not the
 		# platform's. Deferred: this fires from inside the golem's state machine.
+		#
+		# AND IT CLIMBS OUT AS IT GOES. Bedded, its feet are PLAT_GOLEM_BED below
+		# the plank's surface; the instant it is a body rather than scenery it
+		# has to stand ON that surface instead, or it wakes up inside the plank
+		# and the collider shoves it somewhere. Same frame it also takes the
+		# ground golems' z, so it is in FRONT of the art it was hiding in — the
+		# whole tell is a lump of the platform standing up.
 		g.woke.connect(func() -> void:
-			if is_instance_valid(g) and g.get_parent() != self:
-				g.reparent.call_deferred(self, true))
+			if not is_instance_valid(g):
+				return
+			if g.get_parent() != self:
+				g.reparent.call_deferred(self, true)
+			g.set_deferred("z_index", 8)
+			var out: Callable = func() -> void:
+				if is_instance_valid(g):
+					g.global_position.y -= PLAT_GOLEM_BED
+			out.call_deferred())
 		placed += 1
 	print("PLATFORM GOLEMS: ", placed, " of ", _plats.size(), " platforms")
 
@@ -2838,3 +2877,89 @@ func _shot(path: String) -> void:
 	await get_tree().create_timer(delay).timeout
 	get_viewport().get_texture().get_image().save_png(path)
 	get_tree().quit()
+
+
+## see the PLAT_GOLEM_PROBE block in `_setup_play`
+func _golem_probe() -> void:
+	await get_tree().process_frame
+	var found: Array = []
+	var stack: Array = [self]
+	while not stack.is_empty():
+		var cur: Node = stack.pop_back()
+		for c in cur.get_children():
+			stack.append(c)
+		if cur is BoulderGolem and not (cur as BoulderGolem).ceiling_spawner \
+				and (cur as BoulderGolem).stands_on_platforms:
+			found.append(cur)
+	var all_golems: Array = []
+	var st2: Array = [self]
+	while not st2.is_empty():
+		var c2: Node = st2.pop_back()
+		for c3 in c2.get_children():
+			st2.append(c3)
+		if c2 is BoulderGolem:
+			all_golems.append(c2)
+	print("PROBE: %d platform golems (%d golems total)"
+			% [found.size(), all_golems.size()])
+	var ok := 0
+	for g: BoulderGolem in found:
+		var start: Vector2 = g.global_position
+		# ONE AT A TIME. With the rest of the level live, another golem kills her
+		# mid-window and the death sequence drags her to a respawn — so the golem
+		# under test correctly measured 759px to a hero the rig thought it had
+		# pinned 130px away, and read as broken when it was not.
+		for other in all_golems:
+			(other as Node).process_mode = (Node.PROCESS_MODE_INHERIT if other == g
+					else Node.PROCESS_MODE_DISABLED)
+		var hero: CharacterBody2D = _player_node()
+		hero.global_position = Vector2(start.x, start.y - 130.0)
+		hero.velocity = Vector2.ZERO
+		await get_tree().physics_frame
+		var d0: float = g.global_position.distance_to(hero.global_position)
+		var seen: Array[String] = []
+		# FELL THROUGH vs ROLLED OFF is the whole question, and raw drop cannot
+		# tell them apart: leaving the plank and dropping to the cave floor is
+		# what it is SUPPOSED to do. So the drop only counts while it is still
+		# horizontally over the plank it woke on.
+		var sank := 0.0
+		var left_plank := false
+		for i in 180:
+			# PINNED EVERY FRAME, AND RE-FOUND EVERY FRAME. Holding her once was
+			# not enough: another golem can kill her mid-window, and the respawn
+			# builds a NEW hero node — so the probe went on teleporting a corpse
+			# while the golem correctly measured 750px to the live one and stayed
+			# asleep. The rig was wrong, not the golem.
+			# and the tree must be RUNNING. A death earlier in the sweep leaves the
+			# game paused, and a paused tree means the golem under test never ticks
+			# at all — it reported DORMANT with her 130px away and looked broken.
+			get_tree().paused = false
+			hero = _player_node()
+			if hero != null:
+				hero.global_position = Vector2(start.x, start.y - 130.0)
+				hero.velocity = Vector2.ZERO
+			await get_tree().physics_frame
+			var s2: String = g.state_name()
+			if seen.is_empty() or seen[seen.size() - 1] != s2:
+				seen.append(s2)
+			var dx: float = absf(g.global_position.x - start.x)
+			if dx > 110.0:
+				left_plank = true
+			if not left_plank:
+				sank = maxf(sank, g.global_position.y - start.y)
+		var woke_up: bool = seen.size() > 1
+		var verdict := "OK"
+		if not woke_up:
+			verdict = "NEVER WOKE"
+		elif sank > 80.0:
+			verdict = "FELL THROUGH"
+		if verdict == "OK":
+			ok += 1
+		print("PROBE golem at %.0f,%.0f  dist=%.0f/%.0f  states=%s  sank-on-plank=%.0fpx  rolled off=%s  %s"
+				% [start.x, start.y, d0, g.detect_range, ", ".join(seen), sank,
+				"yes" if left_plank else "no", verdict])
+	print("PROBE: %d/%d behaved" % [ok, found.size()])
+	get_tree().quit()
+
+
+func _player_node() -> CharacterBody2D:
+	return get_tree().get_first_node_in_group("player") as CharacterBody2D

@@ -24,7 +24,7 @@ class_name Sporeling
 signal popped
 
 ## blows to fell one — see `take_damage()`
-const HITS_TO_KILL := 5
+const HITS_TO_KILL := 2
 var _pop_hits := 0
 
 ## the breath from Realm 1's jade pickup set — see `_sprout`
@@ -473,9 +473,11 @@ func take_damage(_amount: int, _knockback: Vector2 = Vector2.ZERO) -> void:
 	if _dead:
 		return
 	# THEY TAKE MORE THAN ONE (Advika: *"make the mushrooms harder to kill"*). One
-	# swing each made the six lights a walk rather than a fight. The flinch is what
-	# sells it: without a visible reaction a non-fatal blow reads as a MISS, and a
-	# player who thinks they missed backs off instead of committing.
+	# swing each made the six lights a walk rather than a fight. But five was a
+	# grind (*"reduce no. of hits on mushroom to only 2"*) — two keeps the commit
+	# without the chore. The flinch is what sells it: without a visible reaction a
+	# non-fatal blow reads as a MISS, and a player who thinks they missed backs off
+	# instead of committing.
 	_pop_hits += 1
 	if _pop_hits < HITS_TO_KILL:
 		_visual.modulate = Color(2.2, 2.2, 2.2)
