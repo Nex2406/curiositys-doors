@@ -277,6 +277,15 @@ const BURST_MAX_BODY := 260.0     # world px; above this a burst's centre reads 
 const HILL_BURSTS: Array[int] = [2, 5]
 const HILL_MOUNDS: Array[int] = [1, 3, 4]
 
+## HOW MUCH OF EACH HILL IS ACTUALLY PAINTED, measured off the PNGs (the fraction
+## of columns in the lower half whose alpha is solid). It matters because every
+## row in this realm steps by `texture.get_width()`, and a texture's width is not
+## its plant: `fungalhill5` is a radial burst that only fills 65% of its own box,
+## so a step of 0.9 x width leaves real daylight between neighbours even though
+## the arithmetic looks like an overlap. Advika circled three such notches in one
+## screen (2026-09-13) — smooth olive soil showing between two clumps.
+const HILL_SOLID: Dictionary = {1: 0.88, 2: 0.73, 3: 0.88, 4: 0.89, 5: 0.65}
+
 ## HOW DARK THE NEAREST MASSES ARE ALLOWED TO BE.
 ##
 ## They used to sit at `_depth(1.0)` — NEAR_BLACK exactly, the very bottom of the
@@ -1355,6 +1364,84 @@ func _roof_band(x0: float, x1: float, edge_y: float) -> void:
 	_hill_row(edge_y - 25.0, 0.44, 1, _depth(D_NEAR), true, x0, x1,
 			0.46, 0.58)
 	_hill_row(edge_y - 35.0, 0.32, 2, _depth(D_NEAR + 0.16), true, x0, x1)
+	# R3_NOROOFMASS=1 — the ceiling without the grown rock, for A/B
+	if OS.get_environment("R3_NOROOFMASS") == "":
+		_roof_mass(x0, x1, edge_y)
+
+
+## HOW FAR THE GROWN ROOF CLIMBS. The camera rides at `hero.y - 110` and shows
+## 692 world px above itself at this realm's 0.78 zoom, so growth to here cannot
+## run out of frame until she is 768px above the floor — higher than any jump in
+## the realm reaches.
+const ROOF_TOP := -1150.0
+## the vertical step between hanging rows. Every row's art is at least 200px tall
+## at these scales, so each row's body reaches well past the start of the one above
+## it and no window can open between them: the understory's overlap law, upside
+## down. 130 left a visible seam a third of the way up where the mass met the
+## band below it — found by walking the roof at jump height, not by reasoning.
+const ROOF_ROW_STEP := 130.0
+
+
+## THE BLANK ABOVE THE CEILING — and why no gradient was going to fix it.
+##
+## Advika: *"u can clearly see a part where it just gets cut off at the top ...
+## that hideous blank top should NOT be visible"*. That blank is not missing art.
+## It is the ceiling gradient itself: `_build_ceiling` fades SOIL at ROOF_Y down
+## to black at -1400, but the camera only ever sees about 160px of that 1020px
+## fade, and 160px of a fade that slow is not depth — it is a FLAT SLAB with a
+## hard edge along the bottom where the growth stops. Measured off her screenshot
+## it runs rgb8 (4,10,9), dead uniform across the whole width. Jumping does not
+## reveal more ceiling; it reveals more slab.
+##
+## Fading harder cannot fix it, because the defect is flatness, not brightness,
+## and this realm's own law is that a flat fill reads as a hole wherever it shows
+## (see `_understory_mass`). So the rock above the line is GROWN instead: hanging
+## rows climbing to ROOF_TOP, each darker than the one below, landing on
+## NEAR_BLACK by art rather than by ramp. Nothing flat is left up there to see.
+func _roof_mass(x0: float, x1: float, edge_y: float) -> void:
+	# THE MAIN STREAM GOES BACK EXACTLY WHERE IT WAS.
+	#
+	# `_rng` is seeded once in `_ready` and every builder after this one draws
+	# from it in order, so spending draws here would re-roll the entire realm —
+	# the floor included. Save the state, spend a private generator, put it back,
+	# and the rest of the level is sprite-for-sprite what it was.
+	var keep: int = _rng.state
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260913
+	var y: float = edge_y - 40.0
+	var row := 0
+	while y > ROOF_TOP:
+		# deeper into the rock is darker; the last row lands on NEAR_BLACK
+		var t: float = lerpf(D_NEAR, 1.0, minf(float(row) / 5.0, 1.0))
+		# and bigger, so the climb costs fewer sprites the higher it goes
+		var sc_base: float = 0.55 + 0.09 * float(row)
+		var x: float = x0
+		while x < x1:
+			# MOUNDS ONLY. `fungalhill` 2 and 5 are the radial bursts whose
+			# centres are opaque and unpainted — tint one for depth and it
+			# becomes a flat black disc, which is the very defect being closed
+			# here. See HILL_BURSTS / BURST_MAX_BODY.
+			var hi: int = HILL_MOUNDS[rng.randi() % HILL_MOUNDS.size()]
+			var tex: Texture2D = load(BASE + "fungalhill%d.png" % hi)
+			var sc: float = sc_base * rng.randf_range(0.82, 1.22)
+			var h: float = tex.get_height() * sc
+			var jy: float = y + rng.randf_range(-26.0, 26.0)
+			var tj: float = rng.randf_range(0.86, 1.10)
+			var tint: Color = _depth(t)
+			var s := Sprite2D.new()
+			s.texture = tex
+			s.scale = Vector2(sc, sc)
+			# top-anchored, dripping down, so each row buries the one above it
+			s.position = Vector2(x, jy + h * 0.5)
+			s.flip_v = true
+			s.flip_h = rng.randf() < 0.5
+			s.modulate = Color(tint.r * tj, tint.g * tj, tint.b * tj)
+			s.z_index = int(OS.get_environment("R3_ROOFZ")) if OS.get_environment("R3_ROOFZ") != "" else 1
+			add_child(s)
+			x += tex.get_width() * sc * rng.randf_range(0.38, 0.50)
+		y -= ROOF_ROW_STEP
+		row += 1
+	_rng.state = keep
 
 
 func _build_platforms() -> void:
@@ -2279,6 +2366,12 @@ func _meadow_masses() -> void:
 		var tex: Texture2D = load(BASE + "fungalhill%d.png" % hi)
 		# a target height, so the five hill shapes agree with each other
 		var want_h: float = _rng.randf_range(70.0, 190.0) * GROWTH_SCALE
+		# THE BURST LAW APPLIES HERE TOO. This picks freely from all five hills
+		# and then asks for up to 190 * GROWTH_SCALE of body, well past the size
+		# at which 2 and 5 turn into black discs. Nothing was checking it.
+		if hi in HILL_BURSTS and want_h > BURST_MAX_BODY:
+			hi = HILL_MOUNDS[int(absf(x)) % HILL_MOUNDS.size()]
+			tex = load(BASE + "fungalhill%d.png" % hi)
 		var sc: float = want_h / float(tex.get_height())
 		# its base is BURIED — a mound sitting on the line is a lump on a lawn
 		var base: float = FLOOR_Y + _rng.randf_range(30.0, 78.0)
@@ -2395,10 +2488,52 @@ const FIELD_BODY_MIN := 380.0
 const FIELD_BODY_MAX := 520.0
 
 
+## CLOSE A HAIRLINE OF DAYLIGHT WITH REALM 2'S MOSS.
+##
+## `right` is the painted edge of the clump just laid; `nx` is where the next one
+## will stand. `tuft_2` is the only R2 tuft with a painted middle — `tuft_0`
+## measures lum 0.001 at its centre and `tuft_1` 0.007, both opaque, so either of
+## those would plug a gap with a fresh black disc. See `_moss_tuft`.
+func _fld_gap(right: float, nx: float, top: float, tint: Color, z: int) -> void:
+	# the next clump's own painted half-width is not known yet; 0.4 of the step
+	# is a safe stand-in, and erring small means a filler is placed slightly too
+	# often rather than too rarely
+	var left: float = nx - (nx - right) * 0.4
+	var gap: float = left - right
+	if gap < 6.0 or gap > 220.0:
+		return
+	var tex: Texture2D = load(R2 + "%s.png" % R2_TUFT_SOLID)
+	# sized to the hole, capped under the burst limit so it can never become a
+	# feature in its own right
+	var body: float = clampf(gap * 2.1, 90.0, 240.0)
+	var sc: float = body / float(tex.get_height())
+	var jt: float = _rng.randf_range(0.90, 1.10)
+	var m := Sprite2D.new()
+	m.texture = tex
+	m.scale = Vector2(sc, sc)
+	m.flip_h = _rng.randf() < 0.5
+	m.rotation_degrees = _rng.randf_range(-8.0, 8.0)
+	m.position = Vector2((right + left) * 0.5,
+			top + body * 0.5 - _rng.randf_range(0.0, 24.0))
+	m.modulate = Color(tint.r * jt, tint.g * jt, tint.b * jt)
+	# one below its neighbours, so it fills BEHIND them and never draws its own
+	# outline over a plant
+	m.z_index = maxi(z - 1, 0)
+	m.set_meta("air", true)
+	m.material = _growth_sway()
+	add_child(m)
+	_front_growth.append(m)
+
+
 func _build_foreground() -> void:
 	if OS.get_environment("R3_FRINGE") != "":
 		_fringe_growth = float(OS.get_environment("R3_FRINGE"))
-	for p in FIELD_PASSES:
+	# R3_FIELD=0 — the big dark clumps off, for A/B. Advika, circling three of
+	# them: *"they look so chaotic and unplanned get rid of those bushhes"*.
+	var field_passes: int = FIELD_PASSES
+	if OS.get_environment("R3_FIELD") != "":
+		field_passes = int(OS.get_environment("R3_FIELD"))
+	for p in field_passes:
 		# each pass sweeps x on its own offset and picks its own depths, so the
 		# passes never line up with each other either
 		var x: float = WORLD_L - 600.0 + _rng.randf_range(0.0, 420.0)
@@ -2455,6 +2590,23 @@ func _build_foreground() -> void:
 				bk.material = _growth_sway()
 				add_child(bk)
 				_front_growth.append(bk)
+			# AND THEN THE BURST ITSELF GOES.
+			#
+			# Backing it was the previous answer and it was not enough. Advika,
+			# pointing at one: *"remove this bush please"* — while calling the
+			# same objects GAPS two screens earlier. One defect, two angles: a
+			# burst over BURST_MAX_BODY has an opaque, unpainted centre, so it
+			# reads as a hole where the floor is lit and as a black bush where it
+			# is not. Paint behind it cannot fix the silhouette, and the
+			# silhouette is what she keeps circling.
+			#
+			# The backing mound above stays: it keeps the `_rng` stream, and so
+			# the level's entire layout, identical to what she has been looking
+			# at. A second mound behind this one only adds body.
+			if hid in HILL_BURSTS and body > BURST_MAX_BODY:
+				hid = HILL_MOUNDS[(i + p + 1) % HILL_MOUNDS.size()]
+				tex = load(BASE + "fungalhill%d.png" % hid)
+				sc = body / float(tex.get_height())
 			var sp := Sprite2D.new()
 			sp.texture = tex
 			sp.scale = Vector2(sc, sc)
@@ -2502,7 +2654,28 @@ func _build_foreground() -> void:
 			# and 38% at the tightest, so they are still the sparse accents the
 			# field was rebuilt to be and nowhere near the 97% blob it started as.
 			# Overlap is the only thing that can promise no gap; spacing cannot.
-			x += tex.get_width() * sc * _rng.randf_range(0.62, 0.94)
+			# TINY GAPS GET THE R2 MOSS (Advika: *"see for tiny tiny gaps
+			# fill it in with that moss thing from r2"*).
+			#
+			# The cap above promises the BOUNDING BOXES overlap. It cannot
+			# promise the plants do: `fungalhill5` fills only 65% of its own box
+			# and even a mound only 88%, so 0.94 of the box can still be real
+			# daylight between two painted edges. That difference is the whole
+			# defect — small, frequent, and everywhere, which is exactly how she
+			# describes it.
+			#
+			# So the painted edges are tracked, and when they part, one piece of
+			# `tuft_2` goes in. It is sized TO THE GAP rather than to its
+			# neighbours — the mistake that put a bright clump in the middle of
+			# the frame earlier today was sizing the filler off the neighbouring
+			# body — and tinted to the mean of the two clumps it sits between, so
+			# it is the same value as the growth it joins. Only tiny gaps: a wide
+			# one is a clearing and wants a plant, not a plug.
+			var solid: float = float(HILL_SOLID.get(hid, 0.8))
+			var right: float = x + tex.get_width() * sc * solid * 0.5
+			var nx: float = x + tex.get_width() * sc * _rng.randf_range(0.62, 0.94)
+			_fld_gap(right, nx, top, sp.modulate, sp.z_index)
+			x = nx
 			i += 1
 
 	_understory()
@@ -2740,6 +2913,14 @@ const UNDERSTORY: Array = [
 ## the jitter in `_understory_mass` summed (26 + 17 + 11). The course spacing is
 ## derived from this number, so if the wobble changes this must change with it or
 ## the courses stop overlapping and the bare strip comes back.
+## THE DARKEST A COURSE MAY RENDER. `moss_mat` paints at lum 0.052 and is read
+## through R2_TEAL (luminance 0.92), so the floor value of a course is about
+## 0.048 * k. Advika's accepted floor sits at median lum 0.027 and her circled
+## patches at 0.0071; 0.030 is where `find_holes.py` — calibrated against her own
+## marks — stops finding texture. k = 0.58 puts the deepest course at 0.028,
+## inside the band she accepts, with the ramp above it untouched.
+const COURSE_K_MIN := 0.58
+
 const COURSE_WOBBLE_MAX := 54.0
 
 const MASS_TOP := 545.0        # mean height of the ground mass's edge
@@ -2803,7 +2984,34 @@ func _understory_mass() -> void:
 	var ci2 := 0
 	while cy < 1100.0:
 		# tint ramps down with depth, ranges deliberately overlapping (see below)
-		var k: float = lerpf(0.46, 0.20, float(ci2) / 6.0)
+		# THE PATCHES WERE NEVER HOLES. THE COURSES WERE JUST TOO DARK.
+		#
+		# Advika, six screenshots in one session: *"there're barren patches of
+		# land everywhere"*, *"there're just so many patches oh my god"*. Every
+		# previous fix — mine included, twice in one afternoon — read that as
+		# missing growth and added more. It is not, and there is now a
+		# measurement that settles it: repainting every builder a flat tag colour
+		# (`R3_DIAG`) and sampling the 80 regions `tools/find_holes.py` flags
+		# gives **NOTHING DRAWN: 0.0%**. Not one dead pixel in this level is
+		# uncovered. 46% of them are these courses.
+		#
+		# What they are is unlit. `moss_mat`'s own paint measures lum 0.052, and
+		# the old ramp multiplied that by R2_TEAL's 0.92 and a k falling to 0.20,
+		# so the deepest course rendered at 0.0096 — against a floor Advika
+		# accepts at median 0.027, and a threshold of 0.030 below which a 15px
+		# window carries no readable texture at all. Her circles measure 0.0071
+		# and the floor beside them measures 0.027: the same art, 3.8x apart.
+		#
+		# So the ramp keeps its direction — depth still means darker, which is
+		# this realm's whole value law — but it stops below the point where paint
+		# turns into fill. Nothing is brightened that was already reading; the
+		# bottom of the ramp is lifted to where texture survives.
+		var kmin: float = COURSE_K_MIN
+		# R3_COURSE_K=<float> — sweep the floor's darkest value without a rebuild,
+		# so the call can be made by looking at three renders side by side
+		if OS.get_environment("R3_COURSE_K") != "":
+			kmin = float(OS.get_environment("R3_COURSE_K"))
+		var k: float = maxf(lerpf(0.46, 0.20, float(ci2) / 6.0), kmin)
 		courses.append([front if ci2 == 0 else mat, cy, FORE_Z + mini(ci2 / 2, 2),
 				k, span * [0.31, 0.0, 0.17, 0.48, 0.63, 0.09, 0.72][ci2 % 7]])
 		cy += step
@@ -2870,7 +3078,18 @@ func _understory() -> void:
 			sp.set_meta("air", true)
 			add_child(sp)
 			_front_growth.append(sp)
-			x += tex.get_width() * sc * _rng.randf_range(float(row[6]), float(row[7]))
+			# STEP BY WHAT IS PAINTED, AND ALWAYS OVERLAP.
+			#
+			# This used to be `_rng.randf_range(row[6], row[7])` with the row
+			# listing 0.78..1.06 — and anything at or over 1.0 starts the next
+			# clump PAST the previous one's right edge, which is a gap by
+			# construction, once per roll, the length of the level. Multiplying
+			# by the hill's own solid fraction first means the step is measured
+			# against the plant instead of its bounding box, and the range is
+			# capped below 1 so neighbours cannot part.
+			var solid: float = float(HILL_SOLID.get(hid, 0.7))
+			var hw: float = tex.get_width() * sc * solid * 0.5
+			x += tex.get_width() * sc * solid 					* _rng.randf_range(float(row[6]), float(row[7]))
 			i += 1
 
 
@@ -3861,7 +4080,15 @@ func _spawn_mirror() -> void:
 	# after it stands up, because the level names what she is fighting only once she
 	# has seen it.
 	_mirror.arrive(BOSS_ARRIVE_HOLD)
-	get_tree().create_timer(1.0).timeout.connect(func() -> void:
+	# THE CARD WAITS FOR THE FADE TO FINISH.
+	#
+	# This comment already said the card comes "a beat after it stands up,
+	# because the level names what she is fighting only once she has seen it" —
+	# and with the old 30s fade, 1.0s was nowhere near that: the card arrived
+	# while the boss was still at 3% alpha. Now that the materialise is
+	# `Mirror.MATERIALISE` long and actually visible, the card would cover the
+	# back half of it. It comes after instead, which is what the line meant.
+	get_tree().create_timer(Mirror.MATERIALISE + 0.5).timeout.connect(func() -> void:
 		if not is_inside_tree():
 			return
 		var card: TarotReading = Realm3Card.mirror()
@@ -4467,6 +4694,11 @@ void fragment() {
 	var vp := get_viewport_rect().size
 	var step: float = vp.x / _cam.zoom.x
 	var cam_y: float = FLOOR_Y - 40.0
+	# R3_SCAN_CAMY=<y> — walk the same level at a different camera height.
+	# The default frames the floor; the roof needs a jump-height pass, and a
+	# ceiling that is only ever checked at one x is not checked.
+	if OS.get_environment("R3_SCAN_CAMY") != "":
+		cam_y = float(OS.get_environment("R3_SCAN_CAMY"))
 	var x: float = WORLD_L
 	var i := 0
 	print("HOLESCAN: zoom %.4f  cam_y %.0f  step %.0f  hid %d layers"

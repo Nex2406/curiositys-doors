@@ -334,17 +334,37 @@ func _build_body() -> void:
 	add_child(_bar)
 
 
+## how long the figure takes to come into being. Advika: *"when evil C appears i
+## want him to fade into existence"* — it already faded, and that was the problem:
+## the realm called `arrive(BOSS_ARRIVE_HOLD)` with a 30 SECOND hold and the fade
+## ran for all thirty of them. Half a percent of alpha a frame is under the
+## threshold at which the eye reads change at all, so nothing appears to fade;
+## the boss is simply absent, and then at some point noticed. A materialise has
+## to happen at the speed of an event to read as one.
+const MATERIALISE := 2.4
+
+
 ## THE ARRIVAL. It does not walk in — the colour finishes leaving and it is
-## simply there, already looking at her. Only when this finishes is it allowed
-## to move, so the player gets a beat to understand what they are looking at.
-func arrive(hold: float = 2.6) -> void:
+## simply there, already looking at her.
+##
+## TWO CLOCKS, AND THEY ARE NOT THE SAME ONE. `fade` is how long the figure takes
+## to exist; `hold` is the CEILING after which it starts fighting on its own. They
+## used to be a single number, which forced a choice between a fade slow enough to
+## outlast the card and a fade fast enough to see. They are separate now: what
+## actually starts the fight is the card's `closed` signal (see `_spawn_mirror`),
+## and this callback is only the fallback for a card that never gets dismissed.
+func arrive(hold: float = 2.6, fade: float = -1.0) -> void:
+	var f: float = fade if fade > 0.0 else minf(hold, MATERIALISE)
 	_visual.modulate.a = 0.0
 	var tw := create_tween()
 	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_property(_visual, "modulate:a", 1.0, hold)
-	tw.parallel().tween_property(_eyes, "energy", 2.3, hold)
-	tw.parallel().tween_property(_rim, "energy", 1.05, hold * 1.15)
-	tw.tween_interval(0.5)
+	tw.tween_property(_visual, "modulate:a", 1.0, f)
+	# the eyes come up WITH the body, not after it — they are the first thing
+	# that is meant to be legible about it
+	tw.parallel().tween_property(_eyes, "energy", 2.3, f)
+	tw.parallel().tween_property(_rim, "energy", 1.05, f * 1.15)
+	# and then the ceiling runs out the rest of `hold`, untouched
+	tw.tween_interval(maxf(hold - f, 0.0) + 0.5)
 	tw.tween_callback(func() -> void: live = true)
 
 

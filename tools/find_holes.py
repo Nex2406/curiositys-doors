@@ -96,6 +96,13 @@ def main():
                     help="camera world y the scan ran at (FLOOR_Y - 40)")
     ap.add_argument("--overlay", default="",
                     help="write annotated frames here for eyeballing")
+    ap.add_argument("--top", type=int, default=25,
+                    help="how many of the worst regions to print (0 = all)")
+    ap.add_argument("--csv", default="",
+                    help="write every region as x0,x1,y0,y1,area -- the patch "
+                         "pass in Realm3FungalTest reads this, so a fix can be "
+                         "aimed at what was measured rather than at what was "
+                         "circled")
     ap.add_argument("--lum", type=float, default=LUM_MAX)
     ap.add_argument("--std", type=float, default=STD_MAX)
     a = ap.parse_args()
@@ -141,7 +148,13 @@ def main():
           % (len(frames), total_regions, total_px))
     print("       thresholds lum<%.3f std<%.3f, min area %d px"
           % (a.lum, a.std, MIN_AREA))
-    for area, wx, wxe, wy, wye, f in worst[:25]:
+    if a.csv:
+        with open(a.csv, "w", encoding="utf-8") as fh:
+            fh.write("x0,x1,y0,y1,area\n")
+            for area, wx, wxe, wy, wye, _f in sorted(worst, key=lambda r: r[1]):
+                fh.write("%d,%d,%d,%d,%d\n" % (wx, wxe, wy, wye, area))
+        print("       wrote %d regions to %s" % (len(worst), a.csv))
+    for area, wx, wxe, wy, wye, f in (worst if a.top == 0 else worst[:a.top]):
         print("  %7d px   world x %8.0f..%-8.0f y %6.0f..%-6.0f   %s"
               % (area, wx, wxe, wy, wye, f))
     if total_regions == 0:
