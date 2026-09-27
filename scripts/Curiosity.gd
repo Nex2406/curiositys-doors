@@ -201,9 +201,41 @@ func _ready() -> void:
 	_base_visual_scale = visual.scale.y
 	visual.animation_finished.connect(_on_animation_finished)
 	visual.play(&"idle")
+	# ONE COLOUR IN EVERY REALM (Advika 2026-09-27, on seeing it in the trailer:
+	# "i love the one colored C, can we have that in all realms in game"). The
+	# cloak is drawn unlit, and _true_colour() divides each realm's CanvasModulate
+	# back out, so Curiosity reads as their own painted purple wherever they stand.
+	var unlit := CanvasItemMaterial.new()
+	unlit.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
+	visual.material = unlit
 	health = max_health
 	health_changed.emit(health, max_health)
 	_build_attack_hitbox()
+
+
+# Undo the realm's CanvasModulate on the cloak (see _ready). Unlit drawing already
+# skips every light; the CanvasModulate still multiplies it, so it is divided back
+# out here, every frame, because realms tween theirs (Realm 3's drain, fades).
+var _canvas_mods: Array[CanvasModulate] = []
+var _canvas_mods_scan := 0.0
+
+func _true_colour() -> void:
+	_canvas_mods_scan -= get_process_delta_time()
+	if _canvas_mods_scan <= 0.0:
+		_canvas_mods_scan = 1.0
+		_canvas_mods.clear()
+		var stack: Array[Node] = [get_tree().current_scene if get_tree().current_scene else get_tree().root]
+		while not stack.is_empty():
+			var n: Node = stack.pop_back()
+			if n is CanvasModulate:
+				_canvas_mods.append(n)
+			stack.append_array(n.get_children())
+	var cm := Color(1, 1, 1)
+	for m in _canvas_mods:
+		if is_instance_valid(m) and m.visible and m.is_inside_tree():
+			cm *= m.color
+	visual.modulate = Color(1.0 / maxf(cm.r, 0.05), 1.0 / maxf(cm.g, 0.05),
+			1.0 / maxf(cm.b, 0.05), visual.modulate.a)
 
 
 # A forward-facing damage box, off by default. Layer 0 (nothing scans it) / mask 1 so it
@@ -257,6 +289,7 @@ func _process(delta: float) -> void:
 		visual.modulate.a = 0.35 if int(_invuln_timer * 20.0) % 2 == 0 else 1.0
 		if _invuln_timer <= 0.0:
 			visual.modulate.a = 1.0
+	_true_colour()
 
 	# Tie the leg-cycle speed to how fast Curiosity is actually moving so the feet
 	# never slide: at walk_speed the clip runs at its drawn rate (scale 1.0), and it

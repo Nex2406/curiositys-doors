@@ -31,7 +31,6 @@ const GOLEM_BALL := preload("res://scenes/GolemBall.tscn")
 const BOULDER_GOLEM := preload("res://scripts/BoulderGolem.gd")   # new rolling cave golem
 const TAROT_DELAY := 5.0    # Advika: the card lands 5s after the player is in the level
 const CURIOSITY_SCALE := 0.21   # Advika: smaller again (0.26 -> 0.235 -> 0.21)
-const CURIOSITY_DIM := Color(0.62, 0.6, 0.64)   # Advika: dim the bright purple cloak
 # measured SOLID rock top-row per platform texture (where the rock is actually solid,
 # not the feathered edge) — the collider top sits here so Curiosity plants, no float.
 const PLAT_SLAB_H := 5.0    # a thin red LINE — just the standable outline, not a slab
@@ -1081,10 +1080,8 @@ func _setup_play() -> void:
 	# instantiated node did nothing at all. It was dead code from the moment it was
 	# written, which is why the rock depth never appeared in the level.
 	_player.set_ground_sink(ROCK_SINK)
-	# dim just the cloak sprite (not the lantern) so the bright purple sits back
-	var pv := _player.get_node_or_null("Visual")
-	if pv != null:
-		pv.modulate = CURIOSITY_DIM
+	# (the cloak dim that lived here is gone: Curiosity is one colour in every
+	# realm now — Advika 2026-09-27; see Curiosity._true_colour)
 	var pcam := _player.get_node_or_null("Camera")
 	if pcam != null:
 		pcam.enabled = false        # the level's clamped camera drives the view
