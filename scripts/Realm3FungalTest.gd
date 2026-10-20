@@ -1436,7 +1436,11 @@ func _roof_mass(x0: float, x1: float, edge_y: float) -> void:
 			s.flip_v = true
 			s.flip_h = rng.randf() < 0.5
 			s.modulate = Color(tint.r * tj, tint.g * tj, tint.b * tj)
-			s.z_index = int(OS.get_environment("R3_ROOFZ")) if OS.get_environment("R3_ROOFZ") != "" else 1
+			# z 2, IN FRONT of the band's darkest row (Advika 2026-10-20: "fix the line in
+			# r3 ceiling"): at z 1 that row's flipped, flat-based tops drew over the
+			# mass and laid a straight dark seam across the whole roof once the trailer
+			# camera pulled back far enough to see it.
+			s.z_index = int(OS.get_environment("R3_ROOFZ")) if OS.get_environment("R3_ROOFZ") != "" else 2
 			add_child(s)
 			x += tex.get_width() * sc * rng.randf_range(0.38, 0.50)
 		y -= ROOF_ROW_STEP
