@@ -187,7 +187,10 @@ func _finish() -> void:
 ## R3_NO_CREDITS=1 skips it, for anyone iterating on the ending's timing who
 ## does not want two minutes of names between takes.
 func _roll_credits() -> void:
-	if OS.get_environment("R3_NO_CREDITS") != "":
+	# OFF ON THE LIVE BUILD (Advika, 2026-10-22: "remove credit list from live url",
+	# "just keep it w us for now"). The roll and its names stay in the repo;
+	# R3_CREDITS=1 brings it back for us.
+	if OS.get_environment("R3_CREDITS") == "" or OS.get_environment("R3_NO_CREDITS") != "":
 		return
 	# stanza VII goes now: the roll's black would cover it anyway, but leaving a
 	# live typewriter under an opaque quad is the kind of thing that survives
