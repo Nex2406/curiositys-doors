@@ -1655,7 +1655,10 @@ func _grow_r3_gateway() -> void:
 	# and CLEAR of the crown, not tucked into it (Advika: *"i want it ABOVE the
 	# door so its more visible"*) — at -790 it sat down among the mushroom clubs
 	# and the eye had to find it in the growth.
-	_r3_door.prompt_offset = Vector2(0.0, -920.0)
+	# BUT NOT FLOATING IN THE SKY (Advika 2026-10-22: "it has to be literally right on
+	# top of the gateway ... not so high up") — -920 left a crown's height of empty sky
+	# between them; it now sits just over the mushroom clubs, touching the gate.
+	_r3_door.prompt_offset = Vector2(0.0, -620.0)
 	_r3_door.position = Vector2(R3_GATE_X, R3_GATE_DECK_Y - 60.0)
 	# OVER THE DOORWAY, NOT UNDER IT. `Door.gd` parents its floating "[Y] Enter"
 	# label to itself, and this Area2D was left at the default z=0 while the
